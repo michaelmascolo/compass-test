@@ -26,6 +26,12 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - Added one retry (~3s) on transient/unreadable LLM failures for both stages; no duplicate student turn / theory snapshot on retry.
 - Verified (iteration_5): 4-turn session all HTTP 200, ~20-40s/turn, reasoner prompt ~4.6-7.8KB, domains shift with the writing, theory_history v1..v4 preserved, revisions recognized, no stages/scores, AI never rewrites.
 
+## Milestone 2 — Opening/Introduction exemplar (2026-07-17)
+- Enriched ONLY the "Opening / Introduction" record in `canonical_writing_model.json` (~31 structured fields: domain_status, governing/possible functions, reader_needs, resources, observable_organizations A–L, differentiations/integrations/coordinations, tensions, alternative_interpretations, misunderstandings, movements, invitation types + construction rules, relationships/notes, genre_sensitivity, inside_outside_coordination, prohibitions). Other 12 domains untouched.
+- Engine unchanged except two domain-independent touches: compact-index builder fallback to governing/possible functions; new generic `alternative_interpretations` theory field (schema + compact theory + dev panel). NO introduction-specific logic in code.
+- 24-case internal evaluation (`tests/milestone2_opening_eval.py` → `milestone2_results.json`, review in `test_reports/milestone2_review.md`): 24/24 satisfactory, 0 authorship/formula failures. Testing agent iteration_6: 17/17 backend, 100% frontend; Opening selected & reasoned; alternatives preserved; multi-turn reliable (reasoner prompt ~22.5KB when Opening selected, ~6-8KB otherwise; all turns <60s, no 502).
+
 ## Backlog / Next (deferred)
-- P2: return 201 from create; offset dev panel at ~1920px; expose teacher_notes in telos editor.
-- NEXT MILESTONE (await review): populate real domain field data (Openings etc.) — NOT started.
+- Opening-selected prompt is ~22.5KB (rich record). Fine for latency now; could trim if enriching all 13 domains later balloons multi-domain turns.
+- P2: 201 on create; dev panel offset at ~1920px; teacher_notes in telos editor.
+- NEXT MILESTONE (await review): enrich remaining domains — NOT started.
