@@ -46,28 +46,39 @@ def load_canonical_writing_model() -> dict:
 
 
 CANONICAL_WRITING_MODEL = load_canonical_writing_model()
-
-
-def _compact_canonical_model() -> dict:
-    """Lean projection injected per-turn (full structured data stays on disk).
-    Keeps only what the reasoner needs to interpret writing and select relevant
-    domains; heavier fields (differentiations, tensions, candidate invitations,
-    relationships) remain in canonical_writing_model.json."""
-    return {
-        "domains": [
-            {
-                "domain_name": d.get("domain_name"),
-                "communicative_functions": d.get("communicative_functions", []),
-                "canonical_writing_resources": d.get("canonical_writing_resources", []),
-                "functional_evaluation_questions": d.get("functional_evaluation_questions", []),
-            }
-            for d in CANONICAL_WRITING_MODEL.get("domains", [])
-        ]
-    }
-
-
-COMPACT_CANONICAL_MODEL = _compact_canonical_model()
 CANONICAL_DOMAIN_NAMES = [d.get("domain_name") for d in CANONICAL_WRITING_MODEL.get("domains", [])]
+_DOMAINS_BY_NAME = {d.get("domain_name"): d for d in CANONICAL_WRITING_MODEL.get("domains", [])}
+
+
+def _build_compact_domain_index() -> list:
+    """STAGE A — a tiny index used only to SELECT relevant domains.
+    Per domain: name + one-sentence communicative function + relationships.
+    The full structured records stay on disk in canonical_writing_model.json."""
+    index = []
+    for d in CANONICAL_WRITING_MODEL.get("domains", []):
+        fns = d.get("communicative_functions", [])
+        one_sentence = ("Serves to " + ", ".join(fns[:3]) + ".") if fns else ""
+        index.append({
+            "domain_name": d.get("domain_name"),
+            "communicative_function": one_sentence,
+            "relationships": d.get("relationships_to_other_domains", []),
+        })
+    return index
+
+
+COMPACT_DOMAIN_INDEX = _build_compact_domain_index()
+
+
+def get_relevant_domain_data(domain_names: List[str]) -> list:
+    """STAGE B — retrieve COMPLETE domain records by exact domain name.
+    Single source of truth; the canonical model is not duplicated in code."""
+    seen, out = set(), []
+    for name in domain_names or []:
+        rec = _DOMAINS_BY_NAME.get(name)
+        if rec and name not in seen:
+            seen.add(name)
+            out.append(rec)
+    return out
 
 
 # ---------------------------------------------------------------------------
@@ -264,72 +275,83 @@ def _extract_json(text: str) -> dict:
     return json.loads(text)
 
 
-def _build_prompt(session: Session, req: InteractRequest) -> str:
-    # session.turns already includes the just-added current student turn as last.
+def _compact_theory(theory: DevelopmentalTheory) -> dict:
+    """Compact projection of the working theory for the per-turn prompt
+    (full theory + prior snapshots are still persisted in the DB)."""
+    return {
+        "current_telos": theory.current_telos,
+        "current_organization": theory.current_organization,
+        "unresolved_tensions": theory.unresolved_tensions,
+        "currently_relevant_domains": theory.currently_relevant_domains,
+        "current_uncertainty": theory.current_uncertainty,
+        "complicating_evidence": theory.complicating_evidence,
+        "changes_since_previous": theory.changes_since_previous,
+    }
+
+
+def _previous_draft(session: Session) -> Optional[str]:
     prior_turns = session.turns[:-1] if session.turns else []
-
-    history_lines = []
-    for t in prior_turns:
-        who = "STUDENT" if t.role == "student" else "GUIDE"
-        history_lines.append(f"{who} ({t.kind}): {t.content}")
-    participation_history = "\n\n".join(history_lines) if history_lines else "(no prior participation)"
-
-    reorg_lines = [
-        f"- turn {i + 1}: {ir.observed_reorganization}"
-        for i, ir in enumerate(session.interactions)
-        if ir.observed_reorganization
-    ]
-    reorg_history = "\n".join(reorg_lines) if reorg_lines else "(none yet)"
-
-    previous_draft = None
     for t in reversed(prior_turns):
         if t.role == "student" and t.kind in DRAFT_KINDS:
-            previous_draft = t.content
-            break
+            return t.content
+    return None
 
-    is_draft = req.kind in DRAFT_KINDS
-    if is_draft:
-        latest_block = f"""STUDENT'S CURRENT DRAFT (full authoritative current text; kind = "{req.kind}"):
+
+def _latest_block(session: Session, req: InteractRequest) -> str:
+    if req.kind in DRAFT_KINDS:
+        prev = _previous_draft(session)
+        return f"""STUDENT'S CURRENT DRAFT (full authoritative current text; kind = "{req.kind}"):
 {req.content}
 
 PREVIOUS DRAFT:
-{previous_draft if previous_draft else "(none — first draft)"}
+{prev if prev else "(none — first draft)"}
 
 Compare the CURRENT DRAFT to the PREVIOUS DRAFT literally. If they differ, the student HAS revised — acknowledge the specific change. Never claim otherwise."""
-    else:
-        latest_block = f"""STUDENT'S LATEST RESPONSE (a reply to your last invitation, NOT a new draft; kind = "{req.kind}"):
+    return f"""STUDENT'S LATEST RESPONSE (a reply to your last invitation, NOT a new draft; kind = "{req.kind}"):
 {req.content}"""
 
-    # After the first turn, inject full compact detail only for the domains the
-    # theory already flagged as relevant (keeps the prompt small); always list
-    # every canonical domain name so the engine can still shift focus.
-    prior_relevant = [d for d in session.theory.currently_relevant_domains if d]
-    if prior_relevant:
-        relevant_set = {d.lower() for d in prior_relevant}
-        detail = [d for d in COMPACT_CANONICAL_MODEL["domains"] if d["domain_name"].lower() in relevant_set]
-        canonical_block = json.dumps({
-            "all_domain_names": CANONICAL_DOMAIN_NAMES,
-            "relevant_domain_detail": detail,
-        }, indent=2)
-    else:
-        canonical_block = json.dumps(COMPACT_CANONICAL_MODEL, indent=2)
 
+def _interaction_summary(session: Session) -> str:
+    lines = [
+        f"- turn {i + 1} ({ir.student_kind}): {ir.observed_reorganization}"
+        for i, ir in enumerate(session.interactions)
+        if ir.observed_reorganization
+    ]
+    return "\n".join(lines) if lines else "(no prior turns)"
+
+
+def _selector_prompt(session: Session, req: InteractRequest) -> str:
+    prior = [d for d in session.theory.currently_relevant_domains if d]
+    return f"""You choose which canonical writing domains are relevant to the student's CURRENT participation. Do NOT force a sequence. Choose the 1-2 most relevant domains, plus at most ONE closely related domain only if needed to interpret the relationship among parts. Reassess freely — do not mechanically keep prior domains if the writing/tension has changed.
+
+TELOS: {session.telos.governing_pedagogical_purpose} | task: {session.telos.immediate_task_purpose}
+DOMAINS PREVIOUSLY RELEVANT: {prior if prior else "(none yet)"}
+
+COMPACT DOMAIN INDEX:
+{json.dumps(COMPACT_DOMAIN_INDEX, indent=2)}
+
+{_latest_block(session, req)}
+
+Respond with ONLY this JSON: {{"relevant_domains": ["exact domain name", "..."]}} (1 to 3 names, exact strings from the index)."""
+
+
+def _build_prompt(session: Session, req: InteractRequest, relevant_domains: List[str]) -> str:
+    full_domain_data = get_relevant_domain_data(relevant_domains)
     return f"""CURRENT DEVELOPMENTAL TELOS (component A — provisional, revisable):
 {json.dumps(session.telos.model_dump(), indent=2)}
 
-CURRENT WORKING DEVELOPMENTAL THEORY (component C — your evolving theory so far):
-{json.dumps(session.theory.model_dump(), indent=2)}
+COMPACT CURRENT DEVELOPMENTAL THEORY (component C — your evolving theory so far):
+{json.dumps(_compact_theory(session.theory), indent=2)}
 
-PARTICIPATION HISTORY (component B):
-{participation_history}
+INTERACTION SUMMARY (component B — concise history of how participation reorganized):
+{_interaction_summary(session)}
 
-OBSERVED REORGANIZATIONS OVER TIME:
-{reorg_history}
+CURRENTLY RELEVANT CANONICAL DOMAINS (selected for THIS turn): {relevant_domains}
 
-CANONICAL WRITING MODEL (domain-specific cultural resources loaded as DATA; consider ALL domain names, select only the RELEVANT ones, never force a sequence):
-{canonical_block}
+FULL DATA FOR THE RELEVANT CANONICAL DOMAINS ONLY (domain-specific cultural resources loaded as DATA — use these, do not rely on general writing knowledge; you may adjust which domains are relevant and reflect that in currently_relevant_domains):
+{json.dumps(full_domain_data, indent=2)}
 
-{latest_block}
+{_latest_block(session, req)}
 
 Run the full recursive loop and respond with ONLY the JSON object described in your instructions. Revise the ENTIRE working theory rather than appending a note. Keep every field terse per the BREVITY rule."""
 
@@ -462,6 +484,30 @@ async def edit_telos(session_id: str, edit: TelosEdit):
     return session
 
 
+async def _select_relevant_domains(session: Session, req: InteractRequest) -> List[str]:
+    """STAGE A — pick the 1-3 canonical domains relevant to this turn using the
+    compact index only. Retries once on transient failure, then falls back to the
+    theory's prior relevant domains (or Whole Essay Purpose)."""
+    prompt = _selector_prompt(session, req)
+    for attempt in range(2):
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"select-{session.id}",
+                system_message="You select relevant canonical writing domains. Respond with ONLY the requested JSON.",
+            ).with_model("anthropic", "claude-sonnet-4-6")
+            raw = await chat.send_message(UserMessage(text=prompt))
+            names = [n for n in _extract_json(raw).get("relevant_domains", []) if n in _DOMAINS_BY_NAME]
+            if names:
+                return names[:3]
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"domain selection attempt {attempt + 1} failed: {e}")
+            if attempt == 0:
+                await asyncio.sleep(3)
+    prior = [n for n in session.theory.currently_relevant_domains if n in _DOMAINS_BY_NAME]
+    return prior[:2] if prior else ["Whole Essay Purpose"]
+
+
 @api_router.post("/sessions/{session_id}/interact")
 async def interact(session_id: str, req: InteractRequest):
     doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
@@ -473,28 +519,43 @@ async def interact(session_id: str, req: InteractRequest):
         raise HTTPException(status_code=400, detail="Empty submission")
 
     session.turns.append(Turn(role="student", kind=req.kind, content=req.content.strip()))
-    prompt = _build_prompt(session, req)
 
     async def event_generator():
-        raw_parts: List[str] = []
         try:
-            chat = LlmChat(
-                api_key=EMERGENT_LLM_KEY,
-                session_id=f"dev-{session.id}",
-                system_message=SYSTEM_MESSAGE,
-            ).with_model("anthropic", "claude-sonnet-4-6")
+            # STAGE A: choose relevant domains from the compact index
+            relevant = await _select_relevant_domains(session, req)
+            # STAGE B: reason with full data for only those domains
+            prompt = _build_prompt(session, req, relevant)
+            logger.info(f"[interact] turn domains={relevant} reasoner_prompt_bytes={len(prompt)}")
 
-            async for ev in chat.stream_message(UserMessage(text=prompt)):
-                if isinstance(ev, TextDelta):
-                    raw_parts.append(ev.content)
-                    # heartbeat keeps the connection warm past edge idle timeouts
-                    yield ": tick\n\n"
-                elif isinstance(ev, StreamDone):
+            result = None
+            last_err = None
+            for attempt in range(2):  # one retry on transient/unreadable failure
+                raw_parts: List[str] = []
+                try:
+                    chat = LlmChat(
+                        api_key=EMERGENT_LLM_KEY,
+                        session_id=f"dev-{session.id}",
+                        system_message=SYSTEM_MESSAGE,
+                    ).with_model("anthropic", "claude-sonnet-4-6")
+                    async for ev in chat.stream_message(UserMessage(text=prompt)):
+                        if isinstance(ev, TextDelta):
+                            raw_parts.append(ev.content)
+                            yield ": tick\n\n"  # heartbeat keeps the connection warm
+                        elif isinstance(ev, StreamDone):
+                            break
+                    result = _parse_engine_output(session, "".join(raw_parts))
                     break
+                except Exception as e:  # noqa: BLE001
+                    last_err = e
+                    logger.warning(f"reasoner attempt {attempt + 1} failed: {e}")
+                    if attempt == 0:
+                        yield ": retry\n\n"
+                        await asyncio.sleep(3)
+            if result is None:
+                raise last_err or RuntimeError("engine failed")
 
-            result = _parse_engine_output(session, "".join(raw_parts))
             _apply_engine_result(session, req, result)
-
             await db.sessions.update_one(
                 {"id": session_id},
                 {"$set": {

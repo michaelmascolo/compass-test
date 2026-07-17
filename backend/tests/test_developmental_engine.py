@@ -409,6 +409,151 @@ class TestThirdInteract:
 
 
 # ---------------------------------------------------------------------------
+# Fourth interact (revise) — validates the full 4-turn flow required by
+# iteration_5 (writing -> revise -> answer -> revise). theory_history grows
+# to 4. Also asserts the two-stage domain-selection ceiling: no turn should
+# report more than 3 currently_relevant_domains.
+# ---------------------------------------------------------------------------
+class TestFourthInteract:
+    def test_fourth_interact_second_revise(self, client, created_session):
+        third = getattr(pytest, "third_interact_response", None)
+        assert third is not None, "Third interact must run before this test"
+
+        revised_again = (
+            "Banning cars from downtown makes the core dramatically more "
+            "livable — that single livability claim now governs every "
+            "paragraph. First, cleaner air: with tailpipe exhaust removed "
+            "from the densest blocks, the people who actually live and work "
+            "downtown breathe air that is not a daily hazard, and livability "
+            "starts with breathable air.\n\n"
+            "Second, walkable streets: when the roadbed belongs to people, "
+            "walkers linger, browse, and stop, and the small businesses "
+            "that depend on that lingering — the independent bookstores, "
+            "cafes, and produce stands — actually survive the decade. "
+            "Livability, in other words, is not decoration; it is the "
+            "condition that lets a downtown remain a downtown, and every "
+            "reason below serves that claim rather than standing beside it."
+        )
+        status, data, err = sse_interact(
+            client, created_session["id"],
+            {"kind": "revise", "content": revised_again},
+        )
+        assert status == 200, f"Expected 200, got {status}. err={err}"
+        assert err is None, f"SSE emitted error on turn 4: {err}"
+        assert data is not None, "SSE completed without a done event"
+
+        elapsed = data.get("_elapsed_seconds")
+        assert elapsed is not None and elapsed < 60, (
+            f"Turn 4 took {elapsed:.1f}s (must be <60s to stay under edge cap)"
+        )
+        pytest.fourth_interact_response = data
+
+        assert len(data["turns"]) == 8
+        assert data["turns"][6]["kind"] == "revise"
+        assert data["turns"][7]["role"] == "ai" and data["turns"][7]["kind"] == "invitation"
+
+        fourth_invitation = data["turns"][7]["content"].strip()
+        assert fourth_invitation
+        assert not _has_stage_or_score_language(fourth_invitation)
+        low = fourth_invitation.lower()
+        for phrase in [
+            "haven't revised", "have not revised", "you didn't revise",
+            "no revision", "still the same draft", "same as before",
+        ]:
+            assert phrase not in low, (
+                f"Coach denied the revision on turn 4 with {phrase!r}: {fourth_invitation!r}"
+            )
+        # AI must NOT rewrite the student's revised paragraph
+        assert "Banning cars from downtown makes the core dramatically more livable" not in fourth_invitation, (
+            "AI appears to have echoed/rewritten the student's revised paragraph on turn 4"
+        )
+
+        # theory_history grows to 4, versions preserved
+        assert len(data["theory_history"]) == 4
+        versions = [s["version"] for s in data["theory_history"]]
+        assert versions == [1, 2, 3, 4]
+
+        # v4 preserves the THIRD theory (snapshot BEFORE the update)
+        v4_snap = data["theory_history"][3]
+        assert set(v4_snap["theory"]["currently_relevant_domains"]) == set(
+            third["theory"]["currently_relevant_domains"]
+        ), "theory_history[3] should preserve the third-turn theory"
+
+        # Two-stage selection ceiling: every turn's currently_relevant_domains
+        # is a non-empty subset of the 13 canonical names, at most 3.
+        for i, snap in enumerate(data["theory_history"]):
+            rel = snap["theory"]["currently_relevant_domains"]
+            if i == 0:
+                # v1 is the empty initial theory
+                continue
+            assert 1 <= len(rel) <= 3, (
+                f"theory_history[{i}] currently_relevant_domains has {len(rel)} entries (must be 1-3): {rel}"
+            )
+            for name in rel:
+                assert name in CANONICAL_DOMAIN_NAMES
+
+        current_rel = data["theory"]["currently_relevant_domains"]
+        assert 1 <= len(current_rel) <= 3, (
+            f"Turn 4 currently_relevant_domains has {len(current_rel)} entries: {current_rel}"
+        )
+
+        # Sanity: domains across the 4 turns are not mechanically identical on
+        # every single turn — expect at least SOME movement over 4 turns.
+        turn1_domains = tuple(sorted(data["theory_history"][1]["theory"]["currently_relevant_domains"]))
+        turn2_domains = tuple(sorted(data["theory_history"][2]["theory"]["currently_relevant_domains"]))
+        turn3_domains = tuple(sorted(data["theory_history"][3]["theory"]["currently_relevant_domains"]))
+        turn4_domains = tuple(sorted(current_rel))
+        all_same = (turn1_domains == turn2_domains == turn3_domains == turn4_domains)
+        # Soft assertion — if the model does keep them identical every turn we
+        # only warn (the primary correctness contract is that the LLM MAY
+        # change them). We flag if truly identical every turn.
+        if all_same:
+            print(
+                f"WARN: currently_relevant_domains identical across all 4 turns: {turn1_domains}"
+            )
+
+        assert len(data["interactions"]) == 4
+        latest = data["interactions"][-1]
+        assert 2 <= len(latest["candidate_invitations"]) <= 3
+        assert latest["selected_invitation"]["invitation"].strip() != ""
+
+        assert not _has_stage_or_score_language(json.dumps(data["theory"]))
+        assert not _has_stage_or_score_language(json.dumps(data["interactions"]))
+
+
+# ---------------------------------------------------------------------------
+# Two-stage domain selection: verify from backend logs that the reasoner
+# prompt (STAGE B) stays small (roughly <=7KB), proving only the selected
+# domains' full records are being sent — not the whole 13-domain model.
+# ---------------------------------------------------------------------------
+class TestTwoStageSelection:
+    def test_reasoner_prompt_bytes_within_budget(self):
+        log_paths = sorted(Path("/var/log/supervisor").glob("backend.*.log"))
+        assert log_paths, "No backend supervisor logs found at /var/log/supervisor"
+        pat = re.compile(r"\[interact\]\s+turn\s+domains=(\[[^\]]*\])\s+reasoner_prompt_bytes=(\d+)")
+        entries = []
+        for p in log_paths:
+            try:
+                text = p.read_text(errors="ignore")
+            except Exception:
+                continue
+            for m in pat.finditer(text):
+                entries.append((m.group(1), int(m.group(2))))
+        assert entries, (
+            "No '[interact] turn domains=... reasoner_prompt_bytes=NNNN' lines found in backend logs"
+        )
+        # Consider only the most recent entries from this test run
+        recent = entries[-4:] if len(entries) >= 4 else entries
+        for domains_str, size in recent:
+            assert size <= 12000, (
+                f"reasoner_prompt_bytes={size} for domains={domains_str} — "
+                f"expected roughly <=7KB (allowing up to 12KB slack). "
+                f"Two-stage selection may not be limiting payload as intended."
+            )
+        print(f"reasoner_prompt_bytes over recent turns: {recent}")
+
+
+# ---------------------------------------------------------------------------
 # Teacher can revise the telos (PATCH /api/sessions/{id}/telos)
 # ---------------------------------------------------------------------------
 class TestTelosEdit:
@@ -460,12 +605,13 @@ class TestPersistence:
         assert r.status_code == 200, r.text
         data = r.json()
         assert data["id"] == created_session["id"]
-        assert len(data["turns"]) == 6
-        assert len(data["interactions"]) == 3
-        assert len(data["theory_history"]) == 3
+        assert len(data["turns"]) == 8
+        assert len(data["interactions"]) == 4
+        assert len(data["theory_history"]) == 4
         assert data["turns"][1]["role"] == "ai"
         assert data["turns"][3]["role"] == "ai"
         assert data["turns"][5]["role"] == "ai"
+        assert data["turns"][7]["role"] == "ai"
         assert len(data["theory"]["currently_relevant_domains"]) >= 1
 
 
