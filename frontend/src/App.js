@@ -4,7 +4,7 @@ import { Toaster, toast } from "sonner";
 import TeacherSetup from "@/components/TeacherSetup";
 import StudentWorkspace from "@/components/StudentWorkspace";
 import DevelopmentPanel from "@/components/DevelopmentPanel";
-import { createSession, getSession, interact } from "@/lib/api";
+import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
 
@@ -12,6 +12,7 @@ function App() {
   const [session, setSession] = useState(null);
   const [booting, setBooting] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+  const [savingTelos, setSavingTelos] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
@@ -58,6 +59,23 @@ function App() {
     [session]
   );
 
+  const handleEditTelos = useCallback(
+    async (form) => {
+      if (!session) return;
+      setSavingTelos(true);
+      try {
+        const updated = await editTelos(session.id, form);
+        setSession(updated);
+        toast.success("Telos revised.");
+      } catch (e) {
+        toast.error("Could not save the telos. Please try again.");
+      } finally {
+        setSavingTelos(false);
+      }
+    },
+    [session]
+  );
+
   if (booting) {
     return (
       <div className="min-h-screen paper-grain flex items-center justify-center">
@@ -84,8 +102,9 @@ function App() {
           <DevelopmentPanel
             open={panelOpen}
             onClose={() => setPanelOpen(false)}
-            state={session.dev_state}
-            purpose={session.pedagogical_purpose}
+            session={session}
+            onEditTelos={handleEditTelos}
+            savingTelos={savingTelos}
           />
         </>
       )}

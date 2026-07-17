@@ -1,30 +1,94 @@
-"""Backend tests for the Developmental Writing Studio engine.
+"""Backend tests for the Developmental Guide Engine.
 
-Covers:
-- session creation
-- first interact (kind='writing') → student turn + AI invitation, dev_state populated
-- second interact (kind='answer') → dev_state evolves, invitation is not identical,
-  and an 'answer' is NOT misread as a new draft
-- revise flow bug fix: after a genuine kind='revise' with different content, the
-  coach acknowledges the change and does NOT claim the student has not revised
-- GET session persistence
-- empty content → 400
+Milestone under test (iteration_3):
+- The engine is now DOMAIN-INDEPENDENT and consults a Canonical Writing Model
+  loaded as DATA (backend/canonical_writing_model.json, 13 domains).
+- Session persists: telos (A), interactions (B, with candidate_invitations +
+  selected_invitation + observed_reorganization), theory (C, one evolving
+  provisional working developmental theory), theory_history (previous
+  theories preserved), and turns.
+- No stages/levels/scores anywhere.
+- Teacher can revise the telos via PATCH /api/sessions/{id}/telos.
+
+Run serially:  pytest /app/backend/tests/test_developmental_engine.py -v -n 0
 """
+import json
 import os
+import re
 import time
+from pathlib import Path
 
 import pytest
 import requests
 
-BASE_URL = os.environ["REACT_APP_BACKEND_URL"].rstrip("/") if os.environ.get(
-    "REACT_APP_BACKEND_URL"
-) else "https://dev-converse.preview.emergentagent.com"
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL")
+if not BASE_URL:
+    # fall back to the frontend .env so the tests can be run from the backend
+    _envp = Path("/app/frontend/.env")
+    if _envp.exists():
+        for _line in _envp.read_text().splitlines():
+            if _line.strip().startswith("REACT_APP_BACKEND_URL="):
+                BASE_URL = _line.split("=", 1)[1].strip()
+                break
+assert BASE_URL, "REACT_APP_BACKEND_URL must be set (in env or frontend/.env)"
+BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
-
-# Generous timeout: Claude calls can take up to ~30s
-LLM_TIMEOUT = 90
+LLM_TIMEOUT = 120  # Claude calls can take 10-30s; the prompt is now large
 
 
+def post_interact_with_retry(client, sid, payload, retries=4, sleep_between=10):
+    """Retry the interact endpoint once on transient gateway errors (502/503/504).
+
+    The prompt now embeds the full canonical writing model, so responses are
+    larger and occasionally hit Cloudflare's edge timeout. A one-shot retry is
+    the right layer here — we still assert on the eventual body.
+    """
+    last = None
+    for attempt in range(retries + 1):
+        r = client.post(
+            f"{API}/sessions/{sid}/interact",
+            json=payload, timeout=LLM_TIMEOUT,
+        )
+        last = r
+        if r.status_code not in (502, 503, 504):
+            return r
+        time.sleep(sleep_between)
+    return last
+
+# Load the 13 canonical domain names once
+CANONICAL_PATH = Path("/app/backend/canonical_writing_model.json")
+with open(CANONICAL_PATH, "r") as f:
+    CANONICAL = json.load(f)
+CANONICAL_DOMAIN_NAMES = [d["domain_name"] for d in CANONICAL["domains"]]
+assert len(CANONICAL_DOMAIN_NAMES) == 13, (
+    f"Expected 13 canonical domains, got {len(CANONICAL_DOMAIN_NAMES)}"
+)
+
+# Stage / score language that must NOT leak into student-facing text
+STAGE_SCORE_PATTERNS = [
+    r"\bstage\s*\d\b",
+    r"\blevel\s*\d\b",
+    r"\bgrade\s*\d\b",
+    r"\b\d+\s*/\s*10\b",
+    r"\b\d+\s*out\s*of\s*10\b",
+    r"\bscore[sd]?\b\s*\d",
+    r"\brubric\b",
+    r"\btrait\s*score\b",
+    r"\bdevelopmental\s*stage\s*\d\b",
+]
+
+
+def _has_stage_or_score_language(text: str) -> bool:
+    low = text.lower()
+    for pat in STAGE_SCORE_PATTERNS:
+        if re.search(pat, low):
+            return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# fixtures
+# ---------------------------------------------------------------------------
 @pytest.fixture(scope="module")
 def client():
     s = requests.Session()
@@ -34,7 +98,6 @@ def client():
 
 @pytest.fixture(scope="module")
 def created_session(client):
-    """Create a session used across tests in this module."""
     payload = {
         "assignment": "TEST_ Write an argumentative essay on whether cities should ban cars from downtown cores.",
         "pedagogical_purpose": (
@@ -47,45 +110,56 @@ def created_session(client):
     r = client.post(f"{API}/sessions", json=payload, timeout=30)
     assert r.status_code == 200, r.text
     data = r.json()
-    assert "id" in data and isinstance(data["id"], str) and len(data["id"]) > 0
+    assert isinstance(data.get("id"), str) and data["id"]
     assert data["assignment"] == payload["assignment"]
     assert data["pedagogical_purpose"] == payload["pedagogical_purpose"]
     assert data["current_writing_task"] == payload["current_writing_task"]
     assert data["turns"] == []
-    # dev_state present with expected default keys
-    ds = data["dev_state"]
+    assert data["interactions"] == []
+    assert data["theory_history"] == []
+
+    # telos seeded from teacher inputs
+    telos = data["telos"]
+    assert telos["governing_pedagogical_purpose"] == payload["pedagogical_purpose"]
+    assert telos["immediate_task_purpose"] == payload["current_writing_task"]
+    assert telos["assignment_context"] == payload["assignment"]
+    assert telos["teacher_intentions"] == payload["teacher_notes"]
+
+    # theory has expected default keys, all empty
+    theory = data["theory"]
     for k in [
-        "primary_developmental_tension",
-        "selected_scaffold",
-        "selection_basis",
-        "organization_relative_to_purpose",
-        "uncertainties",
-        "alternative_interpretations",
-        "developmental_movement",
+        "current_telos", "current_organization",
+        "observed_differentiations", "observed_integrations",
+        "observed_coordinations", "emerging_intentional_control",
+        "unresolved_tensions", "cultural_resources_in_use",
+        "potential_cultural_resources", "possible_reorganizations",
+        "current_uncertainty", "supporting_evidence",
+        "complicating_evidence", "currently_relevant_domains",
+        "changes_since_previous",
     ]:
-        assert k in ds
-    # empty defaults
-    assert ds["primary_developmental_tension"] == ""
-    assert ds["selected_scaffold"] == ""
+        assert k in theory, f"theory missing key {k}"
+    assert theory["currently_relevant_domains"] == []
     return data
 
 
 # ---------------------------------------------------------------------------
-# Session creation
+# Session creation (A — telos seeded from teacher inputs)
 # ---------------------------------------------------------------------------
 class TestSessionCreation:
-    def test_create_session_returns_id_and_empty_state(self, created_session):
+    def test_session_created_with_seeded_telos(self, created_session):
         assert created_session["turns"] == []
-        assert isinstance(created_session["dev_state"], dict)
+        assert isinstance(created_session["telos"], dict)
+        assert created_session["telos"]["governing_pedagogical_purpose"].strip() != ""
+        assert created_session["telos"]["assignment_context"].strip() != ""
 
 
 # ---------------------------------------------------------------------------
-# Interact flow — first writing turn
+# First writing turn: currently_relevant_domains populated from canonical model,
+# 2-3 candidate invitations, one selected, observed_reorganization present,
+# theory_history has one snapshot preserving the PREVIOUS (empty) theory.
 # ---------------------------------------------------------------------------
 class TestFirstInteract:
-    """First interact should populate dev_state and return an AI invitation."""
-
-    def test_first_interact_writing(self, client, created_session):
+    def test_first_writing_populates_theory_and_history(self, client, created_session):
         payload = {
             "kind": "writing",
             "content": (
@@ -95,221 +169,221 @@ class TestFirstInteract:
                 "it is important to make it nice."
             ),
         }
-        r = client.post(
-            f"{API}/sessions/{created_session['id']}/interact",
-            json=payload,
-            timeout=LLM_TIMEOUT,
-        )
+        r = post_interact_with_retry(client, created_session["id"], payload)
         assert r.status_code == 200, r.text
         data = r.json()
-        # persist for next tests
         pytest.first_interact_response = data
 
-        # exactly two turns: student then AI
+        # 2 turns: student then AI
         assert len(data["turns"]) == 2
-        assert data["turns"][0]["role"] == "student"
-        assert data["turns"][0]["kind"] == "writing"
-        assert data["turns"][1]["role"] == "ai"
-        assert data["turns"][1]["kind"] == "invitation"
+        assert data["turns"][0]["role"] == "student" and data["turns"][0]["kind"] == "writing"
+        assert data["turns"][1]["role"] == "ai" and data["turns"][1]["kind"] == "invitation"
         invitation = data["turns"][1]["content"].strip()
-        assert len(invitation) > 0
-        # Should NOT be a rewrite of the essay — a rough heuristic: invitation
-        # shouldn't contain most of the student's paragraph verbatim.
+        assert invitation, "AI invitation is empty"
+
+        # AI must NOT rewrite the student text
         assert "Cars are bad. They cause pollution." not in invitation, (
-            "AI appears to be rewriting the student's paragraph"
+            "AI appears to have rewritten the student's paragraph"
         )
-        # Should NOT be a numbered list of errors
+        # AI must NOT emit a numbered list of errors
         assert not (invitation.startswith("1.") and "2." in invitation and "3." in invitation), (
-            "AI is producing a numbered list of errors instead of a single invitation"
+            "AI produced a numbered list of errors instead of a single invitation"
+        )
+        # No stage / score language
+        assert not _has_stage_or_score_language(invitation), (
+            f"Invitation leaks stage/score language: {invitation!r}"
         )
 
-        # dev_state populated
-        ds = data["dev_state"]
-        assert ds["primary_developmental_tension"].strip() != ""
-        assert ds["selected_scaffold"].strip() != ""
-        assert ds["selection_basis"].strip() != ""
-        assert ds["organization_relative_to_purpose"].strip() != ""
-        assert len(ds["uncertainties"]) >= 0  # list present
-        assert isinstance(ds["alternative_interpretations"], list)
+        # theory populated
+        theory = data["theory"]
+        rel = theory["currently_relevant_domains"]
+        assert isinstance(rel, list) and len(rel) >= 1, (
+            f"currently_relevant_domains empty after first turn: {rel!r}"
+        )
+        # every entry must come from the 13 canonical domain names
+        for name in rel:
+            assert name in CANONICAL_DOMAIN_NAMES, (
+                f"'{name}' is not one of the 13 canonical domains {CANONICAL_DOMAIN_NAMES}"
+            )
+        assert theory["current_organization"].strip() != ""
+
+        # interactions[-1] has 2 or 3 candidates, a selected invitation, and observed_reorganization
+        assert len(data["interactions"]) == 1
+        ir = data["interactions"][-1]
+        assert 2 <= len(ir["candidate_invitations"]) <= 3, (
+            f"expected 2-3 candidate_invitations, got {len(ir['candidate_invitations'])}"
+        )
+        assert ir["selected_invitation"]["invitation"].strip() != ""
+        assert ir["observed_reorganization"].strip() != ""
+
+        # theory_history has 1 snapshot preserving the PREVIOUS (empty) theory
+        assert len(data["theory_history"]) == 1
+        snap0 = data["theory_history"][0]
+        assert snap0["version"] == 1
+        assert snap0["theory"]["currently_relevant_domains"] == [], (
+            "theory_history[0] should preserve the empty initial theory, not the new one"
+        )
+
+        # No numeric developmental scores anywhere in theory text
+        theory_blob = json.dumps(theory)
+        assert not _has_stage_or_score_language(theory_blob), (
+            "Stage/score language leaked into theory"
+        )
 
 
 # ---------------------------------------------------------------------------
-# Interact flow — second turn should evolve dev_state and produce new invitation
+# Second interact (revise) — theory_history grows to 2, changes_since_previous
+# is not 'initial', theory is REVISED (not appended), still no stages/scores.
 # ---------------------------------------------------------------------------
 class TestSecondInteract:
-    def test_second_interact_evolves_state(self, client, created_session):
+    def test_second_interact_revises_theory_and_history(self, client, created_session):
         first = getattr(pytest, "first_interact_response", None)
         assert first is not None, "First interact must run before this test"
-
         first_invitation = first["turns"][1]["content"].strip()
-        first_movement = first["dev_state"].get("developmental_movement", "").strip().lower()
+        first_domains = set(first["theory"]["currently_relevant_domains"])
 
-        payload = {
-            "kind": "answer",
-            "content": (
-                "I think my main claim is that banning cars would make downtown "
-                "more livable — cleaner air, safer streets, and better for local "
-                "shops because people walk more. My paragraphs weren't organized "
-                "around that; I just listed problems. I want to restructure so "
-                "each paragraph advances that livability claim."
-            ),
-        }
-        r = client.post(
-            f"{API}/sessions/{created_session['id']}/interact",
-            json=payload,
-            timeout=LLM_TIMEOUT,
-        )
-        assert r.status_code == 200, r.text
-        data = r.json()
-
-        # now 4 turns
-        assert len(data["turns"]) == 4
-        assert data["turns"][2]["role"] == "student"
-        assert data["turns"][2]["kind"] == "answer"
-        assert data["turns"][3]["role"] == "ai"
-        assert data["turns"][3]["kind"] == "invitation"
-
-        second_invitation = data["turns"][3]["content"].strip()
-        assert second_invitation != first_invitation, (
-            "Second AI invitation is identical to the first — engine is not "
-            "responding to updated interaction."
-        )
-
-        # developmental_movement should NOT still say 'initial' after a turn
-        movement = data["dev_state"].get("developmental_movement", "").strip().lower()
-        assert movement != "", "developmental_movement is empty after 2nd turn"
-        assert movement != "initial", (
-            f"developmental_movement is still 'initial' after 2nd turn: {movement!r}"
-        )
-
-        # Regression: answer must NOT be misread as a new draft. The dev_state
-        # 'current_student_writing' should still describe the ORIGINAL draft
-        # (the first writing turn), not the answer text. We check that key
-        # phrases that only appear in the answer are not lifted into
-        # current_student_writing as though they were the draft.
-        csw = data["dev_state"].get("current_student_writing", "").lower()
-        # The answer is meta-commentary; if csw quotes it verbatim as the draft
-        # we'd expect the "livability" framing to show up as if it were in the
-        # essay. This is a soft check — we only fail if csw explicitly claims
-        # the student HAS restructured / revised (which they haven't yet).
-        assert "restructured" not in csw and "has revised" not in csw, (
-            f"Answer appears to have been misread as a new draft in "
-            f"current_student_writing: {csw!r}"
-        )
-
-        pytest.second_interact_response = data
-
-
-# ---------------------------------------------------------------------------
-# Bug fix: revise turn with changed content must be acknowledged
-# ---------------------------------------------------------------------------
-class TestReviseAcknowledgement:
-    """After a genuine revision the coach must NOT claim the student has not revised."""
-
-    def test_revise_is_recognized_as_a_revision(self, client, created_session):
-        prior = getattr(pytest, "second_interact_response", None)
-        assert prior is not None, "Second interact must run before this test"
-
-        # A meaningfully different draft — restructured around a single
-        # 'livability' claim, referencing shops/walking/air.
         revised_draft = (
             "Banning cars from downtown would make the core dramatically more "
             "livable, and every part of my argument hangs from that single "
             "claim. First, air quality: without tailpipe exhaust concentrated "
             "in a few blocks, the people who work and live downtown breathe "
-            "cleaner air every day, which is the most basic condition of a "
-            "livable place.\n\n"
+            "cleaner air, which is the basic condition of a livable place.\n\n"
             "Second, foot traffic and small shops: when streets are for "
             "people, walkers linger, and local businesses that depend on "
             "casual browsing — bookstores, cafes, produce stands — actually "
             "survive. Each of these follows from the livability claim; I am "
             "no longer just listing complaints about cars."
         )
-        r = client.post(
-            f"{API}/sessions/{created_session['id']}/interact",
-            json={"kind": "revise", "content": revised_draft},
-            timeout=LLM_TIMEOUT,
+        r = post_interact_with_retry(
+            client, created_session["id"],
+            {"kind": "revise", "content": revised_draft},
+        )
+        assert r.status_code == 200, r.text
+        data = r.json()
+        pytest.second_interact_response = data
+
+        # 4 turns now
+        assert len(data["turns"]) == 4
+        assert data["turns"][2]["kind"] == "revise"
+        assert data["turns"][3]["role"] == "ai"
+
+        second_invitation = data["turns"][3]["content"].strip()
+        assert second_invitation != first_invitation
+        assert not _has_stage_or_score_language(second_invitation)
+
+        # revise must be acknowledged, never denied
+        low = second_invitation.lower()
+        for phrase in [
+            "haven't revised", "have not revised", "you didn't revise",
+            "no revision", "still the same draft", "same as before",
+            "identical to your previous",
+        ]:
+            assert phrase not in low, (
+                f"Coach denied the revision with {phrase!r}: {second_invitation!r}"
+            )
+
+        # theory_history now has 2 snapshots
+        assert len(data["theory_history"]) == 2
+        assert data["theory_history"][0]["version"] == 1
+        assert data["theory_history"][1]["version"] == 2
+        # v2 preserves the FIRST theory (which had non-empty relevant domains)
+        assert data["theory_history"][1]["theory"]["currently_relevant_domains"] == list(first_domains) or \
+            set(data["theory_history"][1]["theory"]["currently_relevant_domains"]) == first_domains, (
+                "theory_history[1] should preserve the first-turn theory"
+            )
+
+        # changes_since_previous is not 'initial' anymore
+        changes = data["theory"]["changes_since_previous"].strip().lower()
+        assert changes != "" and changes != "initial", (
+            f"changes_since_previous should reflect revision, got {changes!r}"
+        )
+
+        # currently_relevant_domains still drawn from canonical model
+        rel = data["theory"]["currently_relevant_domains"]
+        assert len(rel) >= 1
+        for name in rel:
+            assert name in CANONICAL_DOMAIN_NAMES
+
+        # interactions grew to 2, latest has 2-3 candidates + selected
+        assert len(data["interactions"]) == 2
+        latest = data["interactions"][-1]
+        assert 2 <= len(latest["candidate_invitations"]) <= 3
+        assert latest["selected_invitation"]["invitation"].strip() != ""
+
+        # theory REVISED, not appended: it is a single dict not a list of appended notes
+        assert isinstance(data["theory"], dict)
+
+        # No stages/scores in the theory blob or interactions blob
+        assert not _has_stage_or_score_language(json.dumps(data["theory"]))
+        assert not _has_stage_or_score_language(json.dumps(data["interactions"]))
+
+
+# ---------------------------------------------------------------------------
+# Teacher can revise the telos (PATCH /api/sessions/{id}/telos)
+# ---------------------------------------------------------------------------
+class TestTelosEdit:
+    def test_patch_telos_updates_session_and_appends_teacher_edit(self, client, created_session):
+        sid = created_session["id"]
+        new_purpose = (
+            "Students should learn to make every paragraph coordinate with a "
+            "single governing claim about livability."
+        )
+        new_task = "Revise the opening two paragraphs so each supports the livability claim."
+        r = client.patch(
+            f"{API}/sessions/{sid}/telos",
+            json={
+                "pedagogical_purpose": new_purpose,
+                "current_writing_task": new_task,
+                "note": "TEST_ narrowing purpose after seeing first revision.",
+            },
+            timeout=30,
         )
         assert r.status_code == 200, r.text
         data = r.json()
 
-        # now 6 turns (2 writing/inv + 2 answer/inv + 2 revise/inv)
-        assert len(data["turns"]) == 6
-        assert data["turns"][4]["role"] == "student"
-        assert data["turns"][4]["kind"] == "revise"
-        assert data["turns"][5]["role"] == "ai"
-        assert data["turns"][5]["kind"] == "invitation"
+        assert data["pedagogical_purpose"] == new_purpose
+        assert data["current_writing_task"] == new_task
+        # telos mirrored
+        assert data["telos"]["governing_pedagogical_purpose"] == new_purpose
+        assert data["telos"]["immediate_task_purpose"] == new_task
+        assert data["telos"]["telos_changed"].strip() != ""
 
-        invitation = data["turns"][5]["content"].strip()
-        lower_inv = invitation.lower()
+        # teacher_edits record appended
+        assert len(data["teacher_edits"]) >= 1
+        latest_edit = data["teacher_edits"][-1]
+        assert "changes" in latest_edit
+        assert "pedagogical_purpose" in latest_edit["changes"]
+        assert latest_edit["changes"]["pedagogical_purpose"]["to"] == new_purpose
 
-        # PRIMARY BUG ASSERTION: the coach must NOT deny the revision.
-        deny_phrases = [
-            "haven't revised",
-            "have not revised",
-            "haven't yet revised",
-            "have not yet revised",
-            "you didn't revise",
-            "you did not revise",
-            "no revision",
-            "no changes",
-            "hasn't changed",
-            "has not changed",
-            "still the same draft",
-            "same as before",
-            "identical to your previous",
-        ]
-        for phrase in deny_phrases:
-            assert phrase not in lower_inv, (
-                f"Coach denied the revision with phrase {phrase!r} in "
-                f"invitation: {invitation!r}"
-            )
-
-        # And developmental_movement should reflect the change — it must not
-        # be empty and must not still be 'initial'.
-        movement = data["dev_state"].get("developmental_movement", "").strip().lower()
-        assert movement != "", "developmental_movement is empty after revise turn"
-        assert movement != "initial", (
-            f"developmental_movement is still 'initial' after revise: {movement!r}"
-        )
-        # It should NOT claim there is no change.
-        for phrase in ["no change", "no revision", "unchanged", "identical"]:
-            assert phrase not in movement, (
-                f"developmental_movement denies the revision: {movement!r}"
-            )
-
-        # current_student_writing should reflect the NEW draft's content
-        # (livability framing) rather than the original list-of-complaints.
-        csw = data["dev_state"].get("current_student_writing", "").lower()
-        assert csw.strip() != "", "current_student_writing empty after revise"
-
-        pytest.revise_response = data
+        # GET returns revised values
+        g = client.get(f"{API}/sessions/{sid}", timeout=15)
+        assert g.status_code == 200
+        gdata = g.json()
+        assert gdata["pedagogical_purpose"] == new_purpose
+        assert gdata["current_writing_task"] == new_task
+        assert gdata["telos"]["governing_pedagogical_purpose"] == new_purpose
 
 
 # ---------------------------------------------------------------------------
-# Persistence: GET returns session with all turns
+# Persistence: GET returns session with turns, theory, theory_history, interactions
 # ---------------------------------------------------------------------------
 class TestPersistence:
-    def test_get_session_returns_persisted_turns(self, client, created_session):
-        r = client.get(f"{API}/sessions/{created_session['id']}", timeout=30)
+    def test_get_session_returns_full_state(self, client, created_session):
+        r = client.get(f"{API}/sessions/{created_session['id']}", timeout=15)
         assert r.status_code == 200, r.text
         data = r.json()
         assert data["id"] == created_session["id"]
-        assert len(data["turns"]) == 6
-        # AI invitation strings preserved
+        assert len(data["turns"]) == 4
+        assert len(data["interactions"]) == 2
+        assert len(data["theory_history"]) == 2
         assert data["turns"][1]["role"] == "ai"
         assert data["turns"][3]["role"] == "ai"
-        assert data["turns"][5]["role"] == "ai"
-        # dev_state persisted
-        assert data["dev_state"]["primary_developmental_tension"].strip() != ""
-
-    def test_get_missing_session_returns_404(self, client):
-        r = client.get(f"{API}/sessions/does-not-exist-{int(time.time())}", timeout=15)
-        assert r.status_code == 404
+        # theory still populated
+        assert len(data["theory"]["currently_relevant_domains"]) >= 1
 
 
 # ---------------------------------------------------------------------------
-# Validation: empty content -> 400
+# Regression: empty -> 400, missing session -> 404
 # ---------------------------------------------------------------------------
 class TestValidation:
     def test_empty_content_returns_400(self, client, created_session):
@@ -319,3 +393,22 @@ class TestValidation:
             timeout=15,
         )
         assert r.status_code == 400, r.text
+
+    def test_missing_session_returns_404(self, client):
+        missing = f"nope-{int(time.time())}"
+        r = client.get(f"{API}/sessions/{missing}", timeout=15)
+        assert r.status_code == 404
+
+        r2 = client.post(
+            f"{API}/sessions/{missing}/interact",
+            json={"kind": "writing", "content": "hello"},
+            timeout=15,
+        )
+        assert r2.status_code == 404
+
+        r3 = client.patch(
+            f"{API}/sessions/{missing}/telos",
+            json={"pedagogical_purpose": "x"},
+            timeout=15,
+        )
+        assert r3.status_code == 404

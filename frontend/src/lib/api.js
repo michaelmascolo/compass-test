@@ -17,3 +17,8 @@ export const interact = async (id, payload) => {
   const { data } = await axios.post(`${API}/sessions/${id}/interact`, payload);
   return data;
 };
+
+export const editTelos = async (id, payload) => {
+  const { data } = await axios.patch(`${API}/sessions/${id}/telos`, payload);
+  return data;
+};

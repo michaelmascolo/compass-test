@@ -1,11 +1,16 @@
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Terminal, X } from "lucide-react";
+import { Terminal, X, Pencil, Save, RotateCcw } from "lucide-react";
 
-const Field = ({ label, children }) => (
+const SectionLabel = ({ children }) => (
+  <div className="text-[10px] uppercase tracking-[0.2em] text-amber-500 mb-1.5">
+    {children}
+  </div>
+);
+
+const Block = ({ label, children }) => (
   <div className="border-t border-stone-800 pt-3 mt-3 first:border-t-0 first:pt-0 first:mt-0">
-    <div className="text-[10px] uppercase tracking-[0.2em] text-amber-500 mb-1.5">
-      {label}
-    </div>
+    <SectionLabel>{label}</SectionLabel>
     <div className="text-stone-300 leading-relaxed text-[13px]">{children}</div>
   </div>
 );
@@ -28,7 +33,90 @@ const List = ({ items }) => {
 const Text = ({ value }) =>
   value ? <span>{value}</span> : <span className="text-stone-600">—</span>;
 
-export default function DevelopmentPanel({ open, onClose, state, purpose }) {
+function TelosEditor({ session, onSave, saving }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({
+    assignment: session.assignment,
+    pedagogical_purpose: session.pedagogical_purpose,
+    current_writing_task: session.current_writing_task,
+  });
+
+  useEffect(() => {
+    setForm({
+      assignment: session.assignment,
+      pedagogical_purpose: session.pedagogical_purpose,
+      current_writing_task: session.current_writing_task,
+    });
+  }, [session.assignment, session.pedagogical_purpose, session.current_writing_task]);
+
+  const field = (key, label) => (
+    <div>
+      <SectionLabel>{label}</SectionLabel>
+      <textarea
+        data-testid={`telos-edit-${key}`}
+        value={form[key]}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+        rows={2}
+        className="w-full bg-stone-950 border border-stone-700 rounded-sm p-2 text-[12px] text-stone-200 outline-none focus:border-amber-500 transition-colors resize-none"
+      />
+    </div>
+  );
+
+  return (
+    <div className="border-b border-stone-800">
+      <button
+        data-testid="toggle-telos-editor"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-5 py-2.5 text-stone-400 hover:text-stone-100 transition-colors"
+      >
+        <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em]">
+          <Pencil className="h-3 w-3" /> Teacher · revise telos
+        </span>
+        <RotateCcw className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="overflow-hidden"
+          >
+            <div className="px-5 pb-4 space-y-3">
+              {field("assignment", "Assignment")}
+              {field("pedagogical_purpose", "Pedagogical Purpose")}
+              {field("current_writing_task", "Current Writing Task")}
+              <button
+                data-testid="save-telos-button"
+                onClick={() => onSave(form)}
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 bg-amber-500 text-stone-900 px-3 py-1.5 rounded-sm text-[11px] uppercase tracking-[0.15em] font-medium hover:bg-amber-400 transition-colors disabled:opacity-40"
+              >
+                <Save className="h-3 w-3" />
+                {saving ? "Saving…" : "Save telos"}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+export default function DevelopmentPanel({
+  open,
+  onClose,
+  session,
+  onEditTelos,
+  savingTelos,
+}) {
+  if (!session) return null;
+  const theory = session.theory || {};
+  const telos = session.telos || {};
+  const interactions = session.interactions || [];
+  const last = interactions[interactions.length - 1];
+
   return (
     <AnimatePresence>
       {open && (
@@ -53,7 +141,7 @@ export default function DevelopmentPanel({ open, onClose, state, purpose }) {
               <div className="flex items-center gap-2 text-stone-200">
                 <Terminal className="h-4 w-4 text-amber-500" />
                 <span className="text-xs uppercase tracking-[0.2em]">
-                  Development Panel
+                  Developmental Guide Engine
                 </span>
               </div>
               <button
@@ -66,49 +154,124 @@ export default function DevelopmentPanel({ open, onClose, state, purpose }) {
               </button>
             </div>
 
-            <div className="px-5 py-3 border-b border-stone-800 shrink-0">
+            <TelosEditor
+              session={session}
+              onSave={onEditTelos}
+              saving={savingTelos}
+            />
+
+            <div className="px-5 py-2.5 border-b border-stone-800 shrink-0">
               <p className="text-[10px] text-stone-500 leading-relaxed">
-                Testing only — the coach's evolving internal theory. Updated
-                after every interaction.
+                Testing / teacher review — provisional working theory of the
+                developing system. Revised (not appended) each turn.
+                {session.theory_history?.length
+                  ? ` v${session.theory_history.length + 1}`
+                  : " v1"}
               </p>
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scroll px-5 py-5">
-              <Field label="Current Pedagogical Purpose">
-                <Text value={state?.current_pedagogical_purpose || purpose} />
-              </Field>
-              <Field label="Governing Purpose">
-                <Text value={state?.governing_purpose} />
-              </Field>
-              <Field label="Developmental Theory · Organization Relative to Purpose">
-                <Text value={state?.organization_relative_to_purpose} />
-              </Field>
-              <Field label="Direct Evidence">
-                <List items={state?.direct_evidence} />
-              </Field>
-              <Field label="Primary Developmental Tension">
+              <Block label="Current Telos">
+                <Text value={theory.current_telos || telos.governing_pedagogical_purpose} />
+              </Block>
+              <Block label="Current Organization (relative to telos)">
+                <Text value={theory.current_organization} />
+              </Block>
+              <Block label="Observed Developmental Movement">
+                <div className="space-y-2">
+                  <div>
+                    <span className="text-stone-500">differentiation:</span>{" "}
+                    <List items={theory.observed_differentiations} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">integration:</span>{" "}
+                    <List items={theory.observed_integrations} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">coordination:</span>{" "}
+                    <List items={theory.observed_coordinations} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">intentional control:</span>{" "}
+                    <Text value={theory.emerging_intentional_control} />
+                  </div>
+                </div>
+              </Block>
+              <Block label="Currently Relevant Canonical Domains">
+                <List items={theory.currently_relevant_domains} />
+              </Block>
+              <Block label="Active Tension(s)">
                 <span className="text-amber-300">
-                  <Text value={state?.primary_developmental_tension} />
+                  <List items={theory.unresolved_tensions} />
                 </span>
-              </Field>
-              <Field label="Alternative Interpretations">
-                <List items={state?.alternative_interpretations} />
-              </Field>
-              <Field label="Selected Scaffold">
-                <Text value={state?.selected_scaffold} />
-              </Field>
-              <Field label="Why That Scaffold">
-                <Text value={state?.selection_basis} />
-              </Field>
-              <Field label="Candidate Scaffolds Considered">
-                <List items={state?.candidate_scaffolds} />
-              </Field>
-              <Field label="Developmental Movement Detected">
-                <Text value={state?.developmental_movement} />
-              </Field>
-              <Field label="Current Uncertainties">
-                <List items={state?.uncertainties} />
-              </Field>
+              </Block>
+              <Block label="Cultural Resources (in use / potential)">
+                <div className="space-y-1.5">
+                  <div>
+                    <span className="text-stone-500">in use:</span>{" "}
+                    <List items={theory.cultural_resources_in_use} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">potential:</span>{" "}
+                    <List items={theory.potential_cultural_resources} />
+                  </div>
+                </div>
+              </Block>
+              <Block label="Evidence — Supporting">
+                <List items={theory.supporting_evidence} />
+              </Block>
+              <Block label="Evidence — Complicating / Contradicting">
+                <List items={theory.complicating_evidence} />
+              </Block>
+              <Block label="Current Uncertainty">
+                <List items={theory.current_uncertainty} />
+              </Block>
+              <Block label="Possible Reorganizations">
+                <List items={theory.possible_reorganizations} />
+              </Block>
+
+              <Block label="Candidate Invitations (internal)">
+                {last?.candidate_invitations?.length ? (
+                  <div className="space-y-3">
+                    {last.candidate_invitations.map((c, i) => (
+                      <div
+                        key={i}
+                        data-testid={`candidate-invitation-${i}`}
+                        className="border border-stone-800 rounded-sm p-2.5 bg-stone-950/50"
+                      >
+                        <div className="text-stone-200">
+                          {i + 1}. {c.invitation}
+                        </div>
+                        <div className="text-[11px] text-stone-500 mt-1">
+                          addresses: {c.developmental_possibility || "—"}
+                        </div>
+                        <div className="text-[11px] text-stone-500">
+                          could learn: {c.what_ai_could_learn || "—"}
+                        </div>
+                        <div className="text-[11px] text-stone-500">
+                          risk: {c.uncertainty_or_risk || "—"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="text-stone-600">—</span>
+                )}
+              </Block>
+              <Block label="Selected Invitation">
+                <div className="text-amber-200" data-testid="selected-invitation">
+                  <Text value={last?.selected_invitation?.invitation} />
+                </div>
+              </Block>
+              <Block label="Rationale for Selection (coherence, not optimality)">
+                <Text value={last?.selected_invitation?.selection_basis} />
+              </Block>
+              <Block label="Change From Previous Interaction">
+                <Text value={theory.changes_since_previous} />
+              </Block>
+              <Block label="Observed Reorganization (this turn)">
+                <Text value={last?.observed_reorganization} />
+              </Block>
             </div>
           </motion.aside>
         </>

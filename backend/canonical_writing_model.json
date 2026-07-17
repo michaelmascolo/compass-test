@@ -1,0 +1,148 @@
+{
+  "note": "Canonical Writing Model — domain-specific pedagogical knowledge, loaded as DATA by the domain-independent Developmental Guide Engine. These are culturally established FUNCTIONS of effective writing and cultural RESOURCES the engine uses to interpret student writing. They are NOT developmental stages, NOT a required instructional sequence, and NOT rigid templates. The engine must decide which domains are currently relevant; it must never force students through the domains in a predetermined order.",
+  "domains": [
+    {
+      "domain_name": "Whole Essay Purpose",
+      "communicative_functions": ["overall purpose", "central communicative goal", "relationship to assignment", "relationship to audience"],
+      "canonical_writing_resources": ["statement of purpose", "guiding question", "controlling idea", "governing intention"],
+      "functional_evaluation_questions": ["What is the writer trying to accomplish?", "Is the purpose explicit?", "Is purpose sustained?", "Is purpose internally coherent?"],
+      "possible_differentiations": ["separating topic from purpose", "distinguishing what is said from what it is for", "distinguishing assignment compliance from communicative intent"],
+      "possible_integrations": ["aligning every section to one purpose", "coordinating purpose with audience needs"],
+      "common_productive_tensions": ["a topic is present but no purpose is yet visible", "purpose stated but not sustained across the essay"],
+      "candidate_developmental_invitations": ["ask the writer to state, in one sentence, what they want the reader to understand or do", "invite the writer to check whether each part serves that purpose"],
+      "relationships_to_other_domains": ["Central Claim / Thesis", "Audience Awareness", "Organization", "Conclusion"]
+    },
+    {
+      "domain_name": "Audience Awareness",
+      "communicative_functions": ["anticipate reader knowledge", "orient the naive reader", "establish common ground", "consider reader needs"],
+      "canonical_writing_resources": ["orienting context", "definitions", "shared assumptions", "framing of stakes"],
+      "functional_evaluation_questions": ["What assumptions are made?", "What does the reader need?", "Where might confusion occur?"],
+      "possible_differentiations": ["separating what the writer knows from what the reader knows", "distinguishing insider shorthand from reader-ready explanation"],
+      "possible_integrations": ["shaping openings and evidence to reader needs", "coordinating tone with audience"],
+      "common_productive_tensions": ["writer assumes knowledge the reader lacks", "over-explaining what the reader already knows"],
+      "candidate_developmental_invitations": ["ask the writer to imagine a specific reader and what that reader would need first", "invite the writer to mark where a newcomer might get lost"],
+      "relationships_to_other_domains": ["Whole Essay Purpose", "Opening / Introduction", "Word Choice and Voice"]
+    },
+    {
+      "domain_name": "Opening / Introduction",
+      "communicative_functions": ["orient reader", "establish context", "motivate interest", "frame the problem", "identify significance", "prepare the thesis", "establish expectations"],
+      "canonical_writing_resources": ["hook", "context", "background", "problem statement", "significance", "preview"],
+      "functional_evaluation_questions": ["What work is this opening already doing?", "What functions remain unsupported?", "Which additional functions would strengthen the introduction?"],
+      "possible_differentiations": ["separating topic-naming from problem-framing", "distinguishing context from significance"],
+      "possible_integrations": ["connecting problem to significance", "leading the opening into the thesis"],
+      "common_productive_tensions": ["topic introduced but significance absent", "context present but the reader does not yet know why to care"],
+      "candidate_developmental_invitations": ["ask what problem or tension makes the topic matter and invite a sentence naming it", "invite the writer to consider what a naive reader must understand before the thesis"],
+      "relationships_to_other_domains": ["Whole Essay Purpose", "Audience Awareness", "Central Claim / Thesis"]
+    },
+    {
+      "domain_name": "Central Claim / Thesis",
+      "communicative_functions": ["organize the essay", "communicate the central idea", "establish direction"],
+      "canonical_writing_resources": ["claim", "position", "interpretation", "organizing statement"],
+      "functional_evaluation_questions": ["What claim appears to organize the essay?", "Is the claim explicit?", "Is it sufficiently differentiated?", "Does the essay support it?"],
+      "possible_differentiations": ["separating a claim from a topic", "distinguishing an arguable position from a statement of fact"],
+      "possible_integrations": ["aligning paragraphs to the claim", "coordinating claim with evidence and reasoning"],
+      "common_productive_tensions": ["multiple implicit claims compete for control", "claim is present but too broad to organize the essay"],
+      "candidate_developmental_invitations": ["invite the writer to name the one idea the whole essay is trying to establish", "ask whether each paragraph advances that claim"],
+      "relationships_to_other_domains": ["Whole Essay Purpose", "Paragraph Purpose", "Evidence", "Organization"]
+    },
+    {
+      "domain_name": "Paragraph Purpose",
+      "communicative_functions": ["introduce idea", "explain", "compare", "analyze", "provide evidence", "address counterargument", "transition"],
+      "canonical_writing_resources": ["topic sentence", "focal idea", "paragraph-level move"],
+      "functional_evaluation_questions": ["What purpose is this paragraph serving?", "Is that purpose clear?", "Does every sentence contribute?"],
+      "possible_differentiations": ["separating one paragraph's job from another's", "distinguishing supporting sentences from digressions"],
+      "possible_integrations": ["subordinating sentences to a single paragraph purpose", "linking paragraph purpose to the thesis"],
+      "common_productive_tensions": ["a paragraph tries to do several jobs at once", "sentences list ideas without a governing purpose"],
+      "candidate_developmental_invitations": ["ask what single job this paragraph is meant to do", "invite the writer to test whether each sentence serves that job"],
+      "relationships_to_other_domains": ["Central Claim / Thesis", "Organization", "Transitions", "Evidence"]
+    },
+    {
+      "domain_name": "Evidence",
+      "communicative_functions": ["support claims", "establish credibility", "illustrate ideas"],
+      "canonical_writing_resources": ["facts", "quotations", "examples", "data", "observations"],
+      "functional_evaluation_questions": ["Is evidence relevant?", "Is enough evidence present?", "Is evidence connected to the claim?"],
+      "possible_differentiations": ["separating evidence from assertion", "distinguishing illustrative from probative evidence"],
+      "possible_integrations": ["binding evidence to the claim it supports", "coordinating evidence with interpretation"],
+      "common_productive_tensions": ["claims asserted without support", "evidence present but its relevance is unstated"],
+      "candidate_developmental_invitations": ["invite the writer to add a concrete instance that a skeptic would accept", "ask how a specific piece of evidence supports the claim"],
+      "relationships_to_other_domains": ["Central Claim / Thesis", "Interpretation / Reasoning", "Paragraph Purpose"]
+    },
+    {
+      "domain_name": "Interpretation / Reasoning",
+      "communicative_functions": ["explain evidence", "connect evidence to claims", "construct meaning", "develop argument"],
+      "canonical_writing_resources": ["explanation", "warrant", "causal link", "analysis"],
+      "functional_evaluation_questions": ["Does the writer interpret evidence?", "Are causal connections explained?", "Is reasoning visible?"],
+      "possible_differentiations": ["separating description of evidence from analysis of it", "distinguishing correlation from causation"],
+      "possible_integrations": ["linking evidence, reasoning, and claim into one movement", "making the warrant explicit"],
+      "common_productive_tensions": ["evidence is dropped in without explanation", "reasoning is implied but never stated"],
+      "candidate_developmental_invitations": ["ask the writer to explain what a piece of evidence shows and why", "invite the writer to make the 'because' visible"],
+      "relationships_to_other_domains": ["Evidence", "Central Claim / Thesis", "Organization"]
+    },
+    {
+      "domain_name": "Organization",
+      "communicative_functions": ["coordinate ideas", "maintain coherence", "manage progression"],
+      "canonical_writing_resources": ["ordering principle", "sequence", "structure", "coherence relations"],
+      "functional_evaluation_questions": ["Why does each section follow the previous one?", "Does the organization support the purpose?", "Are ideas coordinated?"],
+      "possible_differentiations": ["separating sequence from logical dependency", "distinguishing a list from a progression"],
+      "possible_integrations": ["subordinating parts to a whole structure", "aligning order with purpose"],
+      "common_productive_tensions": ["ideas are present but their order is arbitrary", "structure fights the purpose"],
+      "candidate_developmental_invitations": ["ask why one part comes before another", "invite the writer to test whether reordering changes meaning"],
+      "relationships_to_other_domains": ["Whole Essay Purpose", "Paragraph Purpose", "Transitions", "Central Claim / Thesis"]
+    },
+    {
+      "domain_name": "Transitions",
+      "communicative_functions": ["connect ideas", "signal movement", "indicate logical relationships"],
+      "canonical_writing_resources": ["connective phrases", "logical signposts", "conceptual bridges"],
+      "functional_evaluation_questions": ["Are relationships explicit?", "Are transitions merely verbal or conceptual?"],
+      "possible_differentiations": ["separating verbal connectors from conceptual connections", "distinguishing addition from contrast from causation"],
+      "possible_integrations": ["making relationships between ideas explicit", "coordinating transitions with organization"],
+      "common_productive_tensions": ["transition words present but no real conceptual link", "ideas jump without signaling the relationship"],
+      "candidate_developmental_invitations": ["ask what the actual relationship is between two adjacent ideas", "invite the writer to name the connection rather than only label it"],
+      "relationships_to_other_domains": ["Organization", "Paragraph Purpose", "Interpretation / Reasoning"]
+    },
+    {
+      "domain_name": "Conclusion",
+      "communicative_functions": ["synthesize", "deepen meaning", "return to purpose", "broaden significance", "leave lasting impression"],
+      "canonical_writing_resources": ["synthesis", "restatement-with-development", "implications", "call to reflection"],
+      "functional_evaluation_questions": ["Does the conclusion merely repeat?", "Does it complete the communicative purpose?"],
+      "possible_differentiations": ["separating summary from synthesis", "distinguishing repetition from development"],
+      "possible_integrations": ["returning to purpose while extending it", "connecting the ending back to the opening problem"],
+      "common_productive_tensions": ["conclusion restates without adding meaning", "significance is claimed but not developed"],
+      "candidate_developmental_invitations": ["ask what the reader should now understand that they did not before", "invite the writer to extend rather than repeat the main idea"],
+      "relationships_to_other_domains": ["Whole Essay Purpose", "Central Claim / Thesis", "Opening / Introduction"]
+    },
+    {
+      "domain_name": "Sentence Construction",
+      "communicative_functions": ["communicate clearly", "organize information", "control emphasis", "improve readability"],
+      "canonical_writing_resources": ["subordination", "coordination", "sentence variety", "emphasis placement"],
+      "functional_evaluation_questions": ["Are sentences complete?", "Is emphasis appropriate?", "Is syntax supporting meaning?"],
+      "possible_differentiations": ["separating main from subordinate ideas at the sentence level", "distinguishing emphasis from mere length"],
+      "possible_integrations": ["using syntax to foreground the most important idea", "coordinating sentence form with paragraph purpose"],
+      "common_productive_tensions": ["important ideas buried in subordinate positions", "uniform sentences flatten emphasis"],
+      "candidate_developmental_invitations": ["invite the writer to place the key idea in the emphatic position", "ask which part of a sentence the reader should notice most"],
+      "relationships_to_other_domains": ["Word Choice and Voice", "Paragraph Purpose", "Interpretation / Reasoning"]
+    },
+    {
+      "domain_name": "Word Choice and Voice",
+      "communicative_functions": ["precision", "tone", "style", "audience fit"],
+      "canonical_writing_resources": ["diction", "register", "connotation", "voice"],
+      "functional_evaluation_questions": ["Are words serving the intended purpose?", "Does tone match audience?"],
+      "possible_differentiations": ["separating precise from approximate wording", "distinguishing tone appropriate to different readers"],
+      "possible_integrations": ["aligning diction with purpose and audience", "coordinating voice across the essay"],
+      "common_productive_tensions": ["vague wording obscures a precise idea", "tone mismatched to the intended reader"],
+      "candidate_developmental_invitations": ["ask whether a chosen word says exactly what is meant", "invite the writer to consider how the tone lands for the intended reader"],
+      "relationships_to_other_domains": ["Audience Awareness", "Sentence Construction", "Whole Essay Purpose"]
+    },
+    {
+      "domain_name": "Revision and Reflective Control",
+      "communicative_functions": ["evaluate writing", "reorganize ideas", "improve communication"],
+      "canonical_writing_resources": ["self-assessment", "purposeful reordering", "intentional change"],
+      "functional_evaluation_questions": ["What has changed?", "Why was it changed?", "Is revision purposeful?"],
+      "possible_differentiations": ["separating editing from re-seeing", "distinguishing cosmetic from substantive revision"],
+      "possible_integrations": ["connecting revision decisions to purpose and audience", "coordinating changes across domains"],
+      "common_productive_tensions": ["changes made without a reason tied to purpose", "revision touches surface but not organization"],
+      "candidate_developmental_invitations": ["ask the writer what they changed and why it serves the purpose", "invite the writer to reflect on whether a revision improved communication"],
+      "relationships_to_other_domains": ["Whole Essay Purpose", "Organization", "all domains"]
+    }
+  ]
+}

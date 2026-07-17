@@ -4,7 +4,7 @@ import logging
 import uuid
 from pathlib import Path
 from datetime import datetime, timezone
-from typing import List, Optional, Any
+from typing import List, Optional
 
 from fastapi import FastAPI, APIRouter, HTTPException
 from dotenv import load_dotenv
@@ -31,33 +31,97 @@ logger = logging.getLogger(__name__)
 
 
 # ---------------------------------------------------------------------------
+# Canonical Writing Model (domain-specific knowledge, loaded as DATA)
+# ---------------------------------------------------------------------------
+def load_canonical_writing_model() -> dict:
+    path = ROOT_DIR / "canonical_writing_model.json"
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not load canonical writing model: {e}")
+        return {"domains": []}
+
+
+CANONICAL_WRITING_MODEL = load_canonical_writing_model()
+
+
+# ---------------------------------------------------------------------------
 # Models
 # ---------------------------------------------------------------------------
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-class DevelopmentalState(BaseModel):
-    governing_purpose: str = ""
-    current_pedagogical_purpose: str = ""
-    current_task: str = ""
-    current_student_writing: str = ""
-    organization_relative_to_purpose: str = ""
-    direct_evidence: List[str] = Field(default_factory=list)
-    primary_developmental_tension: str = ""
-    alternative_interpretations: List[str] = Field(default_factory=list)
-    developmental_movement: str = ""
-    candidate_scaffolds: List[str] = Field(default_factory=list)
-    selected_scaffold: str = ""
+class Telos(BaseModel):
+    """A — Current Developmental Telos (provisional, revisable)."""
+    governing_pedagogical_purpose: str = ""
+    immediate_task_purpose: str = ""
+    teacher_intentions: str = ""
+    assignment_context: str = ""
+    audience_or_communicative_purpose: str = ""
+    unresolved_ambiguity: str = ""
+    telos_changed: str = ""
+
+
+class DevelopmentalTheory(BaseModel):
+    """C — Working Developmental Theory (one evolving, provisional theory)."""
+    current_telos: str = ""
+    current_organization: str = ""
+    observed_differentiations: List[str] = Field(default_factory=list)
+    observed_integrations: List[str] = Field(default_factory=list)
+    observed_coordinations: List[str] = Field(default_factory=list)
+    emerging_intentional_control: str = ""
+    unresolved_tensions: List[str] = Field(default_factory=list)
+    cultural_resources_in_use: List[str] = Field(default_factory=list)
+    potential_cultural_resources: List[str] = Field(default_factory=list)
+    possible_reorganizations: List[str] = Field(default_factory=list)
+    current_uncertainty: List[str] = Field(default_factory=list)
+    supporting_evidence: List[str] = Field(default_factory=list)
+    complicating_evidence: List[str] = Field(default_factory=list)
+    currently_relevant_domains: List[str] = Field(default_factory=list)
+    changes_since_previous: str = ""
+
+
+class CandidateInvitation(BaseModel):
+    """D — one candidate developmental invitation."""
+    invitation: str = ""
+    developmental_possibility: str = ""
+    coherence_with_telos: str = ""
+    intended_participation: str = ""
+    what_ai_could_learn: str = ""
+    uncertainty_or_risk: str = ""
+
+
+class SelectedInvitation(BaseModel):
+    """E — selected developmental invitation."""
+    invitation: str = ""
     selection_basis: str = ""
-    uncertainties: List[str] = Field(default_factory=list)
 
 
 class Turn(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     role: str  # "student" or "ai"
-    kind: str = "message"  # student: writing/revise/answer/explain/continue ; ai: invitation
+    kind: str = "message"
     content: str
+    created_at: str = Field(default_factory=now_iso)
+
+
+class InteractionRecord(BaseModel):
+    """B — a meaningful participation event + the reasoning it produced."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    student_kind: str = ""
+    student_content: str = ""
+    candidate_invitations: List[CandidateInvitation] = Field(default_factory=list)
+    selected_invitation: SelectedInvitation = Field(default_factory=SelectedInvitation)
+    observed_reorganization: str = ""
+    created_at: str = Field(default_factory=now_iso)
+
+
+class TheorySnapshot(BaseModel):
+    version: int
+    telos: Telos
+    theory: DevelopmentalTheory
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -68,9 +132,17 @@ class SessionCreate(BaseModel):
     teacher_notes: Optional[str] = ""
 
 
+class TelosEdit(BaseModel):
+    assignment: Optional[str] = None
+    pedagogical_purpose: Optional[str] = None
+    current_writing_task: Optional[str] = None
+    teacher_notes: Optional[str] = None
+    note: Optional[str] = ""
+
+
 class InteractRequest(BaseModel):
     content: str
-    kind: str = "writing"  # writing | revise | answer | explain | continue
+    kind: str = "writing"  # writing | revise | continue | answer | explain
 
 
 class Session(BaseModel):
@@ -80,63 +152,77 @@ class Session(BaseModel):
     current_writing_task: str
     teacher_notes: Optional[str] = ""
     turns: List[Turn] = Field(default_factory=list)
-    dev_state: DevelopmentalState = Field(default_factory=DevelopmentalState)
+    telos: Telos = Field(default_factory=Telos)
+    theory: DevelopmentalTheory = Field(default_factory=DevelopmentalTheory)
+    theory_history: List[TheorySnapshot] = Field(default_factory=list)
+    interactions: List[InteractionRecord] = Field(default_factory=list)
+    teacher_edits: List[dict] = Field(default_factory=list)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
 
 # ---------------------------------------------------------------------------
-# Developmental engine
+# Developmental Guide Engine
 # ---------------------------------------------------------------------------
-SYSTEM_MESSAGE = """You are a developmental writing coach embedded in a research prototype. Your ONLY job is to help a student develop as a writer through scaffolded conversation. You NEVER edit, grade, or write for the student.
+SYSTEM_MESSAGE = """You are a developmental pedagogical guide. Interpret the student's participation as an unfolding process organized relative to a provisional developmental telos.
 
-CORE PRINCIPLES (non-negotiable):
-- Everything is organized around the teacher's pedagogical purpose.
-- You evaluate the ORGANIZATION of the writing relative to that purpose, not surface errors or grammar.
-- You maintain a compact working developmental theory and UPDATE it after every interaction (do not just append).
-- All of your interpretations are provisional.
-- You identify exactly ONE primary developmental tension at a time.
-- You generate exactly ONE focused developmental invitation per turn.
-- The student must do the cognitive and writing work. You must NEVER rewrite the student's paragraph or essay, never produce example essays or model paragraphs for them to copy.
-- When the input is a draft ("writing", "revise", or "continue"), it is the student's full, authoritative current text. If it differs from their previous draft, they HAVE revised — name the change you see and build on it. Never claim a student has not revised when their new draft differs from the old one.
+Do not diagnose hidden traits, abilities, competencies, or stages. Do not assume a universal developmental sequence. Do not assign stages, levels, scores, or stable learner characteristics. Do not posit hidden psychological entities behind observable activity. Attend to observable changes in differentiation, integration, coordination, hierarchical organization, flexibility, intentionality, and participation, visible in writing, revision, explanation, choice, hesitation, response, and participation over time.
 
-WHAT YOU DO in your student-facing message: ask, invite, compare, focus attention, request a revision, or request an explanation. Keep it to ONE focused move. Warm, concise, specific to their actual text. No numbered lists of weaknesses. No indiscriminate praise. No diagnosing the student's personality or ability.
+Maintain ONE provisional working theory of the developing pedagogical SYSTEM, including the student, teacher intentions, task, telos, cultural resources, prior interaction, current activity, and uncertainty — not merely a profile of the student. Treat all interpretations as provisional. Never treat one successful response as evidence of a stable competence.
 
-RETURN-TO-PURPOSE LOGIC:
-- If the student misunderstands the assignment, move up to the assignment.
-- If frustration blocks participation, address the frustration just enough to restore productive work.
-- If the task is too hard, temporarily simplify the task, then return to the larger writing purpose.
+Guidance is functionally asymmetric: you temporarily take responsibility for guiding participation within the teacher's purposes and constraints. The student must remain the author of the work — NEVER write or substantially rewrite the student's text, never produce a model passage for them to copy, never give the answer.
 
-PROCESS each turn:
-1. Recover the current developmental state (provided below).
-2. Read the student's latest writing/response.
-3. Reconstruct the student's organization relative to the current purpose.
-4. Identify ONE primary developmental tension.
-5. Internally consider 2-3 possible invitations.
-6. Pick the one best favored by evidence; if none dominates, pick one coherent invitation (no invented tie-breaker).
-7. Output ONE student-facing invitation.
-8. Update the developmental theory.
+You are domain-independent as a REASONER. You hold NO built-in instructional sequence for essay writing. Domain-specific writing knowledge comes ONLY from the CANONICAL WRITING MODEL supplied in the request. Keep the two forms of knowledge distinct: (1) developmental reasoning (this engine, domain-independent) and (2) canonical writing knowledge (structured cultural resources you consult). Do not collapse them.
 
-OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown, no prose outside it:
+CANONICAL WRITING MODEL — the supplied domains describe culturally established FUNCTIONS of effective writing and cultural RESOURCES for interpreting student writing. They are NOT developmental stages, NOT a required sequence, NOT rigid templates. Never force the student through the domains in a predetermined order. Determine which domains are currently RELEVANT based on teacher purpose, student purpose, assignment, audience, genre, current writing, and interaction history. Use canonical resources to EXTEND the student's present organization, never to replace it.
+
+INSIDE-OUTSIDE COORDINATION RULE — never impose canonical structures before understanding the student's developing organization. For every interaction determine: (1) What is the student trying to accomplish? (2) What does the assignment require? (3) What does the reader need? (4) Which canonical writing domains are currently relevant? (5) How can canonical resources extend the student's present organization rather than replace it? Development proceeds by COORDINATING the student's emerging organization, the teacher's purposes, the assignment, the reader's needs, and the culturally established organization of writing.
+
+DRAFT RULE: When the input is a draft ("writing", "revise", or "continue") it is the student's full, authoritative current text. If it differs from their previous draft, they HAVE revised — name the change you see and build on it. Never claim a student has not revised when their new draft differs from the old one.
+
+RECURSIVE LOOP — after every interaction:
+1. State the current telos.
+2. Describe current organization relative to the telos.
+3. Identify observed differentiation, integration, coordination, or tension.
+4. Identify evidence supporting AND evidence complicating the interpretation.
+5. Describe what appears to have changed since the previous interaction.
+6. Identify possible developmental reorganizations.
+7. Generate TWO or THREE candidate developmental invitations.
+8. Select ONE invitation because it is sufficiently coherent (with telos, participation, organization, history, teacher intentions, and uncertainty) — NOT because it is optimal or objectively best. If several remain equally coherent, pick one without inventing a false distinction.
+9. Produce ONE concise student-facing invitation.
+10. Preserve uncertainty and REVISE the full working theory (do not merely append a note).
+
+STUDENT-FACING INVITATION RULES: The student sees only ONE concise invitation. It should acknowledge something meaningful in the student's participation, connect to the current purpose, and ask the student to perform the next intellectual or writing action. Avoid long analyses, grading language, evidence-free praise, lists of multiple problems, rewriting, giving the answer, naming a developmental level, or saying the student "lacks" a trait or skill.
+
+OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no prose outside it:
 {
-  "student_facing_invitation": "one focused, warm developmental move addressed to the student",
-  "internal_state": {
-    "governing_purpose": "the enduring writing-development purpose behind this assignment",
-    "current_pedagogical_purpose": "the teacher's purpose, restated in working terms",
-    "current_task": "what the student is being asked to do right now",
-    "current_student_writing": "a short characterization of the latest writing (not a copy)",
-    "organization_relative_to_purpose": "how the writing is organized relative to the purpose",
-    "direct_evidence": ["short quotes or concrete observations from the student's text"],
-    "primary_developmental_tension": "the single most important developmental tension right now",
-    "alternative_interpretations": ["other plausible readings of what is going on"],
-    "developmental_movement": "what changed since the previous state (or 'initial' on first turn)",
-    "candidate_scaffolds": ["the 2-3 invitations you considered"],
-    "selected_scaffold": "the invitation you chose",
-    "selection_basis": "why this scaffold over the others, grounded in evidence",
-    "uncertainties": ["what you are still unsure about"]
-  }
+  "student_facing_invitation": "one concise invitation shown to the student (equals selected_invitation.invitation)",
+  "telos": {
+    "governing_pedagogical_purpose": "", "immediate_task_purpose": "", "teacher_intentions": "",
+    "assignment_context": "", "audience_or_communicative_purpose": "", "unresolved_ambiguity": "",
+    "telos_changed": "describe if/how the telos shifted this turn, else 'no change'"
+  },
+  "theory": {
+    "current_telos": "", "current_organization": "",
+    "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
+    "emerging_intentional_control": "",
+    "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
+    "possible_reorganizations": [], "current_uncertainty": [],
+    "supporting_evidence": [], "complicating_evidence": [],
+    "currently_relevant_domains": ["names of the canonical domains currently relevant, chosen from the supplied model — not a fixed order"],
+    "changes_since_previous": "what changed vs the prior theory (or 'initial' on first turn)"
+  },
+  "candidate_invitations": [
+    {"invitation": "", "developmental_possibility": "", "coherence_with_telos": "",
+     "intended_participation": "", "what_ai_could_learn": "", "uncertainty_or_risk": ""}
+  ],
+  "selected_invitation": {"invitation": "", "selection_basis": "coherence-based, not optimality"},
+  "observed_reorganization": "how the student's participation actually reorganized this turn (or 'initial' on first turn)"
 }
+Provide 2 or 3 candidate_invitations. Do not store numeric scores anywhere.
 """
+
+DRAFT_KINDS = {"writing", "revise", "continue"}
 
 
 def _extract_json(text: str) -> dict:
@@ -153,21 +239,22 @@ def _extract_json(text: str) -> dict:
     return json.loads(text)
 
 
-DRAFT_KINDS = {"writing", "revise", "continue"}
-
-
 def _build_prompt(session: Session, req: InteractRequest) -> str:
-    prior_state = session.dev_state.model_dump()
-
-    # session.turns already includes the just-added current student turn as the
-    # last element; exclude it when looking for the PREVIOUS draft.
+    # session.turns already includes the just-added current student turn as last.
     prior_turns = session.turns[:-1] if session.turns else []
 
     history_lines = []
     for t in prior_turns:
-        who = "STUDENT" if t.role == "student" else "COACH"
+        who = "STUDENT" if t.role == "student" else "GUIDE"
         history_lines.append(f"{who} ({t.kind}): {t.content}")
-    history = "\n\n".join(history_lines) if history_lines else "(no prior turns)"
+    participation_history = "\n\n".join(history_lines) if history_lines else "(no prior participation)"
+
+    reorg_lines = [
+        f"- turn {i + 1}: {ir.observed_reorganization}"
+        for i, ir in enumerate(session.interactions)
+        if ir.observed_reorganization
+    ]
+    reorg_history = "\n".join(reorg_lines) if reorg_lines else "(none yet)"
 
     previous_draft = None
     for t in reversed(prior_turns):
@@ -177,37 +264,38 @@ def _build_prompt(session: Session, req: InteractRequest) -> str:
 
     is_draft = req.kind in DRAFT_KINDS
     if is_draft:
-        latest_label = f"""STUDENT'S CURRENT DRAFT (this is their full, authoritative current text; kind = "{req.kind}"):
+        latest_block = f"""STUDENT'S CURRENT DRAFT (full authoritative current text; kind = "{req.kind}"):
 {req.content}
 
-PREVIOUS DRAFT (what they had before this submission):
-{previous_draft if previous_draft else "(none — this is their first draft)"}
+PREVIOUS DRAFT:
+{previous_draft if previous_draft else "(none — first draft)"}
 
-Compare the CURRENT DRAFT to the PREVIOUS DRAFT literally. If the text differs at all, the student HAS revised — acknowledge the specific change you see. Never tell the student they have not revised when the current draft differs from the previous one."""
+Compare the CURRENT DRAFT to the PREVIOUS DRAFT literally. If they differ, the student HAS revised — acknowledge the specific change. Never claim otherwise."""
     else:
-        latest_label = f"""STUDENT'S LATEST RESPONSE (a reply to your last invitation, NOT a new draft; kind = "{req.kind}"):
-{req.content}
+        latest_block = f"""STUDENT'S LATEST RESPONSE (a reply to your last invitation, NOT a new draft; kind = "{req.kind}"):
+{req.content}"""
 
-Their current draft remains the most recent draft shown in the conversation above."""
+    return f"""CURRENT DEVELOPMENTAL TELOS (component A — provisional, revisable):
+{json.dumps(session.telos.model_dump(), indent=2)}
 
-    return f"""TEACHER SETUP
-Assignment: {session.assignment}
-Pedagogical Purpose: {session.pedagogical_purpose}
-Current Writing Task: {session.current_writing_task}
-Teacher Notes: {session.teacher_notes or "(none)"}
+CURRENT WORKING DEVELOPMENTAL THEORY (component C — your evolving theory so far):
+{json.dumps(session.theory.model_dump(), indent=2)}
 
-CURRENT DEVELOPMENTAL STATE (your working theory so far):
-{json.dumps(prior_state, indent=2)}
+PARTICIPATION HISTORY (component B):
+{participation_history}
 
-CONVERSATION SO FAR:
-{history}
+OBSERVED REORGANIZATIONS OVER TIME:
+{reorg_history}
 
-{latest_label}
+CANONICAL WRITING MODEL (domain-specific cultural resources — load as DATA; select only the RELEVANT domains, never force a sequence):
+{json.dumps(CANONICAL_WRITING_MODEL, indent=2)}
 
-Now run the process and respond with ONLY the JSON object described in your instructions. Update (do not merely append to) the developmental state based on this latest input."""
+{latest_block}
+
+Run the full recursive loop and respond with ONLY the JSON object described in your instructions. Revise the ENTIRE working theory rather than appending a note."""
 
 
-async def run_engine(session: Session, req: InteractRequest) -> tuple[str, DevelopmentalState]:
+async def run_engine(session: Session, req: InteractRequest) -> dict:
     chat = LlmChat(
         api_key=EMERGENT_LLM_KEY,
         session_id=f"dev-{session.id}",
@@ -218,14 +306,30 @@ async def run_engine(session: Session, req: InteractRequest) -> tuple[str, Devel
     raw = await chat.send_message(UserMessage(text=prompt))
     try:
         data = _extract_json(raw)
-        invitation = data.get("student_facing_invitation", "").strip()
-        state = DevelopmentalState(**{**session.dev_state.model_dump(), **data.get("internal_state", {})})
+        telos = Telos(**{**session.telos.model_dump(), **data.get("telos", {})})
+        theory = DevelopmentalTheory(**{**session.theory.model_dump(), **data.get("theory", {})})
+        candidates = [CandidateInvitation(**c) for c in data.get("candidate_invitations", [])]
+        selected = SelectedInvitation(**data.get("selected_invitation", {}))
+        invitation = (data.get("student_facing_invitation") or selected.invitation or "").strip()
+        observed_reorg = data.get("observed_reorganization", "").strip()
     except Exception as e:  # noqa: BLE001
-        logger.error(f"Engine parse error: {e}; raw={raw[:500]}")
+        logger.error(f"Engine parse error: {e}; raw={raw[:800]}")
         raise HTTPException(status_code=502, detail="The developmental engine returned an unreadable response. Please try again.")
+
     if not invitation:
         raise HTTPException(status_code=502, detail="The developmental engine did not return an invitation. Please try again.")
-    return invitation, state
+
+    if not selected.invitation:
+        selected.invitation = invitation
+
+    return {
+        "invitation": invitation,
+        "telos": telos,
+        "theory": theory,
+        "candidates": candidates,
+        "selected": selected,
+        "observed_reorganization": observed_reorg,
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -233,12 +337,18 @@ async def run_engine(session: Session, req: InteractRequest) -> tuple[str, Devel
 # ---------------------------------------------------------------------------
 @api_router.get("/")
 async def root():
-    return {"message": "Developmental Writing Engine"}
+    return {"message": "Developmental Guide Engine"}
 
 
 @api_router.post("/sessions", response_model=Session)
 async def create_session(payload: SessionCreate):
-    session = Session(**payload.model_dump())
+    telos = Telos(
+        governing_pedagogical_purpose=payload.pedagogical_purpose,
+        immediate_task_purpose=payload.current_writing_task,
+        teacher_intentions=payload.teacher_notes or "",
+        assignment_context=payload.assignment,
+    )
+    session = Session(**payload.model_dump(), telos=telos)
     await db.sessions.insert_one(session.model_dump())
     return session
 
@@ -251,6 +361,53 @@ async def get_session(session_id: str):
     return Session(**doc)
 
 
+@api_router.patch("/sessions/{session_id}/telos", response_model=Session)
+async def edit_telos(session_id: str, edit: TelosEdit):
+    doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    session = Session(**doc)
+
+    changes = {}
+    for field in ("assignment", "pedagogical_purpose", "current_writing_task", "teacher_notes"):
+        val = getattr(edit, field)
+        if val is not None and val != getattr(session, field):
+            changes[field] = {"from": getattr(session, field), "to": val}
+            setattr(session, field, val)
+
+    if not changes:
+        return session
+
+    # reflect edits into the current telos
+    session.telos.governing_pedagogical_purpose = session.pedagogical_purpose
+    session.telos.immediate_task_purpose = session.current_writing_task
+    session.telos.assignment_context = session.assignment
+    session.telos.teacher_intentions = session.teacher_notes or ""
+    session.telos.telos_changed = "Teacher revised the telos."
+
+    session.teacher_edits.append({
+        "id": str(uuid.uuid4()),
+        "changes": changes,
+        "note": edit.note or "",
+        "created_at": now_iso(),
+    })
+    session.updated_at = now_iso()
+
+    await db.sessions.update_one(
+        {"id": session_id},
+        {"$set": {
+            "assignment": session.assignment,
+            "pedagogical_purpose": session.pedagogical_purpose,
+            "current_writing_task": session.current_writing_task,
+            "teacher_notes": session.teacher_notes,
+            "telos": session.telos.model_dump(),
+            "teacher_edits": session.teacher_edits,
+            "updated_at": session.updated_at,
+        }},
+    )
+    return session
+
+
 @api_router.post("/sessions/{session_id}/interact", response_model=Session)
 async def interact(session_id: str, req: InteractRequest):
     doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
@@ -261,21 +418,41 @@ async def interact(session_id: str, req: InteractRequest):
     if not req.content.strip():
         raise HTTPException(status_code=400, detail="Empty submission")
 
-    student_turn = Turn(role="student", kind=req.kind, content=req.content.strip())
-    session.turns.append(student_turn)
+    session.turns.append(Turn(role="student", kind=req.kind, content=req.content.strip()))
 
-    invitation, new_state = await run_engine(session, req)
+    result = await run_engine(session, req)
 
-    ai_turn = Turn(role="ai", kind="invitation", content=invitation)
-    session.turns.append(ai_turn)
-    session.dev_state = new_state
+    # snapshot the theory that motivated this response BEFORE replacing it
+    session.theory_history.append(
+        TheorySnapshot(
+            version=len(session.theory_history) + 1,
+            telos=session.telos,
+            theory=session.theory,
+        )
+    )
+
+    session.turns.append(Turn(role="ai", kind="invitation", content=result["invitation"]))
+    session.telos = result["telos"]
+    session.theory = result["theory"]
+    session.interactions.append(
+        InteractionRecord(
+            student_kind=req.kind,
+            student_content=req.content.strip(),
+            candidate_invitations=result["candidates"],
+            selected_invitation=result["selected"],
+            observed_reorganization=result["observed_reorganization"],
+        )
+    )
     session.updated_at = now_iso()
 
     await db.sessions.update_one(
         {"id": session_id},
         {"$set": {
             "turns": [t.model_dump() for t in session.turns],
-            "dev_state": session.dev_state.model_dump(),
+            "telos": session.telos.model_dump(),
+            "theory": session.theory.model_dump(),
+            "theory_history": [s.model_dump() for s in session.theory_history],
+            "interactions": [i.model_dump() for i in session.interactions],
             "updated_at": session.updated_at,
         }},
     )
