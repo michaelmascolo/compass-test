@@ -15,6 +15,12 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 ## Verified
 - Multi-turn loop works: dev_state visibly evolves (developmental_movement ≠ initial), invitations are single-focus, never rewrite student work, never list errors. Persistence across reload confirmed. Testing agent: backend 6/6, frontend critical flows 100%.
 
-## Backlog / Next Actions (deferred — out of Milestone 1 scope by instruction)
-- P2 polish: return 201 from create; disable writing area during loading; shift main pane when panel opens; retry on transient LLM 5xx; word cap on submissions; toast on expired session.
-- Future milestones (NOT to build now): multiple tasks/sessions list, teacher review of student progress, export transcript.
+## Milestone — Developmental Guide Engine + Canonical Writing Model (2026-07-17)
+- Reasoning engine is now domain-independent; domain knowledge lives in `backend/canonical_writing_model.json` (13 domains) loaded as DATA. Engine selects currently-relevant domains (no forced sequence) via the inside-outside coordination rule.
+- Working theory (component C) persisted with `theory_history` snapshots (previous versions preserved, never overwritten), per-interaction candidate invitations (2-3, one selected), telos (A), participation/interaction records (B), teacher_edits.
+- `/api/sessions/{id}/interact` converted to **SSE streaming** (heartbeats + terminal `event: done`) to stay under Cloudflare's ~60s edge cap; prompts slimmed + BREVITY rules → ~20-40s/turn. PATCH `/telos` lets the teacher revise the telos.
+- Verified: testing agent iteration_4 — backend 8/8, frontend 100%. No stages/scores, AI never rewrites, theory evolves each turn.
+
+## Backlog / Next (deferred)
+- P2: return 201 from create; offset dev panel so it doesn't overlay the thread at ~1920px; expose teacher_notes in the telos editor; cap submission length.
+- NEXT MILESTONE (await review): build out the real Openings field (and other domains) with full field data — per instruction, NOT started yet.
