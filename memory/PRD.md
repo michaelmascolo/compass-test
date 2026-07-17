@@ -31,7 +31,11 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - Engine unchanged except two domain-independent touches: compact-index builder fallback to governing/possible functions; new generic `alternative_interpretations` theory field (schema + compact theory + dev panel). NO introduction-specific logic in code.
 - 24-case internal evaluation (`tests/milestone2_opening_eval.py` → `milestone2_results.json`, review in `test_reports/milestone2_review.md`): 24/24 satisfactory, 0 authorship/formula failures. Testing agent iteration_6: 17/17 backend, 100% frontend; Opening selected & reasoned; alternatives preserved; multi-turn reliable (reasoner prompt ~22.5KB when Opening selected, ~6-8KB otherwise; all turns <60s, no 502).
 
+## Milestone 3 — Central Claim/Thesis exemplar + generic section-level retrieval (2026-07-17)
+- Enriched ONLY the "Central Claim / Thesis" record (31 fields, same schema as Opening; observable_organizations A–S incl. topic-without-claim, opinion, fact-as-thesis, broad/vague, competing, unsupported, implicit, delayed, distributed, exploratory/interpretive/argumentative/analytical, research-question, formulaic, integrated, assignment/body mismatch). Other 11 domains untouched.
+- Generic (domain-independent) retrieval upgrade: STAGE A selector now also returns relevant SECTION keys per domain; `get_relevant_domain_data()` filters each record to ALWAYS_KEYS (domain_name, governing_communicative_function, domain_status, prohibitions) + selected sections. Reasoner prompt dropped to ~3.5–16KB (was ~22KB+ for a whole enriched record; ~35KB for all 13). No thesis-specific logic in engine.
+- 24-case eval (`tests/milestone3_thesis_eval.py` → `milestone3_results.json`, review `test_reports/milestone3_review.md`): 24/24 satisfactory; personal/narrative not forced to a thesis; exploratory/question theses honored; no rewriting; no formula imposition; revision cases update theory (v2). Testing agent iteration_7: 30/30 backend, 100% frontend, no regressions.
+
 ## Backlog / Next (deferred)
-- Opening-selected prompt is ~22.5KB (rich record). Fine for latency now; could trim if enriching all 13 domains later balloons multi-domain turns.
 - P2: 201 on create; dev panel offset at ~1920px; teacher_notes in telos editor.
-- NEXT MILESTONE (await review): enrich remaining domains — NOT started.
+- NEXT MILESTONE (await review): enrich the next domain (e.g., Evidence or Paragraph Purpose) using the same schema — NOT started.
