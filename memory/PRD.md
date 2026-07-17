@@ -21,6 +21,11 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - `/api/sessions/{id}/interact` converted to **SSE streaming** (heartbeats + terminal `event: done`) to stay under Cloudflare's ~60s edge cap; prompts slimmed + BREVITY rules → ~20-40s/turn. PATCH `/telos` lets the teacher revise the telos.
 - Verified: testing agent iteration_4 — backend 8/8, frontend 100%. No stages/scores, AI never rewrites, theory evolves each turn.
 
+## Multi-turn performance fix — two-stage domain selection (2026-07-17)
+- Full 13-domain model no longer sent per turn. STAGE A: a compact index (name + 1-sentence function + relationships) drives an LLM selection of 1-3 relevant domains; STAGE B: only those domains' FULL records are sent to the reasoner via `get_relevant_domain_data()` (single source of truth, no code duplication). Prompt now includes telos + compact theory + interaction summary (no full transcript) + previous draft when comparing.
+- Added one retry (~3s) on transient/unreadable LLM failures for both stages; no duplicate student turn / theory snapshot on retry.
+- Verified (iteration_5): 4-turn session all HTTP 200, ~20-40s/turn, reasoner prompt ~4.6-7.8KB, domains shift with the writing, theory_history v1..v4 preserved, revisions recognized, no stages/scores, AI never rewrites.
+
 ## Backlog / Next (deferred)
-- P2: return 201 from create; offset dev panel so it doesn't overlay the thread at ~1920px; expose teacher_notes in the telos editor; cap submission length.
-- NEXT MILESTONE (await review): build out the real Openings field (and other domains) with full field data — per instruction, NOT started yet.
+- P2: return 201 from create; offset dev panel at ~1920px; expose teacher_notes in telos editor.
+- NEXT MILESTONE (await review): populate real domain field data (Openings etc.) — NOT started.
