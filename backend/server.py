@@ -68,22 +68,38 @@ def _build_compact_domain_index() -> list:
             "domain_name": d.get("domain_name"),
             "communicative_function": one_sentence,
             "relationships": d.get("relationships_to_other_domains", []),
+            "sections": [k for k in d.keys() if k != "domain_name"],
         })
     return index
 
 
 COMPACT_DOMAIN_INDEX = _build_compact_domain_index()
 
+# Sections always kept as safety rails regardless of section selection.
+ALWAYS_KEYS = ("domain_name", "governing_communicative_function", "domain_status", "prohibitions")
 
-def get_relevant_domain_data(domain_names: List[str]) -> list:
-    """STAGE B — retrieve COMPLETE domain records by exact domain name.
-    Single source of truth; the canonical model is not duplicated in code."""
-    seen, out = set(), []
-    for name in domain_names or []:
+
+def get_relevant_domain_data(selections: list) -> list:
+    """STAGE B — retrieve domain records by exact name, filtered to only the
+    SECTIONS relevant to the current tension (plus safety-rail sections).
+    Domain-independent: operates purely on generic record keys. Accepts either
+    a list of names (returns whole records) or a list of
+    {"domain_name", "sections"} dicts."""
+    out, seen = [], set()
+    for sel in selections or []:
+        if isinstance(sel, str):
+            name, sections = sel, []
+        else:
+            name, sections = sel.get("domain_name"), sel.get("sections") or []
         rec = _DOMAINS_BY_NAME.get(name)
-        if rec and name not in seen:
-            seen.add(name)
-            out.append(rec)
+        if not rec or name in seen:
+            continue
+        seen.add(name)
+        valid = [s for s in sections if s in rec]
+        if not valid:
+            out.append(rec)  # no section guidance -> send the whole record
+            continue
+        out.append({k: rec[k] for k in rec if k in ALWAYS_KEYS or k in valid})
     return out
 
 
@@ -331,21 +347,32 @@ def _interaction_summary(session: Session) -> str:
 
 def _selector_prompt(session: Session, req: InteractRequest) -> str:
     prior = [d for d in session.theory.currently_relevant_domains if d]
-    return f"""You choose which canonical writing domains are relevant to the student's CURRENT participation. Do NOT force a sequence. Choose the 1-2 most relevant domains, plus at most ONE closely related domain only if needed to interpret the relationship among parts. Reassess freely — do not mechanically keep prior domains if the writing/tension has changed.
+    tension = (session.theory.unresolved_tensions or [""])[0]
+    return f"""You choose which canonical writing domains — and which SECTIONS of those domains — are relevant to the student's CURRENT participation and developmental tension. Do NOT force a sequence. Choose the 1-2 most relevant domains, plus at most ONE closely related domain only if needed. Reassess freely — do not mechanically keep prior domains if the writing/tension has changed.
+
+For each chosen domain, also choose the 3-6 SECTION KEYS most relevant to the current tension (exact strings from that domain's "sections" list). Safety-rail sections are always included automatically, so do not worry about those.
 
 TELOS: {session.telos.governing_pedagogical_purpose} | task: {session.telos.immediate_task_purpose}
+CURRENT PRIMARY TENSION (if any): {tension or "(none yet)"}
 DOMAINS PREVIOUSLY RELEVANT: {prior if prior else "(none yet)"}
 
-COMPACT DOMAIN INDEX:
+COMPACT DOMAIN INDEX (each domain lists its available section keys):
 {json.dumps(COMPACT_DOMAIN_INDEX, indent=2)}
 
 {_latest_block(session, req)}
 
-Respond with ONLY this JSON: {{"relevant_domains": ["exact domain name", "..."]}} (1 to 3 names, exact strings from the index)."""
+Respond with ONLY this JSON:
+{{"relevant_domains": [{{"domain_name": "exact name", "relevant_sections": ["exact section key", "..."]}}]}}
+(1 to 3 domains; section keys must be exact strings from that domain's "sections".)"""
 
 
-def _build_prompt(session: Session, req: InteractRequest, relevant_domains: List[str]) -> str:
-    full_domain_data = get_relevant_domain_data(relevant_domains)
+def _select_names(selections: list) -> List[str]:
+    return [s["domain_name"] if isinstance(s, dict) else s for s in selections]
+
+
+def _build_prompt(session: Session, req: InteractRequest, selections: list) -> str:
+    full_domain_data = get_relevant_domain_data(selections)
+    names = _select_names(selections)
     return f"""CURRENT DEVELOPMENTAL TELOS (component A — provisional, revisable):
 {json.dumps(session.telos.model_dump(), indent=2)}
 
@@ -355,9 +382,9 @@ COMPACT CURRENT DEVELOPMENTAL THEORY (component C — your evolving theory so fa
 INTERACTION SUMMARY (component B — concise history of how participation reorganized):
 {_interaction_summary(session)}
 
-CURRENTLY RELEVANT CANONICAL DOMAINS (selected for THIS turn): {relevant_domains}
+CURRENTLY RELEVANT CANONICAL DOMAINS (selected for THIS turn): {names}
 
-FULL DATA FOR THE RELEVANT CANONICAL DOMAINS ONLY (domain-specific cultural resources loaded as DATA — use these, do not rely on general writing knowledge; you may adjust which domains are relevant and reflect that in currently_relevant_domains):
+RELEVANT SECTIONS OF THE RELEVANT CANONICAL DOMAINS (domain-specific cultural resources loaded as DATA — use these, do not rely on general writing knowledge; you may adjust which domains are relevant and reflect that in currently_relevant_domains):
 {json.dumps(full_domain_data, indent=2)}
 
 {_latest_block(session, req)}
@@ -493,28 +520,38 @@ async def edit_telos(session_id: str, edit: TelosEdit):
     return session
 
 
-async def _select_relevant_domains(session: Session, req: InteractRequest) -> List[str]:
-    """STAGE A — pick the 1-3 canonical domains relevant to this turn using the
-    compact index only. Retries once on transient failure, then falls back to the
-    theory's prior relevant domains (or Whole Essay Purpose)."""
+async def _select_relevant_domains(session: Session, req: InteractRequest) -> list:
+    """STAGE A — pick the 1-3 relevant domains AND, per domain, the relevant
+    section keys, using the compact index only. Retries once on transient
+    failure, then falls back to prior domains (whole records)."""
     prompt = _selector_prompt(session, req)
     for attempt in range(2):
         try:
             chat = LlmChat(
                 api_key=EMERGENT_LLM_KEY,
                 session_id=f"select-{session.id}",
-                system_message="You select relevant canonical writing domains. Respond with ONLY the requested JSON.",
+                system_message="You select relevant canonical writing domains and sections. Respond with ONLY the requested JSON.",
             ).with_model("anthropic", "claude-sonnet-4-6")
             raw = await chat.send_message(UserMessage(text=prompt))
-            names = [n for n in _extract_json(raw).get("relevant_domains", []) if n in _DOMAINS_BY_NAME]
-            if names:
-                return names[:3]
+            out = []
+            for item in _extract_json(raw).get("relevant_domains", []):
+                if isinstance(item, str):
+                    name, sections = item, []
+                else:
+                    name, sections = item.get("domain_name"), item.get("relevant_sections") or []
+                rec = _DOMAINS_BY_NAME.get(name)
+                if not rec:
+                    continue
+                out.append({"domain_name": name, "sections": [s for s in sections if s in rec]})
+            if out:
+                return out[:3]
         except Exception as e:  # noqa: BLE001
             logger.warning(f"domain selection attempt {attempt + 1} failed: {e}")
             if attempt == 0:
                 await asyncio.sleep(3)
     prior = [n for n in session.theory.currently_relevant_domains if n in _DOMAINS_BY_NAME]
-    return prior[:2] if prior else ["Whole Essay Purpose"]
+    fallback = prior[:2] if prior else ["Whole Essay Purpose"]
+    return [{"domain_name": n, "sections": []} for n in fallback]
 
 
 @api_router.post("/sessions/{session_id}/interact")
@@ -531,11 +568,12 @@ async def interact(session_id: str, req: InteractRequest):
 
     async def event_generator():
         try:
-            # STAGE A: choose relevant domains from the compact index
+            # STAGE A: choose relevant domains + sections from the compact index
             relevant = await _select_relevant_domains(session, req)
-            # STAGE B: reason with full data for only those domains
+            # STAGE B: reason with only the relevant sections of those domains
             prompt = _build_prompt(session, req, relevant)
-            logger.info(f"[interact] turn domains={relevant} reasoner_prompt_bytes={len(prompt)}")
+            _sel_log = {s["domain_name"]: len(s["sections"]) for s in relevant}
+            logger.info(f"[interact] domains/sections={_sel_log} reasoner_prompt_bytes={len(prompt)}")
 
             result = None
             last_err = None

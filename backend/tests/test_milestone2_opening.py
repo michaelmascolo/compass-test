@@ -345,8 +345,9 @@ class TestReasonerPromptSizeWithOpening:
     def test_recent_prompt_bytes_within_bounded_budget(self):
         log_paths = sorted(Path("/var/log/supervisor").glob("backend.*.log"))
         assert log_paths
+        # Milestone 3 changed the log format to '[interact] domains/sections={...} reasoner_prompt_bytes=NNNN'
         pat = re.compile(
-            r"\[interact\]\s+turn\s+domains=(\[[^\]]*\])\s+reasoner_prompt_bytes=(\d+)"
+            r"\[interact\]\s+domains/sections=(\{[^}]*\})\s+reasoner_prompt_bytes=(\d+)"
         )
         entries = []
         for p in log_paths:

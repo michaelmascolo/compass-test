@@ -1,0 +1,53 @@
+{
+  "summary": "Milestone 3 verification: enriched 'Central Claim / Thesis' canonical domain (31 keys, same schema as Opening) + generic section-level retrieval in the two-stage domain selector. Backend pytest: 30/30 pass (13 new M3 tests + 17 M1/M2 regression) against the public URL. Fixed the log-format regex in the two pre-existing test files (the M3 log line is `[interact] domains/sections={<name>: <count>, ...} reasoner_prompt_bytes=NNNN`, not the pre-M3 `turn domains=[...]` shape). Backend logs confirm section-level retrieval is active: 20 recent turns show reasoner_prompt_bytes ranging from ~7.8KB (Thesis+one lightweight domain) up to ~16.7KB (Thesis+Opening both enriched, both filtered to 4-6 sections). Median ~9KB. The whole 13-domain payload would be ~35KB+, so the two-stage + section-filter combo is measurably bounding the prompt. Per-domain section counts (4-6) confirm the filter is picking a subset of the ~31-key record rather than sending the full record. Central Claim/Thesis reasoning verified: (a) a topic-without-claim submission surfaces 'Central Claim / Thesis' in currently_relevant_domains and the invitation asks the student to distinguish topic from claim without supplying the claim; (b) a personal narrative session does NOT get pushed to state an argumentative thesis; (c) the invitation never uses banned formula language ('X because A, B, C', 'three-part thesis'). 4-turn thesis session (writing -> revise -> answer -> revise) each completes under 60s with `event: done`, theory_history grows v1..v4 preserving prior theories, changes_since_previous moves off 'initial' after turn 1, alternative_interpretations remains populated. Milestone 1 & 2 regression clean: 4-turn car-ban session all under 60s; Opening/Introduction still selected on intro submissions; alternative_interpretations rendered in dev panel; PATCH /telos + teacher_edits still works; GET returns full state with 8 turns / 4 interactions / 4 snapshots; empty -> 400 / missing -> 404 preserved. Frontend Playwright via public URL: TeacherSetup -> begin-session -> StudentWorkspace (writing-area + continue-button) -> ai-invitation rendered via SSE; dev panel (open-dev-panel-button -> development-panel) shows 'Currently Relevant Canonical Domains', 'Alternative Interpretations', 'Change From Previous Interaction', 2 candidate-invitation cards and selected-invitation; teacher telos edit (toggle-telos-editor -> telos-edit-current_writing_task -> save-telos-button) updates the workspace header; revise reply (reply-mode-revise + reply-input + send-reply-button) produces a second ai-invitation without denying the revision; reload via localStorage dws_session_id restores the conversation-thread with both AI bubbles.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions/{id}/interact", "issue": "reasoner_prompt_bytes still ~13-17KB whenever BOTH Central Claim/Thesis AND Opening/Introduction are selected in the same turn (their enrichments overlap). Under normal conditions (1 enriched + 1 lightweight domain) the prompt is the expected ~8-9KB. Not a functional bug; noted for future capacity planning if additional domains get enriched."},
+      {"endpoint": "POST /api/sessions", "issue": "Returns 200 instead of 201 for resource creation (carried over from prior iterations, non-blocking)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "StudentWorkspace + DevelopmentPanel at 1920px", "issues": ["Carried over from prior iterations (non-blocking): the sliding dev panel (max-w-md, fixed right-0) overlays the sticky 'Conversation with your coach' column rather than being offset — Section labels use CSS text-transform: uppercase, so any Playwright text-match must be case-insensitive."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_developmental_engine.py",
+    "/app/backend/tests/test_milestone2_opening.py",
+    "/app/backend/tests/test_milestone3_thesis.py",
+    "/app/test_reports/pytest/milestone3_results.xml",
+    "/app/test_reports/pytest/regression_m1m2_results.xml"
+  ],
+  "action_items": [
+    "None blocking. Optional: return 201 from POST /api/sessions.",
+    "Optional: offset dev panel so it doesn't overlay sticky conversation column at wide viewports.",
+    "Optional: if more domains get enriched to the ~31-field schema, keep an eye on turns where 2+ enriched domains co-occur (currently ~16-17KB); may want to cap sections per domain in _select_relevant_domains to keep the median down."
+  ],
+  "critical_code_review_comments": [
+    "server.py:_build_compact_domain_index — correctly attaches per-domain `sections` list (all keys except domain_name) to the STAGE A index, so the selector LLM can pick relevant sections without leaking full records into STAGE A.",
+    "server.py:get_relevant_domain_data — clean domain-independent implementation: accepts either bare names or {domain_name, sections} dicts, always preserves ALWAYS_KEYS (domain_name, governing_communicative_function, domain_status, prohibitions) as safety rails, falls back to whole record when sections is empty. No thesis-specific branching.",
+    "server.py:_select_relevant_domains — returns [{domain_name, sections}] uniformly; falls back to session.theory.currently_relevant_domains (as names, no sections -> whole record) on selector failure. Robust.",
+    "server.py:interact — log line `[interact] domains/sections={name:count} reasoner_prompt_bytes=NNNN` is the correct observable for verifying section-level retrieval; pre-M3 tests were pattern-matching the old `turn domains=[...]` shape and had to be updated (fixed in this iteration).",
+    "canonical_writing_model.json — Central Claim / Thesis enriched to 31 keys matching Opening/Introduction (domain_status, governing/possible functions, observable_organizations A-S, differentiations/integrations/coordinations, common_productive_tensions, alternative_interpretations, common_misunderstandings, developmental_movements, candidate_developmental_invitations, invitation_construction_rules, relationships, genre_sensitivity, inside_outside_coordination, prohibitions). Other 11 domains untouched. All 13 still parse.",
+    "Consistency: the review request enumerates 'observable_organizations A-S' — the Thesis record does contain this key, and Opening has A-L; the label range difference is content, not schema drift.",
+    "Non-blocking DRY observation: sse_interact() is duplicated across three test files. Consider moving it to /app/backend/tests/conftest.py in a future iteration to keep the test suite DRY."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_developmental_engine.py — updated TestTwoStageSelection regex from `[interact] turn domains=[...] reasoner_prompt_bytes=` to `[interact] domains/sections={...} reasoner_prompt_bytes=` to match the M3 log format.",
+    "/app/backend/tests/test_milestone2_opening.py — same regex update in TestReasonerPromptSizeWithOpening.",
+    "/app/backend/tests/test_milestone3_thesis.py — NEW. 13 tests: Thesis record shape, direct get_relevant_domain_data() section-filter helper (3 tests), 4-turn thesis reasoning flow, narrative genre sensitivity, log-line section-count parsing, prompt-size bounded by section filter, empty/missing validation regression."
+  ],
+  "success_rate": {
+    "backend": "100% (13/13 test_milestone3_thesis + 10/10 test_developmental_engine + 7/7 test_milestone2_opening = 30/30 against the public URL, combined runtime ~7.5 min)",
+    "frontend": "100% of M3 flows: TeacherSetup -> begin-session -> writing -> ai-invitation via SSE -> dev panel (Currently Relevant Canonical Domains + Alternative Interpretations + Change From Previous Interaction + 2 candidate-invitation cards + selected-invitation) -> teacher telos edit + header refresh -> revise reply -> second ai-invitation -> reload persistence via localStorage dws_session_id"
+  },
+  "test_credentials": "N/A — no auth in this app.",
+  "seed_data_creation": "Three TEST_M3-prefixed sessions written to MongoDB by the milestone3 pytest (argumentative + narrative + Playwright), harmless.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run the full backend suite serially: `pytest /app/backend/tests/test_developmental_engine.py /app/backend/tests/test_milestone2_opening.py /app/backend/tests/test_milestone3_thesis.py -v -n 0` (~7.5 min because every turn is a live Claude Sonnet 4.6 call). Milestone 3 log line format is `[interact] domains/sections={<name>: <section_count>, ...} reasoner_prompt_bytes=NNNN` — any future test that pattern-matches must use `\\{[^}]*\\}` for the domains/sections payload (NOT the pre-M3 `\\[[^\\]]*\\]` shape). Section-filtered reasoner_prompt_bytes ranges: ~8KB when Thesis or Opening is the only enriched domain selected; ~13-17KB when both Thesis AND Opening are selected on the same turn (still filtered to 4-6 sections each). Whole-model payload would be ~35KB+, so the current 26KB assertion ceiling in all three test files is a safe regression alarm. When adding more enriched domains, keep the ceiling aligned with the empirical worst case.",
+  "rca of the issue": "N/A — Milestone 3 acceptance passed end-to-end. Only test-code drift was fixed (the M2 log-format assumption in two pre-existing test files did not match the M3 log format; updated the regex in-place)."
+}
