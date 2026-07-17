@@ -243,8 +243,7 @@ export default function StudentWorkspace({
                 </button>
               </div>
               <p className="text-[10px] text-stone-400 mt-1.5">
-                To revise or keep writing, edit your draft on the left and send
-                it again.
+                Revise here with the <span className="font-medium">revise</span> mode, or edit your draft on the left and send it again.
               </p>
             </div>
           )}
