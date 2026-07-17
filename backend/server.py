@@ -56,8 +56,14 @@ def _build_compact_domain_index() -> list:
     The full structured records stay on disk in canonical_writing_model.json."""
     index = []
     for d in CANONICAL_WRITING_MODEL.get("domains", []):
-        fns = d.get("communicative_functions", [])
-        one_sentence = ("Serves to " + ", ".join(fns[:3]) + ".") if fns else ""
+        gov = d.get("governing_communicative_function")
+        fns = d.get("communicative_functions") or d.get("possible_communicative_functions") or []
+        if gov:
+            one_sentence = gov if len(gov) <= 200 else gov[:197] + "..."
+        elif fns:
+            one_sentence = "Serves to " + ", ".join(fns[:3]) + "."
+        else:
+            one_sentence = ""
         index.append({
             "domain_name": d.get("domain_name"),
             "communicative_function": one_sentence,
@@ -114,6 +120,7 @@ class DevelopmentalTheory(BaseModel):
     current_uncertainty: List[str] = Field(default_factory=list)
     supporting_evidence: List[str] = Field(default_factory=list)
     complicating_evidence: List[str] = Field(default_factory=list)
+    alternative_interpretations: List[str] = Field(default_factory=list)
     currently_relevant_domains: List[str] = Field(default_factory=list)
     changes_since_previous: str = ""
 
@@ -244,6 +251,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
     "possible_reorganizations": [], "current_uncertainty": [],
     "supporting_evidence": [], "complicating_evidence": [],
+    "alternative_interpretations": ["plausible alternative readings you are preserving (do not collapse uncertainty into one confident diagnosis)"],
     "currently_relevant_domains": ["names of the canonical domains currently relevant, chosen from the supplied model — not a fixed order"],
     "changes_since_previous": "what changed vs the prior theory (or 'initial' on first turn)"
   },
@@ -283,6 +291,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,
+        "alternative_interpretations": theory.alternative_interpretations,
         "current_uncertainty": theory.current_uncertainty,
         "complicating_evidence": theory.complicating_evidence,
         "changes_since_previous": theory.changes_since_previous,

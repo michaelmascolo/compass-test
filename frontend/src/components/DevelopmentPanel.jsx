@@ -223,6 +223,9 @@ export default function DevelopmentPanel({
               <Block label="Evidence — Complicating / Contradicting">
                 <List items={theory.complicating_evidence} />
               </Block>
+              <Block label="Alternative Interpretations (preserved)">
+                <List items={theory.alternative_interpretations} />
+              </Block>
               <Block label="Current Uncertainty">
                 <List items={theory.current_uncertainty} />
               </Block>

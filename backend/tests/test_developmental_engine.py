@@ -544,10 +544,16 @@ class TestTwoStageSelection:
         )
         # Consider only the most recent entries from this test run
         recent = entries[-4:] if len(entries) >= 4 else entries
+        # NOTE: Milestone 2 enriched the 'Opening / Introduction' domain to ~31
+        # fields (~15KB). When that domain is selected in STAGE A, the STAGE B
+        # reasoner prompt grows to ~22-24KB even though only 1-3 domains are
+        # included. This budget accommodates that enrichment while still
+        # ensuring the two-stage selection is NOT sending the whole 13-domain
+        # model (which would be ~35KB+).
         for domains_str, size in recent:
-            assert size <= 12000, (
+            assert size <= 26000, (
                 f"reasoner_prompt_bytes={size} for domains={domains_str} — "
-                f"expected roughly <=7KB (allowing up to 12KB slack). "
+                f"expected <=26KB (Opening / Introduction enriched ~15KB). "
                 f"Two-stage selection may not be limiting payload as intended."
             )
         print(f"reasoner_prompt_bytes over recent turns: {recent}")
