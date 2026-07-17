@@ -1,0 +1,42 @@
+{
+  "summary": "Validated the revise-acknowledgement bug fix end-to-end. Backend: 7/7 pytest cases green (added a dedicated TestReviseAcknowledgement class that submits a kind='revise' turn with substantively different content and asserts (a) HTTP 200, (b) 6 turns in the correct sequence, (c) the AI invitation does not contain any of ~11 deny-revision phrases (haven't revised / no revision / same as before / etc.), (d) developmental_movement is non-empty and not 'initial' and does not deny the change, and (e) current_student_writing is populated. Also strengthened TestSecondInteract to check that a kind='answer' reply is NOT misread as a new draft. Frontend: full Playwright flow from Teacher Setup → Begin Session → first writing turn → first AI invitation → select reply-mode-revise → send revised text via the thread's send-reply-button → second AI invitation. The second invitation explicitly acknowledged the change (\"You've made a real structural leap here — the previous draft stacked 'also…also…also' complaints, and now you've opened with a governing claim ('make the core more livable')...\") and dev panel showed direct_evidence quotes lifted verbatim from the revised draft. All three reply modes (answer/explain/revise) render as buttons with the expected data-testids. Single-page navigation confirmed — URL never changed. Dev panel open/close works via open-dev-panel-button and close-dev-panel-button. Fix is verified.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions", "issue": "Still returns 200 instead of 201 on resource creation (unchanged from iteration_1, non-blocking)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "StudentWorkspace + DevelopmentPanel", "issues": ["Repeat of iteration_1 finding: on a 1920px viewport with the dev panel open, the panel overlaps the sticky conversation column (screenshot: /tmp/dev_panel_open.png shows the panel clipping the right-hand thread). Content is still readable — not blocking, but a right pad or translated main pane would look cleaner."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_developmental_engine.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "None required — the bug fix is verified end-to-end. Optional carry-overs from iteration_1: (a) return 201 from POST /api/sessions, (b) shift or narrow the dev panel so it doesn't overlap the sticky conversation column at ~1920px, (c) disable writing-area during loading, (d) add a small retry around chat.send_message to soften transient 502s."
+  ],
+  "critical_code_review_comments": [
+    "server.py:_build_prompt now correctly separates DRAFT kinds (writing/revise/continue) from reply kinds (answer/explain) via DRAFT_KINDS, labels CURRENT DRAFT vs PREVIOUS DRAFT explicitly, and appends an instruction never to deny a revision that differs — this is exactly the right place to encode the fix. Good.",
+    "server.py:_build_prompt walks session.turns[:-1] in reverse to find the previous draft — correct because the current student turn has already been appended before run_engine is called. Nice defensive comment on lines 162-164.",
+    "SYSTEM_MESSAGE line 101 now carries a matching non-negotiable rule about draft comparison — belt-and-suspenders with the per-request prompt. Good.",
+    "StudentWorkspace.jsx: submitDraft correctly sends kind='revise' when started (line 68) and submitReply routes replyMode ('answer'|'explain'|'revise') straight into onSubmit (line 73). The revise path is now genuinely dual: canvas-side (continue-button) AND thread-side (reply-mode-revise + send-reply-button). Verified both dispatch kind='revise'.",
+    "Minor: the small helper text under the reply box still reads 'To revise or keep writing, edit your draft on the left and send it again.' — now slightly misleading because revise is also available inline. Consider updating to acknowledge both paths.",
+    "Minor: no client-side visual differentiation of which reply mode was used on a rendered student bubble beyond the tiny 'You · <kind>' label — fine for MVP, but a revise-tagged bubble might merit a subtle affordance.",
+    "Repeat from iteration_1: no length cap on writing-area / reply-input — LLM context/cost risk on very long submissions."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_developmental_engine.py (added TestReviseAcknowledgement class + stricter assertions on TestSecondInteract and TestPersistence to reflect 6 turns)"
+  ],
+  "success_rate": {"backend": "100% (7/7)", "frontend": "100% of critical flows"},
+  "test_credentials": "N/A — no auth in this app.",
+  "seed_data_creation": "One additional TEST_-prefixed session created during the pytest run (harmless).",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "Backend tests MUST be run serially: `pytest /app/backend/tests/test_developmental_engine.py -v -n 0` (module-scoped fixtures + pytest.<attr> sharing state across classes; pytest.ini's default xdist config will break state-sharing). A full run takes ~70-90s because there are now 3 Claude calls (writing + answer + revise). If you extend to more turns, budget ~15-25s per additional AI turn.",
+  "rca of the issue": "Original bug (iteration_1 → post-hoc report): the coach denied a revision that had clearly happened. Root cause was two-part: (1) pasted revisions submitted via the thread arrived as kind='answer' and _build_prompt treated them as verbal replies, so the model never compared them to the previous draft; (2) even for kind='writing'/'revise'/'continue', the prompt did not explicitly show PREVIOUS DRAFT vs CURRENT DRAFT, so the model had to infer it from raw turn history and sometimes concluded no revision occurred. Fix (verified this iteration): (a) UI now exposes an explicit 'revise' reply mode that sends kind='revise' from the thread; (b) _build_prompt now, for any kind in DRAFT_KINDS, emits a labeled CURRENT DRAFT block, a labeled PREVIOUS DRAFT block, and an explicit instruction ('Compare the CURRENT DRAFT to the PREVIOUS DRAFT literally... Never tell the student they have not revised when the current draft differs from the previous one'); (c) SYSTEM_MESSAGE carries a parallel non-negotiable rule. Reproduction/mitigation confirmed: the automated Playwright run above submitted a genuinely restructured revision via reply-mode-revise, and the coach's response opened with 'You've made a real structural leap here — the previous draft stacked also…also…also complaints, and now you've opened with a governing claim...' — direct acknowledgement of the change."
+}

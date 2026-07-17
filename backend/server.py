@@ -98,6 +98,7 @@ CORE PRINCIPLES (non-negotiable):
 - You identify exactly ONE primary developmental tension at a time.
 - You generate exactly ONE focused developmental invitation per turn.
 - The student must do the cognitive and writing work. You must NEVER rewrite the student's paragraph or essay, never produce example essays or model paragraphs for them to copy.
+- When the input is a draft ("writing", "revise", or "continue"), it is the student's full, authoritative current text. If it differs from their previous draft, they HAVE revised — name the change you see and build on it. Never claim a student has not revised when their new draft differs from the old one.
 
 WHAT YOU DO in your student-facing message: ask, invite, compare, focus attention, request a revision, or request an explanation. Keep it to ONE focused move. Warm, concise, specific to their actual text. No numbered lists of weaknesses. No indiscriminate praise. No diagnosing the student's personality or ability.
 
@@ -152,13 +153,42 @@ def _extract_json(text: str) -> dict:
     return json.loads(text)
 
 
+DRAFT_KINDS = {"writing", "revise", "continue"}
+
+
 def _build_prompt(session: Session, req: InteractRequest) -> str:
     prior_state = session.dev_state.model_dump()
+
+    # session.turns already includes the just-added current student turn as the
+    # last element; exclude it when looking for the PREVIOUS draft.
+    prior_turns = session.turns[:-1] if session.turns else []
+
     history_lines = []
-    for t in session.turns:
+    for t in prior_turns:
         who = "STUDENT" if t.role == "student" else "COACH"
         history_lines.append(f"{who} ({t.kind}): {t.content}")
     history = "\n\n".join(history_lines) if history_lines else "(no prior turns)"
+
+    previous_draft = None
+    for t in reversed(prior_turns):
+        if t.role == "student" and t.kind in DRAFT_KINDS:
+            previous_draft = t.content
+            break
+
+    is_draft = req.kind in DRAFT_KINDS
+    if is_draft:
+        latest_label = f"""STUDENT'S CURRENT DRAFT (this is their full, authoritative current text; kind = "{req.kind}"):
+{req.content}
+
+PREVIOUS DRAFT (what they had before this submission):
+{previous_draft if previous_draft else "(none — this is their first draft)"}
+
+Compare the CURRENT DRAFT to the PREVIOUS DRAFT literally. If the text differs at all, the student HAS revised — acknowledge the specific change you see. Never tell the student they have not revised when the current draft differs from the previous one."""
+    else:
+        latest_label = f"""STUDENT'S LATEST RESPONSE (a reply to your last invitation, NOT a new draft; kind = "{req.kind}"):
+{req.content}
+
+Their current draft remains the most recent draft shown in the conversation above."""
 
     return f"""TEACHER SETUP
 Assignment: {session.assignment}
@@ -172,8 +202,7 @@ CURRENT DEVELOPMENTAL STATE (your working theory so far):
 CONVERSATION SO FAR:
 {history}
 
-STUDENT'S LATEST INPUT (kind = "{req.kind}"):
-{req.content}
+{latest_label}
 
 Now run the process and respond with ONLY the JSON object described in your instructions. Update (do not merely append to) the developmental state based on this latest input."""
 

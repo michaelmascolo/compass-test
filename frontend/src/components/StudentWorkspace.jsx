@@ -198,7 +198,7 @@ export default function StudentWorkspace({
           {started && (
             <div className="border-t border-stone-200 p-4 shrink-0 bg-white">
               <div className="flex gap-2 mb-2">
-                {["answer", "explain"].map((m) => (
+                {["answer", "explain", "revise"].map((m) => (
                   <button
                     key={m}
                     data-testid={`reply-mode-${m}`}
@@ -226,7 +226,9 @@ export default function StudentWorkspace({
                   placeholder={
                     replyMode === "answer"
                       ? "Answer the coach's question…"
-                      : "Explain your thinking…"
+                      : replyMode === "explain"
+                        ? "Explain your thinking…"
+                        : "Paste or type your revised writing…"
                   }
                   className="flex-1 bg-white border border-stone-300 rounded-sm p-3 text-sm text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors resize-none"
                 />
