@@ -1,0 +1,53 @@
+{
+  "summary": "Milestone 4 verification: 'Paragraph Purpose' canonical domain enriched to the ~31-field schema (matching Opening/Introduction and Central Claim/Thesis); engine code UNCHANGED (still uses the generic section-level retrieval + two-stage domain/section selector from M3). Backend pytest 14/14 pass on new /app/backend/tests/test_milestone4_paragraph.py (record shape + observable_organizations count + other-domains-untouched + 4-turn Paragraph Purpose flow + narrative & reflective genre sensitivity + section-level log/prompt-size bounded + validation regression + section-filter unit) — 202s. Full M1+M2+M3 regression 30/30 pass on the existing test_developmental_engine.py + test_milestone2_opening.py + test_milestone3_thesis.py suite — 456s. Combined 44/44 pass against the public URL (https://dev-converse.preview.emergentagent.com). Paragraph Purpose reasoning verified end-to-end: a topic-listing body paragraph for an argumentative essay surfaces 'Paragraph Purpose' in theory.currently_relevant_domains alongside 'Central Claim / Thesis'; the invitation asks the student to name the paragraph's job WITHOUT rewriting it, WITHOUT demanding a first-sentence topic sentence, and WITHOUT forcing claim-evidence-analysis; alternative_interpretations remains populated; theory_history grows v1..v4 across a 4-turn session (writing -> revise -> answer -> revise) each under 60s. Genre sensitivity holds: a narrative paragraph is NOT pushed into 'state your claim / add evidence / analyze it' language, and a reflective paragraph's uncertainty is not forced to resolve. Section-level retrieval remains bounded even with THREE enriched domains: recent backend log samples show reasoner_prompt_bytes 10.7-17.6KB with 4-6 sections per selected domain (versus the ~50KB whole-13-domain dump). Frontend Playwright via public URL: TeacherSetup (input-assignment/input-pedagogical_purpose/input-current_writing_task) -> begin-session-button -> StudentWorkspace (writing-area + continue-button) -> SSE ai-invitation rendered -> open-dev-panel-button -> development-panel shows 'CURRENTLY RELEVANT CANONICAL DOMAINS: Central Claim / Thesis, Paragraph Purpose', ACTIVE TENSION(S), Alternative Interpretations, candidate-invitation-0/1 cards, selected-invitation; toggle-telos-editor -> telos-edit-current_writing_task -> save-telos-button (verified in prior M3 iteration).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions", "issue": "Still returns 200 instead of 201 for resource creation (carried over from prior iterations, non-blocking)."},
+      {"endpoint": "POST /api/sessions/{id}/interact", "issue": "reasoner_prompt_bytes hits ~17.6KB whenever BOTH Opening/Introduction AND Central Claim/Thesis are selected in the same turn (their enrichments overlap). Paragraph Purpose alone with a lightweight partner stays ~11-12KB. Not a functional bug; noted for future capacity planning if more domains get enriched."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Revise via right-side reply-input", "issue": "Clicking reply-mode-revise switches the LEFT writing-area into 'Send revised draft' mode; typing into reply-input on the right does not trigger revise submission (send-reply-button is only wired for 'answer'/'explain' modes). This is expected UX per StudentWorkspace.jsx design (revise updates the draft on the left), but the reply-input remains visually editable while the mode is 'revise' which can mislead automated tests. Not an M4 regression; noted so future Playwright scripts use writing-area + continue-button for revise, not reply-input + send-reply-button.", "affected_selectors": ["reply-mode-revise", "reply-input", "send-reply-button"]}
+    ],
+    "design_issues": [
+      {"screen": "StudentWorkspace + DevelopmentPanel at 1920px", "issues": ["Carried over from prior iterations (non-blocking): the sliding dev panel (max-w-md, fixed right-0) overlays the sticky 'Conversation with your coach' column rather than being offset."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_milestone4_paragraph.py",
+    "/app/backend/tests/test_milestone3_thesis.py",
+    "/app/backend/tests/test_milestone2_opening.py",
+    "/app/backend/tests/test_developmental_engine.py",
+    "/app/test_reports/pytest/milestone4_results.xml",
+    "/app/test_reports/pytest/regression_m1m2m3_results.xml"
+  ],
+  "action_items": [
+    "None blocking. Milestone 4 acceptance criteria met end-to-end.",
+    "Optional (carry-over): return 201 from POST /api/sessions.",
+    "Optional (carry-over): offset dev panel so it doesn't overlay sticky conversation column at wide viewports.",
+    "Optional: if a fourth domain gets enriched to the ~31-field schema, keep an eye on turns where 3+ enriched domains co-occur — current M4 test file has a 32KB ceiling; may want to cap sections per domain in _select_relevant_domains to keep the median down."
+  ],
+  "critical_code_review_comments": [
+    "canonical_writing_model.json — Paragraph Purpose enriched to 31 keys (domain_status, governing/possible_communicative_functions, observable_organizations A-V with 22 entries, possible_differentiations/integrations/coordinations, common_productive_tensions, alternative_interpretations, common_misunderstandings, possible_developmental_movements, candidate_developmental_invitations (14), invitation_construction_rules, relationships_to_other_domains, genre_sensitivity, inside_outside_coordination, prohibitions (13)). Other 10 lightweight domains untouched at 9 keys each; Opening and Thesis untouched at 31 keys each. Verified via test_other_domains_untouched_by_m4.",
+    "server.py — DATA-ONLY milestone confirmed: git-diff-free view of server.py shows the SAME two-stage selector + get_relevant_domain_data + ALWAYS_KEYS + _select_relevant_domains + log line '[interact] domains/sections={name:count} reasoner_prompt_bytes=NNNN' from M3. No paragraph-specific branching in the engine. The record-only enrichment is the correct approach per the milestone contract.",
+    "test_milestone4_paragraph.py — Adds a THIRD enriched-domain regression suite while sharing the SSE helper shape with M3 (opportunity to hoist sse_interact into conftest.py in a future iteration — flagged in M3 review, still applicable).",
+    "Genre sensitivity: the paragraph_purpose genre_sensitivity field in the record is exercised end-to-end via TestGenreSensitivity — narrative + reflective sessions produce invitations that avoid claim-evidence-analysis language. This is the correct semantic test for a DATA-ONLY milestone (the record's content is what shapes the invitation, not code).",
+    "Bounded prompt: the M4 ceiling of 32KB in test_recent_prompt_bytes_bounded is a safe alarm — empirical worst case observed is ~17.6KB (Opening + Thesis both selected). The ~50KB whole-13-domain dump would trip the assertion; section-level retrieval is measurably working."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_milestone4_paragraph.py — NEW. 14 tests covering M4 acceptance: record shape (3), 4-turn Paragraph Purpose flow (4), narrative + reflective genre sensitivity (2), section-level retrieval log format + prompt-size bounded (2), empty/missing validation regression (2), section-filter helper unit (1)."
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 test_milestone4_paragraph in 202s + 30/30 M1/M2/M3 regression in 456s = 44/44 against the public URL)",
+    "frontend": "100% of M4 flows verified via public URL: TeacherSetup -> begin-session -> writing (body paragraph) -> ai-invitation via SSE -> dev panel showing 'CURRENTLY RELEVANT CANONICAL DOMAINS: Central Claim / Thesis, Paragraph Purpose' + ACTIVE TENSION(S) + Alternative Interpretations + candidate-invitation-0/1 cards + selected-invitation."
+  },
+  "test_credentials": "N/A — no auth in this app.",
+  "seed_data_creation": "Three TEST_M4-prefixed sessions created in MongoDB by the milestone4 pytest (argumentative paragraph, narrative, reflective) + one TEST_M4_UI session from Playwright, harmless.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Run the full backend suite serially: `pytest /app/backend/tests/test_developmental_engine.py /app/backend/tests/test_milestone2_opening.py /app/backend/tests/test_milestone3_thesis.py /app/backend/tests/test_milestone4_paragraph.py -v -n 0` (~11 min total because every /interact turn is a live Claude Sonnet 4.6 call). Milestone 4 introduces NO new log format — still `[interact] domains/sections={<name>: <section_count>, ...} reasoner_prompt_bytes=NNNN`. Section-filtered reasoner_prompt_bytes ranges: ~8-12KB when Paragraph Purpose + one lightweight domain is selected; ~13-18KB when TWO of the enriched trio (Opening / Thesis / Paragraph Purpose) co-occur, each still filtered to 4-6 sections. Whole-model payload would be ~50KB. The M4 test file uses a 32KB ceiling and 22KB median; the M3 test file uses a stricter 26KB ceiling and 16KB median which still passes on the current data. TeacherSetup input testids are `input-assignment`, `input-pedagogical_purpose`, `input-current_writing_task`, `input-teacher_notes` (NOT `assignment-input` etc). StudentWorkspace revise flow: clicking reply-mode-revise switches the LEFT writing-area into 'Send revised draft' mode — the RIGHT reply-input + send-reply-button are for 'answer' / 'explain' modes only. Use writing-area + continue-button for a revise submission in Playwright.",
+  "rca of the issue": "N/A — Milestone 4 acceptance passed end-to-end. Paragraph Purpose enrichment is data-only; engine correctly picks it up via the M3 two-stage domain/section selector without any code change."
+}
