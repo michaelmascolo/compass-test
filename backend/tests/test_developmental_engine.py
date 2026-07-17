@@ -1,13 +1,18 @@
-"""Backend tests for the Developmental Guide Engine.
+"""Backend tests for the Developmental Guide Engine (iteration_4).
 
-Milestone under test (iteration_3):
-- The engine is now DOMAIN-INDEPENDENT and consults a Canonical Writing Model
-  loaded as DATA (backend/canonical_writing_model.json, 13 domains).
+Milestone under test:
+- /api/sessions/{id}/interact is now an SSE StreamingResponse (text/event-stream).
+  Heartbeats keep the connection warm past Cloudflare's ~60s edge cap. A final
+  `event: done` line carries the full session JSON (or `event: error` on
+  failure). Prompts have been slimmed and a BREVITY rule added so all turns
+  finish comfortably under 60s.
+- Domain-independent reasoning engine + domain-specific Canonical Writing
+  Model (13 domains loaded as DATA).
 - Session persists: telos (A), interactions (B, with candidate_invitations +
   selected_invitation + observed_reorganization), theory (C, one evolving
-  provisional working developmental theory), theory_history (previous
-  theories preserved), and turns.
-- No stages/levels/scores anywhere.
+  provisional working theory with currently_relevant_domains), theory_history
+  (previous theories preserved, not overwritten), turns.
+- No stages / levels / scores anywhere.
 - Teacher can revise the telos via PATCH /api/sessions/{id}/telos.
 
 Run serially:  pytest /app/backend/tests/test_developmental_engine.py -v -n 0
@@ -33,27 +38,64 @@ if not BASE_URL:
 assert BASE_URL, "REACT_APP_BACKEND_URL must be set (in env or frontend/.env)"
 BASE_URL = BASE_URL.rstrip("/")
 API = f"{BASE_URL}/api"
-LLM_TIMEOUT = 120  # Claude calls can take 10-30s; the prompt is now large
+LLM_TIMEOUT = 120  # stream should complete well under this
 
 
-def post_interact_with_retry(client, sid, payload, retries=4, sleep_between=10):
-    """Retry the interact endpoint once on transient gateway errors (502/503/504).
+def sse_interact(client, sid, payload, timeout=LLM_TIMEOUT):
+    """POST to /interact and consume the SSE stream.
 
-    The prompt now embeds the full canonical writing model, so responses are
-    larger and occasionally hit Cloudflare's edge timeout. A one-shot retry is
-    the right layer here — we still assert on the eventual body.
+    Returns a tuple (status_code, done_json_or_none, error_detail_or_none).
     """
-    last = None
-    for attempt in range(retries + 1):
-        r = client.post(
-            f"{API}/sessions/{sid}/interact",
-            json=payload, timeout=LLM_TIMEOUT,
-        )
-        last = r
-        if r.status_code not in (502, 503, 504):
-            return r
-        time.sleep(sleep_between)
-    return last
+    started = time.time()
+    with client.post(
+        f"{API}/sessions/{sid}/interact",
+        json=payload,
+        stream=True,
+        timeout=timeout,
+        headers={"Accept": "text/event-stream"},
+    ) as r:
+        if r.status_code != 200:
+            # try to read a body for context but don't blow up on binary
+            try:
+                body = r.text
+            except Exception:
+                body = ""
+            return r.status_code, None, body
+
+        buffer = ""
+        done_payload = None
+        error_detail = None
+        for chunk in r.iter_content(chunk_size=None, decode_unicode=True):
+            if chunk is None:
+                continue
+            buffer += chunk
+            while "\n\n" in buffer:
+                raw_event, buffer = buffer.split("\n\n", 1)
+                event_name = "message"
+                data_lines = []
+                for line in raw_event.split("\n"):
+                    if not line or line.startswith(":"):
+                        continue  # heartbeat comment
+                    if line.startswith("event:"):
+                        event_name = line[len("event:"):].strip()
+                    elif line.startswith("data:"):
+                        data_lines.append(line[len("data:"):].strip())
+                data = "".join(data_lines)
+                if event_name == "done" and data:
+                    done_payload = json.loads(data)
+                elif event_name == "error" and data:
+                    try:
+                        error_detail = json.loads(data).get("detail")
+                    except Exception:
+                        error_detail = data
+            if done_payload is not None or error_detail is not None:
+                break
+        elapsed = time.time() - started
+        # attach elapsed to done payload for downstream inspection if useful
+        if done_payload is not None:
+            done_payload.setdefault("_elapsed_seconds", elapsed)
+        return r.status_code, done_payload, error_detail
+
 
 # Load the 13 canonical domain names once
 CANONICAL_PATH = Path("/app/backend/canonical_writing_model.json")
@@ -118,14 +160,12 @@ def created_session(client):
     assert data["interactions"] == []
     assert data["theory_history"] == []
 
-    # telos seeded from teacher inputs
     telos = data["telos"]
     assert telos["governing_pedagogical_purpose"] == payload["pedagogical_purpose"]
     assert telos["immediate_task_purpose"] == payload["current_writing_task"]
     assert telos["assignment_context"] == payload["assignment"]
     assert telos["teacher_intentions"] == payload["teacher_notes"]
 
-    # theory has expected default keys, all empty
     theory = data["theory"]
     for k in [
         "current_telos", "current_organization",
@@ -154,9 +194,10 @@ class TestSessionCreation:
 
 
 # ---------------------------------------------------------------------------
-# First writing turn: currently_relevant_domains populated from canonical model,
-# 2-3 candidate invitations, one selected, observed_reorganization present,
-# theory_history has one snapshot preserving the PREVIOUS (empty) theory.
+# First writing turn (SSE): 200 + done event with full session,
+# currently_relevant_domains from canonical model, 2-3 candidate invitations,
+# one selected, observed_reorganization present, theory_history preserves
+# the empty initial theory as v1.
 # ---------------------------------------------------------------------------
 class TestFirstInteract:
     def test_first_writing_populates_theory_and_history(self, client, created_session):
@@ -169,12 +210,17 @@ class TestFirstInteract:
                 "it is important to make it nice."
             ),
         }
-        r = post_interact_with_retry(client, created_session["id"], payload)
-        assert r.status_code == 200, r.text
-        data = r.json()
+        status, data, err = sse_interact(client, created_session["id"], payload)
+        assert status == 200, f"Expected 200, got {status}. err={err}"
+        assert err is None, f"SSE emitted error: {err}"
+        assert data is not None, "SSE completed without a done event"
+
+        elapsed = data.get("_elapsed_seconds")
+        assert elapsed is not None and elapsed < 60, (
+            f"Turn 1 took {elapsed:.1f}s (must be <60s to stay under edge cap)"
+        )
         pytest.first_interact_response = data
 
-        # 2 turns: student then AI
         assert len(data["turns"]) == 2
         assert data["turns"][0]["role"] == "student" and data["turns"][0]["kind"] == "writing"
         assert data["turns"][1]["role"] == "ai" and data["turns"][1]["kind"] == "invitation"
@@ -185,29 +231,24 @@ class TestFirstInteract:
         assert "Cars are bad. They cause pollution." not in invitation, (
             "AI appears to have rewritten the student's paragraph"
         )
-        # AI must NOT emit a numbered list of errors
         assert not (invitation.startswith("1.") and "2." in invitation and "3." in invitation), (
             "AI produced a numbered list of errors instead of a single invitation"
         )
-        # No stage / score language
         assert not _has_stage_or_score_language(invitation), (
             f"Invitation leaks stage/score language: {invitation!r}"
         )
 
-        # theory populated
         theory = data["theory"]
         rel = theory["currently_relevant_domains"]
         assert isinstance(rel, list) and len(rel) >= 1, (
             f"currently_relevant_domains empty after first turn: {rel!r}"
         )
-        # every entry must come from the 13 canonical domain names
         for name in rel:
             assert name in CANONICAL_DOMAIN_NAMES, (
                 f"'{name}' is not one of the 13 canonical domains {CANONICAL_DOMAIN_NAMES}"
             )
         assert theory["current_organization"].strip() != ""
 
-        # interactions[-1] has 2 or 3 candidates, a selected invitation, and observed_reorganization
         assert len(data["interactions"]) == 1
         ir = data["interactions"][-1]
         assert 2 <= len(ir["candidate_invitations"]) <= 3, (
@@ -216,7 +257,6 @@ class TestFirstInteract:
         assert ir["selected_invitation"]["invitation"].strip() != ""
         assert ir["observed_reorganization"].strip() != ""
 
-        # theory_history has 1 snapshot preserving the PREVIOUS (empty) theory
         assert len(data["theory_history"]) == 1
         snap0 = data["theory_history"][0]
         assert snap0["version"] == 1
@@ -224,7 +264,6 @@ class TestFirstInteract:
             "theory_history[0] should preserve the empty initial theory, not the new one"
         )
 
-        # No numeric developmental scores anywhere in theory text
         theory_blob = json.dumps(theory)
         assert not _has_stage_or_score_language(theory_blob), (
             "Stage/score language leaked into theory"
@@ -232,8 +271,10 @@ class TestFirstInteract:
 
 
 # ---------------------------------------------------------------------------
-# Second interact (revise) — theory_history grows to 2, changes_since_previous
-# is not 'initial', theory is REVISED (not appended), still no stages/scores.
+# Second interact (revise) — this was the CRITICAL 502 case in iteration_3.
+# With SSE + slimmed prompts, this must return 200 with a done event well
+# under 60s. theory_history grows to 2 preserving the FIRST theory,
+# changes_since_previous is not 'initial'.
 # ---------------------------------------------------------------------------
 class TestSecondInteract:
     def test_second_interact_revises_theory_and_history(self, client, created_session):
@@ -254,15 +295,20 @@ class TestSecondInteract:
             "survive. Each of these follows from the livability claim; I am "
             "no longer just listing complaints about cars."
         )
-        r = post_interact_with_retry(
+        status, data, err = sse_interact(
             client, created_session["id"],
             {"kind": "revise", "content": revised_draft},
         )
-        assert r.status_code == 200, r.text
-        data = r.json()
+        assert status == 200, f"Expected 200, got {status}. err={err}"
+        assert err is None, f"SSE emitted error on turn 2: {err}"
+        assert data is not None, "SSE completed without a done event"
+
+        elapsed = data.get("_elapsed_seconds")
+        assert elapsed is not None and elapsed < 60, (
+            f"Turn 2 took {elapsed:.1f}s (must be <60s — this is the regression case)"
+        )
         pytest.second_interact_response = data
 
-        # 4 turns now
         assert len(data["turns"]) == 4
         assert data["turns"][2]["kind"] == "revise"
         assert data["turns"][3]["role"] == "ai"
@@ -271,7 +317,6 @@ class TestSecondInteract:
         assert second_invitation != first_invitation
         assert not _has_stage_or_score_language(second_invitation)
 
-        # revise must be acknowledged, never denied
         low = second_invitation.lower()
         for phrase in [
             "haven't revised", "have not revised", "you didn't revise",
@@ -282,40 +327,85 @@ class TestSecondInteract:
                 f"Coach denied the revision with {phrase!r}: {second_invitation!r}"
             )
 
-        # theory_history now has 2 snapshots
         assert len(data["theory_history"]) == 2
         assert data["theory_history"][0]["version"] == 1
         assert data["theory_history"][1]["version"] == 2
-        # v2 preserves the FIRST theory (which had non-empty relevant domains)
-        assert data["theory_history"][1]["theory"]["currently_relevant_domains"] == list(first_domains) or \
-            set(data["theory_history"][1]["theory"]["currently_relevant_domains"]) == first_domains, (
-                "theory_history[1] should preserve the first-turn theory"
-            )
+        v2_domains = set(data["theory_history"][1]["theory"]["currently_relevant_domains"])
+        assert v2_domains == first_domains, (
+            "theory_history[1] should preserve the first-turn theory's currently_relevant_domains"
+        )
 
-        # changes_since_previous is not 'initial' anymore
         changes = data["theory"]["changes_since_previous"].strip().lower()
         assert changes != "" and changes != "initial", (
             f"changes_since_previous should reflect revision, got {changes!r}"
         )
 
-        # currently_relevant_domains still drawn from canonical model
         rel = data["theory"]["currently_relevant_domains"]
         assert len(rel) >= 1
         for name in rel:
             assert name in CANONICAL_DOMAIN_NAMES
 
-        # interactions grew to 2, latest has 2-3 candidates + selected
         assert len(data["interactions"]) == 2
         latest = data["interactions"][-1]
         assert 2 <= len(latest["candidate_invitations"]) <= 3
         assert latest["selected_invitation"]["invitation"].strip() != ""
 
-        # theory REVISED, not appended: it is a single dict not a list of appended notes
         assert isinstance(data["theory"], dict)
-
-        # No stages/scores in the theory blob or interactions blob
         assert not _has_stage_or_score_language(json.dumps(data["theory"]))
         assert not _has_stage_or_score_language(json.dumps(data["interactions"]))
+
+
+# ---------------------------------------------------------------------------
+# Third interact (answer) — validates a 3-turn conversation completes without
+# 502 (writing -> revise -> answer). theory_history grows to 3.
+# ---------------------------------------------------------------------------
+class TestThirdInteract:
+    def test_third_interact_answer_turn(self, client, created_session):
+        second = getattr(pytest, "second_interact_response", None)
+        assert second is not None, "Second interact must run before this test"
+
+        answer_content = (
+            "The single claim that ties everything together is that banning "
+            "cars downtown makes the core more livable. Air quality, "
+            "walkability, and small-business survival are all consequences "
+            "of that livability claim rather than separate reasons."
+        )
+        status, data, err = sse_interact(
+            client, created_session["id"],
+            {"kind": "answer", "content": answer_content},
+        )
+        assert status == 200, f"Expected 200, got {status}. err={err}"
+        assert err is None, f"SSE emitted error on turn 3: {err}"
+        assert data is not None, "SSE completed without a done event"
+
+        elapsed = data.get("_elapsed_seconds")
+        assert elapsed is not None and elapsed < 60, (
+            f"Turn 3 took {elapsed:.1f}s (must be <60s)"
+        )
+        pytest.third_interact_response = data
+
+        assert len(data["turns"]) == 6
+        assert data["turns"][4]["kind"] == "answer"
+        assert data["turns"][5]["role"] == "ai"
+
+        third_invitation = data["turns"][5]["content"].strip()
+        assert third_invitation
+        assert not _has_stage_or_score_language(third_invitation)
+
+        assert len(data["theory_history"]) == 3
+        versions = [s["version"] for s in data["theory_history"]]
+        assert versions == [1, 2, 3]
+
+        # v3 preserves the SECOND theory (not the third)
+        v3_snap = data["theory_history"][2]
+        assert set(v3_snap["theory"]["currently_relevant_domains"]) == set(
+            second["theory"]["currently_relevant_domains"]
+        ), "theory_history[2] should preserve the second-turn theory"
+
+        assert len(data["interactions"]) == 3
+        latest = data["interactions"][-1]
+        assert 2 <= len(latest["candidate_invitations"]) <= 3
+        assert latest["selected_invitation"]["invitation"].strip() != ""
 
 
 # ---------------------------------------------------------------------------
@@ -343,19 +433,16 @@ class TestTelosEdit:
 
         assert data["pedagogical_purpose"] == new_purpose
         assert data["current_writing_task"] == new_task
-        # telos mirrored
         assert data["telos"]["governing_pedagogical_purpose"] == new_purpose
         assert data["telos"]["immediate_task_purpose"] == new_task
         assert data["telos"]["telos_changed"].strip() != ""
 
-        # teacher_edits record appended
         assert len(data["teacher_edits"]) >= 1
         latest_edit = data["teacher_edits"][-1]
         assert "changes" in latest_edit
         assert "pedagogical_purpose" in latest_edit["changes"]
         assert latest_edit["changes"]["pedagogical_purpose"]["to"] == new_purpose
 
-        # GET returns revised values
         g = client.get(f"{API}/sessions/{sid}", timeout=15)
         assert g.status_code == 200
         gdata = g.json()
@@ -373,12 +460,12 @@ class TestPersistence:
         assert r.status_code == 200, r.text
         data = r.json()
         assert data["id"] == created_session["id"]
-        assert len(data["turns"]) == 4
-        assert len(data["interactions"]) == 2
-        assert len(data["theory_history"]) == 2
+        assert len(data["turns"]) == 6
+        assert len(data["interactions"]) == 3
+        assert len(data["theory_history"]) == 3
         assert data["turns"][1]["role"] == "ai"
         assert data["turns"][3]["role"] == "ai"
-        # theory still populated
+        assert data["turns"][5]["role"] == "ai"
         assert len(data["theory"]["currently_relevant_domains"]) >= 1
 
 

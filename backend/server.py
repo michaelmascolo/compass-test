@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 import logging
 import uuid
 from pathlib import Path
@@ -7,12 +8,13 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage
+from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -44,6 +46,28 @@ def load_canonical_writing_model() -> dict:
 
 
 CANONICAL_WRITING_MODEL = load_canonical_writing_model()
+
+
+def _compact_canonical_model() -> dict:
+    """Lean projection injected per-turn (full structured data stays on disk).
+    Keeps only what the reasoner needs to interpret writing and select relevant
+    domains; heavier fields (differentiations, tensions, candidate invitations,
+    relationships) remain in canonical_writing_model.json."""
+    return {
+        "domains": [
+            {
+                "domain_name": d.get("domain_name"),
+                "communicative_functions": d.get("communicative_functions", []),
+                "canonical_writing_resources": d.get("canonical_writing_resources", []),
+                "functional_evaluation_questions": d.get("functional_evaluation_questions", []),
+            }
+            for d in CANONICAL_WRITING_MODEL.get("domains", [])
+        ]
+    }
+
+
+COMPACT_CANONICAL_MODEL = _compact_canonical_model()
+CANONICAL_DOMAIN_NAMES = [d.get("domain_name") for d in CANONICAL_WRITING_MODEL.get("domains", [])]
 
 
 # ---------------------------------------------------------------------------
@@ -220,7 +244,8 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
   "observed_reorganization": "how the student's participation actually reorganized this turn (or 'initial' on first turn)"
 }
 Provide 2 or 3 candidate_invitations. Do not store numeric scores anywhere.
-"""
+
+BREVITY (critical — the response must complete quickly): Be terse in ALL internal fields. Each string field is a short phrase or one short sentence. Each list holds at most 2-3 brief items. Prefer 2 candidate invitations (add a 3rd only if genuinely distinct); keep each candidate's fields to short phrases and its invitation to one sentence. The student_facing_invitation is 2-4 sentences. Do not repeat content across fields. Do not pad. Output compact JSON."""
 
 DRAFT_KINDS = {"writing", "revise", "continue"}
 
@@ -275,6 +300,20 @@ Compare the CURRENT DRAFT to the PREVIOUS DRAFT literally. If they differ, the s
         latest_block = f"""STUDENT'S LATEST RESPONSE (a reply to your last invitation, NOT a new draft; kind = "{req.kind}"):
 {req.content}"""
 
+    # After the first turn, inject full compact detail only for the domains the
+    # theory already flagged as relevant (keeps the prompt small); always list
+    # every canonical domain name so the engine can still shift focus.
+    prior_relevant = [d for d in session.theory.currently_relevant_domains if d]
+    if prior_relevant:
+        relevant_set = {d.lower() for d in prior_relevant}
+        detail = [d for d in COMPACT_CANONICAL_MODEL["domains"] if d["domain_name"].lower() in relevant_set]
+        canonical_block = json.dumps({
+            "all_domain_names": CANONICAL_DOMAIN_NAMES,
+            "relevant_domain_detail": detail,
+        }, indent=2)
+    else:
+        canonical_block = json.dumps(COMPACT_CANONICAL_MODEL, indent=2)
+
     return f"""CURRENT DEVELOPMENTAL TELOS (component A — provisional, revisable):
 {json.dumps(session.telos.model_dump(), indent=2)}
 
@@ -287,23 +326,15 @@ PARTICIPATION HISTORY (component B):
 OBSERVED REORGANIZATIONS OVER TIME:
 {reorg_history}
 
-CANONICAL WRITING MODEL (domain-specific cultural resources — load as DATA; select only the RELEVANT domains, never force a sequence):
-{json.dumps(CANONICAL_WRITING_MODEL, indent=2)}
+CANONICAL WRITING MODEL (domain-specific cultural resources loaded as DATA; consider ALL domain names, select only the RELEVANT ones, never force a sequence):
+{canonical_block}
 
 {latest_block}
 
-Run the full recursive loop and respond with ONLY the JSON object described in your instructions. Revise the ENTIRE working theory rather than appending a note."""
+Run the full recursive loop and respond with ONLY the JSON object described in your instructions. Revise the ENTIRE working theory rather than appending a note. Keep every field terse per the BREVITY rule."""
 
 
-async def run_engine(session: Session, req: InteractRequest) -> dict:
-    chat = LlmChat(
-        api_key=EMERGENT_LLM_KEY,
-        session_id=f"dev-{session.id}",
-        system_message=SYSTEM_MESSAGE,
-    ).with_model("anthropic", "claude-sonnet-4-6")
-
-    prompt = _build_prompt(session, req)
-    raw = await chat.send_message(UserMessage(text=prompt))
+def _parse_engine_output(session: Session, raw: str) -> dict:
     try:
         data = _extract_json(raw)
         telos = Telos(**{**session.telos.model_dump(), **data.get("telos", {})})
@@ -314,11 +345,10 @@ async def run_engine(session: Session, req: InteractRequest) -> dict:
         observed_reorg = data.get("observed_reorganization", "").strip()
     except Exception as e:  # noqa: BLE001
         logger.error(f"Engine parse error: {e}; raw={raw[:800]}")
-        raise HTTPException(status_code=502, detail="The developmental engine returned an unreadable response. Please try again.")
+        raise ValueError("The developmental engine returned an unreadable response.")
 
     if not invitation:
-        raise HTTPException(status_code=502, detail="The developmental engine did not return an invitation. Please try again.")
-
+        raise ValueError("The developmental engine did not return an invitation.")
     if not selected.invitation:
         selected.invitation = invitation
 
@@ -330,6 +360,30 @@ async def run_engine(session: Session, req: InteractRequest) -> dict:
         "selected": selected,
         "observed_reorganization": observed_reorg,
     }
+
+
+def _apply_engine_result(session: Session, req: InteractRequest, result: dict) -> None:
+    # snapshot the theory that motivated this response BEFORE replacing it
+    session.theory_history.append(
+        TheorySnapshot(
+            version=len(session.theory_history) + 1,
+            telos=session.telos,
+            theory=session.theory,
+        )
+    )
+    session.turns.append(Turn(role="ai", kind="invitation", content=result["invitation"]))
+    session.telos = result["telos"]
+    session.theory = result["theory"]
+    session.interactions.append(
+        InteractionRecord(
+            student_kind=req.kind,
+            student_content=req.content.strip(),
+            candidate_invitations=result["candidates"],
+            selected_invitation=result["selected"],
+            observed_reorganization=result["observed_reorganization"],
+        )
+    )
+    session.updated_at = now_iso()
 
 
 # ---------------------------------------------------------------------------
@@ -408,7 +462,7 @@ async def edit_telos(session_id: str, edit: TelosEdit):
     return session
 
 
-@api_router.post("/sessions/{session_id}/interact", response_model=Session)
+@api_router.post("/sessions/{session_id}/interact")
 async def interact(session_id: str, req: InteractRequest):
     doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
     if not doc:
@@ -419,44 +473,49 @@ async def interact(session_id: str, req: InteractRequest):
         raise HTTPException(status_code=400, detail="Empty submission")
 
     session.turns.append(Turn(role="student", kind=req.kind, content=req.content.strip()))
+    prompt = _build_prompt(session, req)
 
-    result = await run_engine(session, req)
+    async def event_generator():
+        raw_parts: List[str] = []
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"dev-{session.id}",
+                system_message=SYSTEM_MESSAGE,
+            ).with_model("anthropic", "claude-sonnet-4-6")
 
-    # snapshot the theory that motivated this response BEFORE replacing it
-    session.theory_history.append(
-        TheorySnapshot(
-            version=len(session.theory_history) + 1,
-            telos=session.telos,
-            theory=session.theory,
-        )
+            async for ev in chat.stream_message(UserMessage(text=prompt)):
+                if isinstance(ev, TextDelta):
+                    raw_parts.append(ev.content)
+                    # heartbeat keeps the connection warm past edge idle timeouts
+                    yield ": tick\n\n"
+                elif isinstance(ev, StreamDone):
+                    break
+
+            result = _parse_engine_output(session, "".join(raw_parts))
+            _apply_engine_result(session, req, result)
+
+            await db.sessions.update_one(
+                {"id": session_id},
+                {"$set": {
+                    "turns": [t.model_dump() for t in session.turns],
+                    "telos": session.telos.model_dump(),
+                    "theory": session.theory.model_dump(),
+                    "theory_history": [s.model_dump() for s in session.theory_history],
+                    "interactions": [i.model_dump() for i in session.interactions],
+                    "updated_at": session.updated_at,
+                }},
+            )
+            yield f"event: done\ndata: {json.dumps(session.model_dump())}\n\n"
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"interact stream error: {e}")
+            yield f"event: error\ndata: {json.dumps({'detail': 'The developmental engine could not respond. Please try again.'})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
     )
-
-    session.turns.append(Turn(role="ai", kind="invitation", content=result["invitation"]))
-    session.telos = result["telos"]
-    session.theory = result["theory"]
-    session.interactions.append(
-        InteractionRecord(
-            student_kind=req.kind,
-            student_content=req.content.strip(),
-            candidate_invitations=result["candidates"],
-            selected_invitation=result["selected"],
-            observed_reorganization=result["observed_reorganization"],
-        )
-    )
-    session.updated_at = now_iso()
-
-    await db.sessions.update_one(
-        {"id": session_id},
-        {"$set": {
-            "turns": [t.model_dump() for t in session.turns],
-            "telos": session.telos.model_dump(),
-            "theory": session.theory.model_dump(),
-            "theory_history": [s.model_dump() for s in session.theory_history],
-            "interactions": [i.model_dump() for i in session.interactions],
-            "updated_at": session.updated_at,
-        }},
-    )
-    return session
 
 
 app.include_router(api_router)

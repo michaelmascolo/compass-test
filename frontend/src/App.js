@@ -49,6 +49,7 @@ function App() {
         setSession(updated);
       } catch (e) {
         const msg =
+          e?.detail ||
           e?.response?.data?.detail ||
           "The coach could not respond. Please try again.";
         toast.error(msg);
