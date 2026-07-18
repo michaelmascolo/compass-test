@@ -274,6 +274,30 @@ export default function DevelopmentPanel({
                   </div>
                 </Block>
               ) : null}
+              {theory.conclusion_function?.applies ? (
+                <Block label="Conclusion / Completion (M10)">
+                  <div className="space-y-1.5" data-testid="conclusion-function-block">
+                    <div>
+                      <span className="text-stone-500">functions in play:</span>{" "}
+                      <List items={theory.conclusion_function?.functions_in_play} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">completes purpose:</span>{" "}
+                      <span className="text-amber-300">
+                        <Text value={theory.conclusion_function?.completes_purpose} />
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">relationship to opening:</span>{" "}
+                      <Text value={theory.conclusion_function?.relationship_to_opening} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">final understanding:</span>{" "}
+                      <Text value={theory.conclusion_function?.final_understanding} />
+                    </div>
+                  </div>
+                </Block>
+              ) : null}
               <Block label="Current Organization (relative to telos)">
                 <Text value={theory.current_organization} />
               </Block>

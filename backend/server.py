@@ -168,6 +168,18 @@ class CoherenceFunction(BaseModel):
     reader_can_follow: str = ""       # will the reader understand why each idea appears and how ideas connect?
 
 
+class ConclusionFunction(BaseModel):
+    """M10 — functional analysis of a conclusion as communicative COMPLETION.
+    Populated when an ending/conclusion is present or at issue (applies=True).
+    A conclusion's function depends on the communicative purpose (M6); it completes meaning,
+    it does not merely summarize. NO formulaic closing rules ('In conclusion', restate thesis)."""
+    applies: bool = False
+    functions_in_play: List[str] = Field(default_factory=list)  # completion/reinforce-purpose/integrate ideas/explain significance/invite reflection/resolve narrative/answer opening question/return to opening/identify implications/final understanding
+    completes_purpose: str = ""        # does it COMPLETE the overall communicative purpose, or merely stop/summarize/introduce a new idea?
+    relationship_to_opening: str = ""  # connection to the introduction and to the reader's expectations
+    final_understanding: str = ""      # what should the reader understand after finishing the piece?
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
@@ -175,6 +187,7 @@ class DevelopmentalTheory(BaseModel):
     paragraph_function: ParagraphFunction = Field(default_factory=ParagraphFunction)
     evidence_function: EvidenceFunction = Field(default_factory=EvidenceFunction)
     coherence_function: CoherenceFunction = Field(default_factory=CoherenceFunction)
+    conclusion_function: ConclusionFunction = Field(default_factory=ConclusionFunction)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -330,6 +343,15 @@ FUNCTIONAL TRANSITION & COHERENCE FRAMEWORK (Milestone 9 — apply when continui
 - FUNCTIONAL COHERENCE: determine whether a reader can understand WHY each idea appears, HOW ideas connect, and WHY the organization makes sense. Teach coherence as the communication of relationships — not merely smooth wording or inserting connective words.
 Before instructing, internally ask "What relationship is the writer trying to communicate?" then "Will the reader clearly understand that relationship?" Improve the student's understanding of communicative relationships rather than recommending additional transition words. Set theory.coherence_function.applies=true whenever continuity/flow/connection among ideas is a visible feature of the draft — this includes drafts where the flow is ALREADY STRONG (naming the relationship the writer has achieved, and how, is itself the analysis), not only drafts with broken connections. Per the WRITING INSTRUCTION BOUNDARY (M5A): you may teach coherence, logical progression, conceptual relationships, transitions, continuity, reader orientation, and organizational flow, but you may NOT invent new ideas, insert additional arguments, introduce new evidence, rewrite paragraphs, or create content just to improve transitions unless brainstorming/content generation is explicitly enabled. If coherence/transitions are genuinely not in focus this turn, leave theory.coherence_function.applies=false and its fields empty.
 
+FUNCTIONAL CONCLUSION FRAMEWORK (Milestone 10 — apply when an ending/conclusion is present or at issue): A conclusion is a communicative tool for COMPLETING the work the writing set out to do — its purpose is NOT merely to "summarize." The function of a conclusion depends on the communicative purpose (M6). Determine "What work must this conclusion accomplish for the reader?" BEFORE evaluating how it is written, and set theory.conclusion_function.applies=true whenever an ending is drafted or at issue (including when the ending is already effective — naming what it completes is the analysis). Reason through:
+- POSSIBLE FUNCTIONS (combine as the purpose requires): bringing the discussion to completion, reinforcing the central purpose, integrating major ideas, explaining significance, inviting reflection, resolving a narrative, answering the opening question, returning to the opening idea, identifying implications, leaving the reader with an important final understanding.
+- PURPOSE-SENSITIVE possibilities (NOT templates): persuasion — reinforce the position, synthesize the reasons, leave the reader with the significance of the claim; explanation — complete the explanation, emphasize understanding, connect ideas into a coherent whole; analysis — reinforce the interpretation, explain its broader meaning; narrative — provide resolution, reveal significance, complete the experience; reflection — articulate insight, connect experience to broader understanding.
+- RELATIONSHIP TO THE WHOLE: does the conclusion accomplish what the piece set out to do? does it resolve the reader's expectations? does it connect naturally to the introduction? does it COMPLETE rather than merely STOP?
+- NEW-IDEA CAUTION: a conclusion that introduces an entirely new argument/example/line of thought usually fractures completion — read that as a completion problem to surface (help the student see the ending's job), NOT as content to encourage; and per M5A never supply the new idea yourself.
+- NEVER require formulaic closings: do not demand "In conclusion...", repetition of the thesis, a plain summary, or restating every point. These may fit some contexts but are NOT defining features of effective conclusions; never teach them as rules.
+Before instructing, internally ask "What should the reader understand after finishing this piece?" then "Does the conclusion help the reader arrive at that understanding?" Focus on communicative completion, not structural rules. Per the WRITING INSTRUCTION BOUNDARY (M5A): you may teach communicative completion, synthesis, significance, resolution, insight, integration, and the relationship between opening and ending, but you may NOT invent new arguments, introduce new evidence, add new examples, suggest stronger claims, or rewrite the conclusion unless brainstorming/content generation is explicitly enabled. If a conclusion/ending is genuinely not in focus this turn, leave theory.conclusion_function.applies=false and its fields empty.
+
+
 
 
 DRAFT RULE: When the input is a draft ("writing", "revise", or "continue") it is the student's full, authoritative current text. If it differs from their previous draft, they HAVE revised — name the change you see and build on it. Never claim a student has not revised when their new draft differs from the old one.
@@ -379,6 +401,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "paragraph_function": {"applies": "true only when a paragraph is the unit under discussion, else false", "purpose": "what this paragraph is trying to accomplish (relative to the communicative purpose) — else empty", "contribution_to_whole": "how it serves the whole piece — else empty", "coherence": "do the sentences work together toward one purpose? controlling idea? unnecessary shifts? — else empty", "development": "how the purpose is developed (explanation/description/interpretation/illustration/comparison/clarification/evidence/reflection) — else empty", "placement": "role/placement relative to what comes before/after — else empty"},
     "evidence_function": {"applies": "true only when evidence/support is present or at issue, else false", "forms": ["forms of support present (facts/statistics/quotations/examples/details/dialogue/observations/memories...) — else empty"], "function": "the work the evidence is doing relative to purpose (support claim/illustrate/explain/ground interpretation/establish credibility/help visualize/deepen understanding) — else empty", "interpretation_gap": "does the writer help the reader see WHY it matters? name the evidence-vs-interpretation edge — else empty", "quality": "relevance/sufficiency/appropriateness/credibility/connection to purpose, functionally (never a count) — else empty"},
     "coherence_function": {"applies": "true only when continuity/coherence/transitions are present or at issue, else false", "intended_relationship": "the relationship the writer is trying to communicate (sequence/cause-effect/comparison/contrast/elaboration/concession/emphasis/problem-solution/question-answer/chronology...) — else empty", "level": "which level(s) at issue: sentence-to-sentence / paragraph-level / paragraph-to-paragraph / whole-piece — else empty", "resources_in_use": ["transitional resources present (transition words, repetition, conceptual links, parallel structure, pronoun reference, shared vocabulary, chronological/logical progression, cause-effect, comparison/contrast, rhetorical questions) — else empty"], "reader_can_follow": "will the reader understand why each idea appears and how ideas connect? — else empty"},
+    "conclusion_function": {"applies": "true only when an ending/conclusion is present or at issue, else false", "functions_in_play": ["conclusion functions at work (completion/reinforce purpose/integrate ideas/explain significance/invite reflection/resolve narrative/answer opening question/return to opening/identify implications/final understanding) — else empty"], "completes_purpose": "does it COMPLETE the overall communicative purpose, or merely stop/summarize/introduce a new idea? — else empty", "relationship_to_opening": "connection to the introduction and to the reader's expectations — else empty", "final_understanding": "what should the reader understand after finishing the piece? — else empty"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -435,6 +458,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "paragraph_function": theory.paragraph_function.model_dump(),
         "evidence_function": theory.evidence_function.model_dump(),
         "coherence_function": theory.coherence_function.model_dump(),
+        "conclusion_function": theory.conclusion_function.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,
