@@ -1,0 +1,49 @@
+{
+  "summary": "Milestone 5 regression pass with the newly-added RESTRAINT rule. New /app/backend/tests/test_milestone5_instruction_layer.py — 5/5 PASS in 133.7s against the public URL — covers: (1) intervention object shape/type validity + cultural_resource field on every turn, (2) RESTRAINT-still-instructs case (bare topic-announcement thesis 'My essay is about social media and friendship.' -> intervention.type=='instruct_then_invite' with non-empty instruction + named cultural_resource), (3) RESTRAINT-avoids-over-instruction case (sophisticated thesis 'Social media strengthens weak-tie friendships while quietly eroding the close ones, because it rewards breadth over depth.' -> intervention.type in {invite_only, interpretation_only, postpone_instruction}), (4) multi-turn 3-turn flow (writing -> revise -> answer) all under the streaming edge cap with theory_history v1..v3 preserved and prior versions not overwritten, (5) PATCH /api/sessions/{id}/telos updates pedagogical_purpose and persists. Also ran full M1-M4 regression suite (test_developmental_engine + test_milestone2_opening + test_milestone3_thesis + test_milestone4_paragraph) — 42/44 PASS in 741.9s (~12m21s). The two failures are BOTH prompt-size ceiling assertions in older test files (M1 26KB cap, M3 16KB median cap) — this is NOT a functional regression: it's LLM-driven domain-selection variability where the STAGE-A selector picked TWO enriched domains (Central Claim/Thesis + Paragraph Purpose) with 6+6 sections on some turns, pushing reasoner_prompt_bytes to 27582 (peak) and median 17095 over the 8-turn recent window (both slightly above the old assertions but well below the M4 file's 32KB alarm which passes). Iteration 8 already called these out as 'carry-over, non-blocking'. All 4 turns still completed <60s, theory grew correctly, AI never rewrote student text, no stage/score language leaked, intervention.type was valid on every turn, currently_relevant_domains stayed 1-3, RESTRAINT held on capable students. Combined: 47/49 tests pass end-to-end against https://dev-converse.preview.emergentagent.com; NO Milestone 5 regressions.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions/{id}/interact", "issue": "Reasoner prompt bytes peaked at 27582 (over M1 test file's 26KB assertion) and median 17095 (over M3 test file's 16KB assertion) on turns where BOTH Central Claim/Thesis (~31 keys) AND Paragraph Purpose (~31 keys) were selected together with 5-7 sections each. NOT a functional bug — all turns still completed <60s under the streaming edge cap. Recommendation: raise the M1 ceiling to 30KB and the M3 median cap to 18KB (matching what M4's 32KB/22KB ceiling already tolerates), OR cap sections per enriched domain in _select_relevant_domains to ~4. Same issue was flagged as 'carry-over' in iteration_8."},
+      {"endpoint": "POST /api/sessions", "issue": "Returns 200 instead of 201 for resource creation (carried over from every prior iteration, non-blocking; existing tests assert 200)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_milestone5_instruction_layer.py",
+    "/app/backend/tests/test_developmental_engine.py",
+    "/app/backend/tests/test_milestone2_opening.py",
+    "/app/backend/tests/test_milestone3_thesis.py",
+    "/app/backend/tests/test_milestone4_paragraph.py",
+    "/app/test_reports/pytest/milestone5_regression_results.xml",
+    "/app/test_reports/pytest/regression_m1_m4_iter9.xml"
+  ],
+  "action_items": [
+    "None blocking for Milestone 5. The RESTRAINT rule addition to the reasoner system prompt (server.py lines ~273-274) works as designed: sophisticated already-arguable thesis -> invite_only; bare topic-announcement thesis -> instruct_then_invite. Instruction still fires when genuinely needed.",
+    "Optional (carry-over from iteration_8): return 201 from POST /api/sessions.",
+    "Optional (test-only): loosen prompt-size ceilings in test_developmental_engine.py (26KB -> 30KB) and test_milestone3_thesis.py (median 16KB -> 18KB) to match observed real-world payload distribution now that THREE domains (Opening/Introduction, Central Claim/Thesis, Paragraph Purpose) are enriched to ~31 fields each, OR add a soft cap of 4 sections/domain in _select_relevant_domains for the enriched trio."
+  ],
+  "critical_code_review_comments": [
+    "server.py — RESTRAINT rule (lines ~273-274) is correctly domain-independent: 'When the student ALREADY demonstrates competent, intentional use of the relevant organization... instruction is redundant and slightly patronizing: prefer invite_only (or interpretation_only). Refining an already-working move is a next INVITATION, not new instruction.' Empirical verification on Case 7 (sophisticated thesis about weak/close ties + breadth/depth): intervention.type=='invite_only', instruction=='', student_facing pushes for 'what does depth of attention mean in practice' — asking the student to sharpen, not teaching a concept.",
+    "server.py — Intervention model (lines 160-168) includes all 5 valid types + interpretation/instruction/consolidation/cultural_resource/timing_rationale fields. _parse_engine_output correctly deserializes intervention with sensible defaults via Intervention() so a missing intervention block will not crash the loop.",
+    "server.py — Two-stage domain selection (STAGE A in _select_relevant_domains + STAGE B in _build_prompt with get_relevant_domain_data) remains domain-independent and the log line '[interact] domains/sections={name:count} reasoner_prompt_bytes=NNNN' is intact.",
+    "server.py — Line 620: chat.with_model('anthropic', 'claude-sonnet-4-6'). All 47 tests passed with sub-60s turns, so the model is available and responsive via emergentintegrations.",
+    "Prompt-size trend: with 3 of 13 domains now enriched to ~31 fields each, whenever STAGE A picks TWO enriched domains, the STAGE B prompt is 17-28KB (median ~17KB) even after section-level filtering. Adding a 4th enriched domain would trip the M4 32KB alarm. Consider capping sections per enriched-domain at 4 (currently STAGE A can pick up to the domain's 'cultural_resources' + 3-6 sections, which for the enriched trio each adds ~2-3KB per section) OR only selecting cultural_resources for at most ONE domain per turn."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_milestone5_instruction_layer.py — NEW. 5 pytest tests validating M5 acceptance against the public URL: intervention shape (1), RESTRAINT instructs when needed (1), RESTRAINT avoids over-instruction on capable student (1), multi-turn reliability + theory_history preservation across 3 turns (1), PATCH /api/sessions/{id}/telos (1)."
+  ],
+  "success_rate": {
+    "backend": "M5-specific: 100% (5/5 in 133.7s). Full M1-M5 combined: 95.9% (47/49). The 2 failures are older test-file prompt-size ceiling assertions, not functional regressions — flagged as carry-over in iteration_8.",
+    "frontend": "Not tested (backend-only per review request)."
+  },
+  "test_credentials": "N/A — no auth in this app.",
+  "seed_data_creation": "5 TEST_M5-prefixed sessions created in MongoDB by test_milestone5_instruction_layer (bare topic thesis, sophisticated thesis, multi-turn, telos patch, intervention shape); plus 4 TEST_ M1-M4 regression sessions. Harmless — same pattern as prior iterations.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Full M1-M5 backend suite: `pytest /app/backend/tests/test_developmental_engine.py /app/backend/tests/test_milestone2_opening.py /app/backend/tests/test_milestone3_thesis.py /app/backend/tests/test_milestone4_paragraph.py /app/backend/tests/test_milestone5_instruction_layer.py -v -n 0` — expect ~14-15 min wall time (49 tests, every /interact is a live Claude Sonnet 4.6 call). M5 file uses `-n 2` (xdist) auto-safely since each test creates its own session. Prompt-size ceilings in test_developmental_engine.py (26KB) and test_milestone3_thesis.py (median 16KB) are currently tight — with three enriched domains they periodically trip when STAGE A picks two enriched domains together on multiple recent turns. Peak observed 27.5KB, median 17KB, floor 12KB. RESTRAINT rule (server.py lines 273-274) is working: bare topic thesis -> instruct_then_invite; sophisticated arguable thesis -> invite_only. Do NOT test frontend — review request scoped as backend-only. The public URL for the app is https://dev-converse.preview.emergentagent.com (from /app/frontend/.env). Session creation still returns 200 not 201 (carried over — all test files assert 200).",
+  "rca of the issue": "N/A — Milestone 5 acceptance passes end-to-end and no new bugs were introduced. The 2 M1/M3 regression-file failures are pre-existing test-side ceiling assertions being periodically tickled by LLM-driven variability in STAGE-A domain selection (choosing two enriched domains together vs. one enriched + one lightweight). Root cause: three canonical domains (Opening/Introduction, Central Claim/Thesis, Paragraph Purpose) are now enriched to ~31 fields each (~15KB per whole record; ~5-8KB per section-filtered slice); when STAGE A picks two of them on the same turn with 5-7 sections each, the STAGE-B reasoner prompt legitimately grows to 17-28KB. This does not violate any functional contract (all turns still <60s, streaming works, engine is domain-independent, intervention model works, restraint holds). Mitigation options for main agent (all optional): (a) update the two older test files' ceilings to 30KB/18KB to match reality, (b) cap sections-per-domain at 4 in _select_relevant_domains, (c) allow cultural_resources selection for at most one domain per turn."
+}
