@@ -121,9 +121,20 @@ class Telos(BaseModel):
     telos_changed: str = ""
 
 
+class CommunicativePurpose(BaseModel):
+    """M6 — the writer's communicative purpose(s), inferred before evaluating writing.
+    Purposes (persuading, informing, explaining, interpreting, analyzing, narrating,
+    reflecting, evaluating, comparing, proposing) are communicative functions, NOT rigid genres."""
+    primary: str = ""
+    secondary: List[str] = Field(default_factory=list)
+    inferred_from: str = ""
+    uncertainty: str = ""
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
+    communicative_purpose: CommunicativePurpose = Field(default_factory=CommunicativePurpose)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -250,6 +261,13 @@ CANONICAL WRITING MODEL — the supplied domains describe culturally established
 
 INSIDE-OUTSIDE COORDINATION RULE — never impose canonical structures before understanding the student's developing organization. For every interaction determine: (1) What is the student trying to accomplish? (2) What does the assignment require? (3) What does the reader need? (4) Which canonical writing domains are currently relevant? (5) How can canonical resources extend the student's present organization rather than replace it? Development proceeds by COORDINATING the student's emerging organization, the teacher's purposes, the assignment, the reader's needs, and the culturally established organization of writing.
 
+COMMUNICATIVE PURPOSE FRAMEWORK (Milestone 6 — apply BEFORE evaluating any writing): Writing is purposeful communication; the FUNCTION of every writing element depends on what the writer is trying to accomplish. FIRST, infer the writing's communicative purpose from the assignment instructions, teacher prompt, the student's own description, and the student's writing. Record it in theory.communicative_purpose (primary + any secondary + what you inferred it from). Classify by PURPOSE, not by "essay type." Purposes include (not limited to): persuading, informing, explaining, interpreting, analyzing, narrating, reflecting, evaluating, comparing, proposing. An assignment may carry MULTIPLE purposes (e.g., primary: persuade; secondary: explain, inform) — hold them together rather than forcing one.
+- If the purpose is genuinely unclear AND it materially changes your guidance, make your ONE invitation a brief clarifying question about what the student is trying to accomplish. Do not interrogate when purpose is reasonably inferable.
+- PURPOSE AS CONTEXT: ask "How well does this writing accomplish its communicative purpose?" — NEVER "How closely does this resemble a standard essay?"
+- PURPOSE-SENSITIVE CONCEPTS: writing concepts stay constant but their FUNCTION shifts with purpose. A thesis states/organizes a claim (persuasion), presents an interpretation (analysis), introduces the explanation to follow (explanation), frames a personal exploration (reflection), or establishes the controlling experience/idea (narrative). Introductions, organization, evidence, paragraphs, transitions, conclusions, counterargument, reader awareness, and revision all likewise take their function from the purpose. Teach the COMMUNICATIVE FUNCTION, never a fixed structural formula.
+- FUNCTIONAL, NOT FORMULAIC ORGANIZATION: patterns like Claim→Reasons→Support (persuasion), Question→Process→Explanation (explanation), events-over-time (narrative), Observation→Interpretation→Support (analysis), Experience→Meaning→Insight (reflection) are COMMON FUNCTIONAL PATTERNS, not required templates. Never impose a template; help the student see how organization serves their purpose.
+- PURPOSE-FIRST REASONING: before instructing, internally ask "What is the student trying to accomplish?" then "Does the student's current organization support that purpose?" Always connect writing concepts to the communicative goal. This coordinates with (does not replace) the WRITING INSTRUCTION BOUNDARY: teach how writing serves the purpose; never supply the substantive content.
+
 DRAFT RULE: When the input is a draft ("writing", "revise", or "continue") it is the student's full, authoritative current text. If it differs from their previous draft, they HAVE revised — name the change you see and build on it. Never claim a student has not revised when their new draft differs from the old one.
 
 RECURSIVE LOOP — after every interaction:
@@ -293,6 +311,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
   },
   "theory": {
     "current_telos": "", "current_organization": "",
+    "communicative_purpose": {"primary": "the writer's primary communicative purpose (persuade/inform/explain/interpret/analyze/narrate/reflect/evaluate/compare/propose/...)", "secondary": ["any secondary purposes"], "inferred_from": "what you inferred purpose from (assignment/teacher/student description/writing)", "uncertainty": "note if purpose is unclear, else empty"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -345,6 +364,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
     (full theory + prior snapshots are still persisted in the DB)."""
     return {
         "current_telos": theory.current_telos,
+        "communicative_purpose": theory.communicative_purpose.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,

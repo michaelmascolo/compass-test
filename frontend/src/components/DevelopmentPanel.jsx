@@ -174,6 +174,30 @@ export default function DevelopmentPanel({
               <Block label="Current Telos">
                 <Text value={theory.current_telos || telos.governing_pedagogical_purpose} />
               </Block>
+              <Block label="Communicative Purpose">
+                <div className="space-y-1.5" data-testid="communicative-purpose-block">
+                  <div>
+                    <span className="text-stone-500">primary:</span>{" "}
+                    <span className="text-amber-300">
+                      <Text value={theory.communicative_purpose?.primary} />
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500">secondary:</span>{" "}
+                    <List items={theory.communicative_purpose?.secondary} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">inferred from:</span>{" "}
+                    <Text value={theory.communicative_purpose?.inferred_from} />
+                  </div>
+                  {theory.communicative_purpose?.uncertainty ? (
+                    <div>
+                      <span className="text-stone-500">uncertainty:</span>{" "}
+                      <Text value={theory.communicative_purpose?.uncertainty} />
+                    </div>
+                  ) : null}
+                </div>
+              </Block>
               <Block label="Current Organization (relative to telos)">
                 <Text value={theory.current_organization} />
               </Block>
@@ -293,6 +317,16 @@ export default function DevelopmentPanel({
                   <div>
                     <span className="text-stone-500">timing:</span>{" "}
                     <Text value={last?.intervention?.timing_rationale} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">focus:</span>{" "}
+                    <span className={last?.intervention?.focus === "content" ? "text-orange-300" : "text-emerald-300"}>
+                      <Text value={last?.intervention?.focus} />
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500">writing-not-content check:</span>{" "}
+                    <Text value={last?.intervention?.writing_not_content_check} />
                   </div>
                 </div>
               </Block>
