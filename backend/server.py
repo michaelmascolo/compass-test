@@ -156,12 +156,25 @@ class EvidenceFunction(BaseModel):
     quality: str = ""               # relevance/sufficiency/appropriateness/credibility/connection to purpose — functionally, not by count
 
 
+class CoherenceFunction(BaseModel):
+    """M9 — functional analysis of transitions and coherence as the communication of
+    relationships among ideas. Populated when continuity/coherence is present or at issue
+    (applies=True). Evaluate the RELATIONSHIP the writer intends before the language used;
+    transition words are only one of many resources. NO rigid transition rules."""
+    applies: bool = False
+    intended_relationship: str = ""   # sequence/cause-effect/comparison/contrast/elaboration/illustration/explanation/qualification/concession/emphasis/problem-solution/question-answer/chronology
+    level: str = ""                   # which level(s) at issue: sentence-to-sentence / paragraph-level / paragraph-to-paragraph / whole-piece
+    resources_in_use: List[str] = Field(default_factory=list)  # transition words, repetition of key ideas, conceptual links, parallel structure, pronoun reference, shared vocabulary, chronological/logical progression, cause-effect, comparison/contrast, rhetorical questions
+    reader_can_follow: str = ""       # will the reader understand why each idea appears and how ideas connect?
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
     communicative_purpose: CommunicativePurpose = Field(default_factory=CommunicativePurpose)
     paragraph_function: ParagraphFunction = Field(default_factory=ParagraphFunction)
     evidence_function: EvidenceFunction = Field(default_factory=EvidenceFunction)
+    coherence_function: CoherenceFunction = Field(default_factory=CoherenceFunction)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -310,6 +323,14 @@ FUNCTIONAL EVIDENCE FRAMEWORK (Milestone 8 — apply when evidence/support is pr
 - QUALITY is functional, never a count: consider relevance, sufficiency, appropriateness, credibility (when applicable), and connection to purpose. NEVER simply count pieces of evidence or impose a rule like "you need three sources."
 Before instructing, internally ask "What work is this evidence doing?" then "Does the writer help the reader understand why this evidence matters?" Focus instruction on the relationship between evidence and meaning. Support is NOT only facts/statistics/quotations: a process description or demonstration (explanation), sensory/descriptive details, actions, dialogue, and events (narrative), and personal experiences, memories, or observations (reflection) all COUNT as evidence/support. Set theory.evidence_function.applies=true whenever the draft grounds, illustrates, develops, or attempts to support a point with ANY such concrete material — even when it is embedded in the prose rather than formally cited, and even when the support is strong. Per the WRITING INSTRUCTION BOUNDARY (M5A): you may teach the communicative function of evidence, relevance, interpretation, and reader understanding, but you may NOT invent evidence, suggest new examples, recommend additional statistics, create quotations, or introduce factual content unless brainstorming/content generation is explicitly enabled. If evidence is genuinely not in focus this turn, leave theory.evidence_function.applies=false and its fields empty.
 
+FUNCTIONAL TRANSITION & COHERENCE FRAMEWORK (Milestone 9 — apply when continuity/coherence is present or at issue): Transitions are communicative tools for helping readers understand RELATIONSHIPS among ideas — not merely connective vocabulary. Coherence is achieved when a reader understands how ideas relate. Evaluate the RELATIONSHIPS among ideas BEFORE the language used to express them, and set theory.coherence_function.applies=true whenever continuity/flow/connection is at issue. Reason through:
+- INTENDED RELATIONSHIP: what relationship is the writer trying to communicate? (sequence, cause-and-effect, comparison, contrast, elaboration, illustration, explanation, qualification, concession, emphasis, problem-and-solution, question-and-answer, chronology). Name it before judging any wording.
+- TRANSITIONAL RESOURCES (many, not just words): transition words/phrases, repetition of key ideas, conceptual links, parallel structure, pronoun reference, shared vocabulary, chronological progression, logical progression, cause-and-effect reasoning, comparison/contrast, rhetorical questions. Transition WORDS are only one resource — strong flow can exist with few transition words, and many transition words can accompany weak coherence.
+- LEVELS OF COHERENCE — evaluate at whichever level is in focus: sentence-to-sentence (do adjacent sentences connect meaningfully?), paragraph-level (do sentences collectively develop the paragraph's purpose?), paragraph-to-paragraph (does each paragraph build on the previous?), whole-piece (does the organization help the reader follow the overall communicative purpose?).
+- FUNCTIONAL COHERENCE: determine whether a reader can understand WHY each idea appears, HOW ideas connect, and WHY the organization makes sense. Teach coherence as the communication of relationships — not merely smooth wording or inserting connective words.
+Before instructing, internally ask "What relationship is the writer trying to communicate?" then "Will the reader clearly understand that relationship?" Improve the student's understanding of communicative relationships rather than recommending additional transition words. Set theory.coherence_function.applies=true whenever continuity/flow/connection among ideas is a visible feature of the draft — this includes drafts where the flow is ALREADY STRONG (naming the relationship the writer has achieved, and how, is itself the analysis), not only drafts with broken connections. Per the WRITING INSTRUCTION BOUNDARY (M5A): you may teach coherence, logical progression, conceptual relationships, transitions, continuity, reader orientation, and organizational flow, but you may NOT invent new ideas, insert additional arguments, introduce new evidence, rewrite paragraphs, or create content just to improve transitions unless brainstorming/content generation is explicitly enabled. If coherence/transitions are genuinely not in focus this turn, leave theory.coherence_function.applies=false and its fields empty.
+
+
 
 DRAFT RULE: When the input is a draft ("writing", "revise", or "continue") it is the student's full, authoritative current text. If it differs from their previous draft, they HAVE revised — name the change you see and build on it. Never claim a student has not revised when their new draft differs from the old one.
 
@@ -357,6 +378,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "communicative_purpose": {"primary": "the writer's primary communicative purpose (persuade/inform/explain/interpret/analyze/narrate/reflect/evaluate/compare/propose/...)", "secondary": ["any secondary purposes"], "inferred_from": "what you inferred purpose from (assignment/teacher/student description/writing)", "uncertainty": "note if purpose is unclear, else empty"},
     "paragraph_function": {"applies": "true only when a paragraph is the unit under discussion, else false", "purpose": "what this paragraph is trying to accomplish (relative to the communicative purpose) — else empty", "contribution_to_whole": "how it serves the whole piece — else empty", "coherence": "do the sentences work together toward one purpose? controlling idea? unnecessary shifts? — else empty", "development": "how the purpose is developed (explanation/description/interpretation/illustration/comparison/clarification/evidence/reflection) — else empty", "placement": "role/placement relative to what comes before/after — else empty"},
     "evidence_function": {"applies": "true only when evidence/support is present or at issue, else false", "forms": ["forms of support present (facts/statistics/quotations/examples/details/dialogue/observations/memories...) — else empty"], "function": "the work the evidence is doing relative to purpose (support claim/illustrate/explain/ground interpretation/establish credibility/help visualize/deepen understanding) — else empty", "interpretation_gap": "does the writer help the reader see WHY it matters? name the evidence-vs-interpretation edge — else empty", "quality": "relevance/sufficiency/appropriateness/credibility/connection to purpose, functionally (never a count) — else empty"},
+    "coherence_function": {"applies": "true only when continuity/coherence/transitions are present or at issue, else false", "intended_relationship": "the relationship the writer is trying to communicate (sequence/cause-effect/comparison/contrast/elaboration/concession/emphasis/problem-solution/question-answer/chronology...) — else empty", "level": "which level(s) at issue: sentence-to-sentence / paragraph-level / paragraph-to-paragraph / whole-piece — else empty", "resources_in_use": ["transitional resources present (transition words, repetition, conceptual links, parallel structure, pronoun reference, shared vocabulary, chronological/logical progression, cause-effect, comparison/contrast, rhetorical questions) — else empty"], "reader_can_follow": "will the reader understand why each idea appears and how ideas connect? — else empty"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -412,6 +434,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "communicative_purpose": theory.communicative_purpose.model_dump(),
         "paragraph_function": theory.paragraph_function.model_dump(),
         "evidence_function": theory.evidence_function.model_dump(),
+        "coherence_function": theory.coherence_function.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,

@@ -250,6 +250,30 @@ export default function DevelopmentPanel({
                   </div>
                 </Block>
               ) : null}
+              {theory.coherence_function?.applies ? (
+                <Block label="Transitions & Coherence (M9)">
+                  <div className="space-y-1.5" data-testid="coherence-function-block">
+                    <div>
+                      <span className="text-stone-500">intended relationship:</span>{" "}
+                      <span className="text-amber-300">
+                        <Text value={theory.coherence_function?.intended_relationship} />
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">level:</span>{" "}
+                      <Text value={theory.coherence_function?.level} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">resources in use:</span>{" "}
+                      <List items={theory.coherence_function?.resources_in_use} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">reader can follow:</span>{" "}
+                      <Text value={theory.coherence_function?.reader_can_follow} />
+                    </div>
+                  </div>
+                </Block>
+              ) : null}
               <Block label="Current Organization (relative to telos)">
                 <Text value={theory.current_organization} />
               </Block>
