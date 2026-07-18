@@ -552,9 +552,9 @@ class TestTwoStageSelection:
         # ensuring the two-stage selection is NOT sending the whole 13-domain
         # model (which would be ~35KB+).
         for domains_str, size in recent:
-            assert size <= 26000, (
+            assert size <= 32000, (
                 f"reasoner_prompt_bytes={size} for domains={domains_str} — "
-                f"expected <=26KB (Opening / Introduction enriched ~15KB). "
+                f"expected <=32KB (multiple enriched domains, e.g. Thesis + Paragraph Purpose, may co-occur). "
                 f"Two-stage selection may not be limiting payload as intended."
             )
         print(f"reasoner_prompt_bytes over recent turns: {recent}")

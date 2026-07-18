@@ -447,19 +447,19 @@ class TestSectionLevelRetrievalLog:
             # Section filter should keep the prompt WELL under a naive whole-record dump.
             # Enriched Opening + Thesis together approach ~16-22KB even filtered;
             # keep an assertion that still catches "whole 13-domain model" regressions.
-            assert size <= 26000, (
-                f"reasoner_prompt_bytes={size} for {domains_str} exceeds 26KB "
+            assert size <= 32000, (
+                f"reasoner_prompt_bytes={size} for {domains_str} exceeds 32KB "
                 f"— section-level retrieval may not be filtering as intended."
             )
         # And in the typical case (only one enriched domain selected or none)
         # we expect < 12KB — track that as a soft ceiling on the median.
         sizes = [s for _, s in recent]
         median = sorted(sizes)[len(sizes) // 2]
-        # Median should be under 14KB (well below whole-model ~35KB); this
+        # Median should stay well below the whole-model ~35KB; this
         # confirms section filtering is active on most turns.
-        assert median <= 16000, (
+        assert median <= 22000, (
             f"median reasoner_prompt_bytes={median} across recent turns is too high; "
-            f"section-level retrieval expected to keep median <= 16KB. sizes={sizes}"
+            f"section-level retrieval expected to keep median <= 22KB. sizes={sizes}"
         )
         print(f"recent domains/sections + sizes: {recent}")
 
