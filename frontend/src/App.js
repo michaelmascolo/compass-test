@@ -8,6 +8,15 @@ import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
 
+// Preset teacher context so testers can skip Teacher Setup and start writing immediately.
+const TEST_PRESET = {
+  assignment: "Argue whether social media improves or harms teen friendships.",
+  pedagogical_purpose:
+    "Help the student form and clarify a central claim that organizes the essay, and understand what each part of the writing is doing for the reader.",
+  current_writing_task: "Draft your essay.",
+  teacher_notes: "",
+};
+
 function App() {
   const [session, setSession] = useState(null);
   const [booting, setBooting] = useState(true);
@@ -16,8 +25,14 @@ function App() {
   const [panelOpen, setPanelOpen] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const wantsDev = params.has("dev");
     const id = localStorage.getItem(STORAGE_KEY);
     if (!id) {
+      if (wantsDev) {
+        handleQuickStart().finally(() => setBooting(false));
+        return;
+      }
       setBooting(false);
       return;
     }
@@ -25,6 +40,7 @@ function App() {
       .then(setSession)
       .catch(() => localStorage.removeItem(STORAGE_KEY))
       .finally(() => setBooting(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleBegin = async (form) => {
@@ -39,6 +55,25 @@ function App() {
       setSubmitting(false);
     }
   };
+
+  const handleQuickStart = useCallback(async () => {
+    setSubmitting(true);
+    try {
+      const s = await createSession(TEST_PRESET);
+      localStorage.setItem(STORAGE_KEY, s.id);
+      setSession(s);
+    } catch (e) {
+      toast.error("Could not start the test session. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  }, []);
+
+  const handleNewSession = useCallback(async () => {
+    localStorage.removeItem(STORAGE_KEY);
+    setSession(null);
+    await handleQuickStart();
+  }, [handleQuickStart]);
 
   const handleSubmit = useCallback(
     async (kind, content) => {
@@ -91,7 +126,11 @@ function App() {
     <div className="App">
       <Toaster position="top-center" richColors />
       {!session ? (
-        <TeacherSetup onBegin={handleBegin} submitting={submitting} />
+        <TeacherSetup
+          onBegin={handleBegin}
+          submitting={submitting}
+          onQuickStart={handleQuickStart}
+        />
       ) : (
         <>
           <StudentWorkspace
@@ -99,6 +138,7 @@ function App() {
             onSubmit={handleSubmit}
             loading={submitting}
             onOpenPanel={() => setPanelOpen(true)}
+            onNewSession={handleNewSession}
           />
           <DevelopmentPanel
             open={panelOpen}

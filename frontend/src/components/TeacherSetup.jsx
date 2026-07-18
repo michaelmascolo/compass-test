@@ -33,7 +33,7 @@ const FIELDS = [
   },
 ];
 
-export default function TeacherSetup({ onBegin, submitting }) {
+export default function TeacherSetup({ onBegin, submitting, onQuickStart }) {
   const [form, setForm] = useState({
     assignment: "",
     pedagogical_purpose: "",
@@ -157,6 +157,18 @@ export default function TeacherSetup({ onBegin, submitting }) {
               </>
             )}
           </button>
+
+          {onQuickStart && (
+            <button
+              type="button"
+              data-testid="quick-test-start-button"
+              onClick={() => !submitting && onQuickStart()}
+              disabled={submitting}
+              className="mt-4 block text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-[#8C3A2A] underline underline-offset-4 decoration-stone-300 hover:decoration-[#8C3A2A] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Skip setup — quick test start →
+            </button>
+          )}
         </motion.form>
       </div>
     </div>

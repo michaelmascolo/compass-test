@@ -7,6 +7,7 @@ import {
   Send,
   FlaskConical,
   BookOpen,
+  RotateCcw,
 } from "lucide-react";
 
 function ThreadBubble({ turn }) {
@@ -48,6 +49,7 @@ export default function StudentWorkspace({
   onSubmit,
   loading,
   onOpenPanel,
+  onNewSession,
 }) {
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState("");
@@ -82,14 +84,27 @@ export default function StudentWorkspace({
           <BookOpen className="h-5 w-5 text-[#8C3A2A]" />
           Writing Studio
         </div>
-        <button
-          onClick={onOpenPanel}
-          data-testid="open-dev-panel-button"
-          className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-stone-900 border border-stone-300 hover:border-stone-900 rounded-sm px-3 py-1.5 transition-colors"
-        >
-          <FlaskConical className="h-3.5 w-3.5" />
-          Dev Panel
-        </button>
+        <div className="flex items-center gap-2">
+          {onNewSession && (
+            <button
+              onClick={() => !loading && onNewSession()}
+              disabled={loading}
+              data-testid="new-test-session-button"
+              className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-[#8C3A2A] border border-stone-300 hover:border-[#8C3A2A] rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              New Test
+            </button>
+          )}
+          <button
+            onClick={onOpenPanel}
+            data-testid="open-dev-panel-button"
+            className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-stone-900 border border-stone-300 hover:border-stone-900 rounded-sm px-3 py-1.5 transition-colors"
+          >
+            <FlaskConical className="h-3.5 w-3.5" />
+            Dev Panel
+          </button>
+        </div>
       </header>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12">
