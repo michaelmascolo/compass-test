@@ -226,6 +226,30 @@ export default function DevelopmentPanel({
                   </div>
                 </Block>
               ) : null}
+              {theory.evidence_function?.applies ? (
+                <Block label="Evidence Function (M8)">
+                  <div className="space-y-1.5" data-testid="evidence-function-block">
+                    <div>
+                      <span className="text-stone-500">forms:</span>{" "}
+                      <List items={theory.evidence_function?.forms} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">function:</span>{" "}
+                      <span className="text-amber-300">
+                        <Text value={theory.evidence_function?.function} />
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">interpretation gap:</span>{" "}
+                      <Text value={theory.evidence_function?.interpretation_gap} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">quality (functional):</span>{" "}
+                      <Text value={theory.evidence_function?.quality} />
+                    </div>
+                  </div>
+                </Block>
+              ) : null}
               <Block label="Current Organization (relative to telos)">
                 <Text value={theory.current_organization} />
               </Block>
