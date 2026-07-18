@@ -266,6 +266,36 @@ export default function DevelopmentPanel({
                   <Text value={last?.selected_invitation?.invitation} />
                 </div>
               </Block>
+              <Block label="Developmental Instruction — Intervention">
+                <div className="space-y-1.5" data-testid="intervention-block">
+                  <div>
+                    <span className="text-stone-500">type:</span>{" "}
+                    <span className="text-amber-300">
+                      <Text value={last?.intervention?.type} />
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500">cultural resource:</span>{" "}
+                    <Text value={last?.intervention?.cultural_resource} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">interpretation:</span>{" "}
+                    <Text value={last?.intervention?.interpretation} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">instruction:</span>{" "}
+                    <Text value={last?.intervention?.instruction} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">consolidation:</span>{" "}
+                    <Text value={last?.intervention?.consolidation} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">timing:</span>{" "}
+                    <Text value={last?.intervention?.timing_rationale} />
+                  </div>
+                </div>
+              </Block>
               <Block label="Rationale for Selection (coherence, not optimality)">
                 <Text value={last?.selected_invitation?.selection_basis} />
               </Block>

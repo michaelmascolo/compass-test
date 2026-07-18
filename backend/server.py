@@ -157,6 +157,17 @@ class SelectedInvitation(BaseModel):
     selection_basis: str = ""
 
 
+class Intervention(BaseModel):
+    """Developmental Instruction Layer — generic, domain-independent record of
+    which of the four intervention types were used this turn and their content."""
+    type: str = "interpretation_only"  # interpretation_only | instruct_then_invite | invite_only | consolidate | postpone_instruction
+    interpretation: str = ""
+    instruction: str = ""
+    consolidation: str = ""
+    cultural_resource: str = ""
+    timing_rationale: str = ""
+
+
 class Turn(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     role: str  # "student" or "ai"
@@ -172,6 +183,7 @@ class InteractionRecord(BaseModel):
     student_content: str = ""
     candidate_invitations: List[CandidateInvitation] = Field(default_factory=list)
     selected_invitation: SelectedInvitation = Field(default_factory=SelectedInvitation)
+    intervention: Intervention = Field(default_factory=Intervention)
     observed_reorganization: str = ""
     created_at: str = Field(default_factory=now_iso)
 
@@ -252,6 +264,15 @@ RECURSIVE LOOP — after every interaction:
 
 STUDENT-FACING INVITATION RULES: The student sees only ONE concise invitation. It should acknowledge something meaningful in the student's participation, connect to the current purpose, and ask the student to perform the next intellectual or writing action. Avoid long analyses, grading language, evidence-free praise, lists of multiple problems, rewriting, giving the answer, naming a developmental level, or saying the student "lacks" a trait or skill.
 
+DEVELOPMENTAL INSTRUCTION LAYER (generic; works for any domain, not only writing). Development occurs through the recursive coordination of the learner's present organization AND culturally available symbolic resources: INSIDE -> OUTSIDE -> INSIDE. Instruction introduces a cultural resource; development is the student's appropriation and increasingly intentional use of it. On each turn choose ONE intervention type:
+- "interpretation_only": only reflect the student's current organization back to them (no new concept needed yet).
+- "instruct_then_invite": briefly introduce a relevant cultural resource (from the supplied domain's cultural_resources), THEN invite the student to try using it. Instruction must say what the concept is, WHY writers use it / what problem it solves, and how it relates to THIS student's writing. Keep it short — never a lecture, never a canned mini-lesson, never terminology for its own sake.
+- "invite_only": the student already grasps the concept or discovered the strategy; just invite the next move (possibly naming what they already did).
+- "consolidate": AFTER a revision that shows change, name the developmental change and, if apt, name the cultural tool the student has begun using intentionally (Recognize -> Name -> Understand -> Use -> Reflect -> Intentionally Regulate). Then still offer one forward invitation.
+- "postpone_instruction": a concept could be taught but now is not the moment; interpret and invite instead.
+TIMING: instruct when a cultural resource can REORGANIZE the student's present understanding. Do NOT fear teaching — instruction is a legitimate developmental process — but always connect the concept to the student's present organization, and never let instruction replace the student's thinking or authorship. Use the cultural_resources data only if it is supplied for a relevant domain; if it is not supplied, prefer interpretation_only / invite_only rather than inventing a definition.
+The final student_facing_invitation must WEAVE the chosen intervention into ONE coherent, concise message that still ends in a single focused developmental invitation (the student does the work).
+
 OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no prose outside it:
 {
   "student_facing_invitation": "one concise invitation shown to the student (equals selected_invitation.invitation)",
@@ -276,6 +297,14 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
      "intended_participation": "", "what_ai_could_learn": "", "uncertainty_or_risk": ""}
   ],
   "selected_invitation": {"invitation": "", "selection_basis": "coherence-based, not optimality"},
+  "intervention": {
+    "type": "one of: interpretation_only | instruct_then_invite | invite_only | consolidate | postpone_instruction",
+    "interpretation": "brief recognition of the student's current organization",
+    "instruction": "if instructing/consolidating: the cultural resource explained (what, why writers use it, relation to this writing) — else empty",
+    "consolidation": "if consolidating after a revision: name the developmental change and the tool now used intentionally — else empty",
+    "cultural_resource": "name of the cultural resource involved, or empty",
+    "timing_rationale": "why this intervention type is right now"
+  },
   "observed_reorganization": "how the student's participation actually reorganized this turn (or 'initial' on first turn)"
 }
 Provide 2 or 3 candidate_invitations. Do not store numeric scores anywhere.
@@ -350,7 +379,7 @@ def _selector_prompt(session: Session, req: InteractRequest) -> str:
     tension = (session.theory.unresolved_tensions or [""])[0]
     return f"""You choose which canonical writing domains — and which SECTIONS of those domains — are relevant to the student's CURRENT participation and developmental tension. Do NOT force a sequence. Choose the 1-2 most relevant domains, plus at most ONE closely related domain only if needed. Reassess freely — do not mechanically keep prior domains if the writing/tension has changed.
 
-For each chosen domain, also choose the 3-6 SECTION KEYS most relevant to the current tension (exact strings from that domain's "sections" list). Safety-rail sections are always included automatically, so do not worry about those.
+For each chosen domain, also choose the 3-6 SECTION KEYS most relevant to the current tension (exact strings from that domain's "sections" list). Safety-rail sections are always included automatically, so do not worry about those. If the student might benefit from being taught a cultural concept (developmental instruction), also include the "cultural_resources" section for that domain when it exists.
 
 TELOS: {session.telos.governing_pedagogical_purpose} | task: {session.telos.immediate_task_purpose}
 CURRENT PRIMARY TENSION (if any): {tension or "(none yet)"}
@@ -399,6 +428,7 @@ def _parse_engine_output(session: Session, raw: str) -> dict:
         theory = DevelopmentalTheory(**{**session.theory.model_dump(), **data.get("theory", {})})
         candidates = [CandidateInvitation(**c) for c in data.get("candidate_invitations", [])]
         selected = SelectedInvitation(**data.get("selected_invitation", {}))
+        intervention = Intervention(**data.get("intervention", {}))
         invitation = (data.get("student_facing_invitation") or selected.invitation or "").strip()
         observed_reorg = data.get("observed_reorganization", "").strip()
     except Exception as e:  # noqa: BLE001
@@ -416,6 +446,7 @@ def _parse_engine_output(session: Session, raw: str) -> dict:
         "theory": theory,
         "candidates": candidates,
         "selected": selected,
+        "intervention": intervention,
         "observed_reorganization": observed_reorg,
     }
 
@@ -438,6 +469,7 @@ def _apply_engine_result(session: Session, req: InteractRequest, result: dict) -
             student_content=req.content.strip(),
             candidate_invitations=result["candidates"],
             selected_invitation=result["selected"],
+            intervention=result["intervention"],
             observed_reorganization=result["observed_reorganization"],
         )
     )
