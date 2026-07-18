@@ -198,6 +198,34 @@ export default function DevelopmentPanel({
                   ) : null}
                 </div>
               </Block>
+              {theory.paragraph_function?.applies ? (
+                <Block label="Paragraph Function (M7)">
+                  <div className="space-y-1.5" data-testid="paragraph-function-block">
+                    <div>
+                      <span className="text-stone-500">purpose:</span>{" "}
+                      <span className="text-amber-300">
+                        <Text value={theory.paragraph_function?.purpose} />
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">contribution to whole:</span>{" "}
+                      <Text value={theory.paragraph_function?.contribution_to_whole} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">coherence:</span>{" "}
+                      <Text value={theory.paragraph_function?.coherence} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">development:</span>{" "}
+                      <Text value={theory.paragraph_function?.development} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">placement:</span>{" "}
+                      <Text value={theory.paragraph_function?.placement} />
+                    </div>
+                  </div>
+                </Block>
+              ) : null}
               <Block label="Current Organization (relative to telos)">
                 <Text value={theory.current_organization} />
               </Block>

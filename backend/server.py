@@ -131,10 +131,23 @@ class CommunicativePurpose(BaseModel):
     uncertainty: str = ""
 
 
+class ParagraphFunction(BaseModel):
+    """M7 — functional analysis of a paragraph as a unit of communication.
+    Populated only when a paragraph is the unit currently under discussion (applies=True).
+    Interpreted relative to the communicative purpose (M6); NO paragraph templates."""
+    applies: bool = False
+    purpose: str = ""                 # what this paragraph is trying to accomplish
+    contribution_to_whole: str = ""   # how it serves the overall purpose of the piece
+    coherence: str = ""               # do the sentences work together toward one purpose?
+    development: str = ""             # how the purpose is developed (explanation/description/interpretation/illustration/comparison/clarification/evidence/reflection)
+    placement: str = ""               # role/placement relative to what comes before/after
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
     communicative_purpose: CommunicativePurpose = Field(default_factory=CommunicativePurpose)
+    paragraph_function: ParagraphFunction = Field(default_factory=ParagraphFunction)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -268,6 +281,14 @@ COMMUNICATIVE PURPOSE FRAMEWORK (Milestone 6 — apply BEFORE evaluating any wri
 - FUNCTIONAL, NOT FORMULAIC ORGANIZATION: patterns like Claim→Reasons→Support (persuasion), Question→Process→Explanation (explanation), events-over-time (narrative), Observation→Interpretation→Support (analysis), Experience→Meaning→Insight (reflection) are COMMON FUNCTIONAL PATTERNS, not required templates. Never impose a template; help the student see how organization serves their purpose.
 - PURPOSE-FIRST REASONING: before instructing, internally ask "What is the student trying to accomplish?" then "Does the student's current organization support that purpose?" Always connect writing concepts to the communicative goal. This coordinates with (does not replace) the WRITING INSTRUCTION BOUNDARY: teach how writing serves the purpose; never supply the substantive content.
 
+FUNCTIONAL PARAGRAPH FRAMEWORK (Milestone 7 — apply when a paragraph is the unit under discussion): A paragraph is a FUNCTIONAL unit of communication; evaluate it by the WORK it is trying to do within the larger piece, not by whether it fills a template. Reason about paragraph FUNCTION before paragraph structure. When the current writing is (or centers on) a paragraph, set theory.paragraph_function.applies=true and reason through:
+- PURPOSE: what is this paragraph trying to accomplish? (e.g., introducing a topic, stating a claim, explaining a concept, interpreting evidence, describing an event, comparing ideas, evaluating alternatives, responding to an opposing position, reflecting on an experience). Interpret this purpose RELATIVE TO the communicative purpose (M6) of the whole piece.
+- FUNCTIONAL COHERENCE: do the sentences work together toward one common purpose? Is there a controlling idea? Does every sentence contribute? Are there unnecessary shifts? Would a reader understand why each sentence belongs? Teach coherence as MEANINGFUL organization — not merely smooth transitions.
+- DEVELOPMENT: how does the paragraph develop its purpose? Developmental resources (explanation, description, interpretation, illustration, comparison, clarification, evidence, reflection) are communicative RESOURCES, not required components; different purposes call for different development. Never demand a fixed set of moves.
+- RELATIONSHIP TO THE WHOLE: what role does this paragraph play? Is it appropriately placed? Does it build on what came before and prepare for what follows?
+- ORGANIZATION is FUNCTIONAL, never formulaic: never teach a fixed paragraph template (no obligatory topic-sentence → evidence → analysis → concluding-sentence). Help the student see how organizing sentences serves the paragraph's purpose and the reader's understanding.
+Before instructing on a paragraph, internally ask "What is this paragraph trying to accomplish?" then "How well do the sentences work together to accomplish that purpose?" Instruction improves the student's UNDERSTANDING of paragraph function; it never prescribes a structural formula and — per the WRITING INSTRUCTION BOUNDARY — never invents arguments, claims, examples, or evidence for the student (unless brainstorming is explicitly enabled). Whenever the student's current draft IS a paragraph (or the task asks for one), set theory.paragraph_function.applies=true and complete its fields — do this EVEN WHEN the paragraph is strong and effective (naming the function it already performs is itself the analysis). Only leave applies=false when there is genuinely no paragraph in focus (e.g., the student has not yet written one, or the unit is a whole-essay/thesis question).
+
 DRAFT RULE: When the input is a draft ("writing", "revise", or "continue") it is the student's full, authoritative current text. If it differs from their previous draft, they HAVE revised — name the change you see and build on it. Never claim a student has not revised when their new draft differs from the old one.
 
 RECURSIVE LOOP — after every interaction:
@@ -312,6 +333,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
   "theory": {
     "current_telos": "", "current_organization": "",
     "communicative_purpose": {"primary": "the writer's primary communicative purpose (persuade/inform/explain/interpret/analyze/narrate/reflect/evaluate/compare/propose/...)", "secondary": ["any secondary purposes"], "inferred_from": "what you inferred purpose from (assignment/teacher/student description/writing)", "uncertainty": "note if purpose is unclear, else empty"},
+    "paragraph_function": {"applies": "true only when a paragraph is the unit under discussion, else false", "purpose": "what this paragraph is trying to accomplish (relative to the communicative purpose) — else empty", "contribution_to_whole": "how it serves the whole piece — else empty", "coherence": "do the sentences work together toward one purpose? controlling idea? unnecessary shifts? — else empty", "development": "how the purpose is developed (explanation/description/interpretation/illustration/comparison/clarification/evidence/reflection) — else empty", "placement": "role/placement relative to what comes before/after — else empty"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -365,6 +387,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
     return {
         "current_telos": theory.current_telos,
         "communicative_purpose": theory.communicative_purpose.model_dump(),
+        "paragraph_function": theory.paragraph_function.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,
