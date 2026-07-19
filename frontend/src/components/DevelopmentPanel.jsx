@@ -286,6 +286,40 @@ export default function DevelopmentPanel({
                   </div>
                 </Block>
               ) : null}
+              {theory.revision_development?.applies ? (
+                <Block label="Revision as Development (M13)">
+                  <div className="space-y-1.5" data-testid="revision-development-block">
+                    <div>
+                      <span className="text-stone-500">development detected:</span>{" "}
+                      <span className="text-amber-300">
+                        <Text value={theory.revision_development?.development_detected} />
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">primary growth:</span>{" "}
+                      <Text value={theory.revision_development?.primary_growth} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">communication change:</span>{" "}
+                      <Text value={theory.revision_development?.communication_change} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">reader change:</span>{" "}
+                      <Text value={theory.revision_development?.reader_change} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">remaining opportunity:</span>{" "}
+                      <Text value={theory.revision_development?.remaining_opportunity} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">transfer message:</span>{" "}
+                      <span className="text-emerald-300">
+                        <Text value={theory.revision_development?.transfer_message} />
+                      </span>
+                    </div>
+                  </div>
+                </Block>
+              ) : null}
                 <Block label="Paragraph Function (M7)">
                   <div className="space-y-1.5" data-testid="paragraph-function-block">
                     <div>

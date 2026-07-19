@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="1" time="234.008" timestamp="2026-07-19T12:26:29.737552+00:00" hostname="agent-env-3627894e-c20b-4446-9c49-c717db2e143a"><testcase classname="tests.test_milestone13_revision_development.TestM6toM12RegressionAndHistory" name="test_supported_revise_preserves_m6_to_m12_and_history" time="233.484"><failure message="AssertionError: turn2 SSE failed: err=None&#10;assert (200 == 200 and None is not None)">backend/tests/test_milestone13_revision_development.py:472: in test_supported_revise_preserves_m6_to_m12_and_history
+    assert st2 == 200 and s2 is not None, f"turn2 SSE failed: err={e2}"
+E   AssertionError: turn2 SSE failed: err=None
+E   assert (200 == 200 and None is not None)</failure></testcase></testsuite></testsuites>

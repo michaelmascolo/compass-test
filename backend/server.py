@@ -211,6 +211,19 @@ class ReaderConstruction(BaseModel):
     next_reader_need: str = ""         # what that reader would naturally need next
 
 
+class RevisionDevelopment(BaseModel):
+    """M13 — revision as DEVELOPMENTAL CHANGE, not editing. Populated when a revision can be
+    compared to a prior draft (applies=True). Identifies how the student's ability to COMMUNICATE
+    changed between drafts (developmental growth, not textual difference); NO edit-counting."""
+    applies: bool = False
+    development_detected: str = ""     # yes/partial/no + brief: did a developmental capacity strengthen? (many edits may = no growth; one change may = real growth)
+    primary_growth: str = ""           # the single most important developmental capacity that got stronger (purpose/paragraph/evidence-interp/coherence/reader-understanding/precision/elaboration/conclusion/organization)
+    communication_change: str = ""     # did communication actually improve, and how?
+    reader_change: str = ""            # did the reader's likely understanding improve (M12)?
+    remaining_opportunity: str = ""    # if limited progress: the ONE remaining developmental opportunity (do not re-teach everything)
+    transfer_message: str = ""         # how the student can transfer this understanding to FUTURE writing (part of consolidation)
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
@@ -221,6 +234,7 @@ class DevelopmentalTheory(BaseModel):
     conclusion_function: ConclusionFunction = Field(default_factory=ConclusionFunction)
     scaffolding_control: ScaffoldingControl = Field(default_factory=ScaffoldingControl)
     reader_construction: ReaderConstruction = Field(default_factory=ReaderConstruction)
+    revision_development: RevisionDevelopment = Field(default_factory=RevisionDevelopment)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -405,6 +419,15 @@ READER CONSTRUCTION FRAMEWORK (Milestone 12 — the reader model that informs ev
 - NEXT READER NEED → next_reader_need: what the reader would naturally need next.
 DEVELOPMENTAL USE: determine "What misunderstanding is most likely?" then "What single developmental invitation would most improve the reader's understanding?" Reader Construction FEEDS the other frameworks (purpose, paragraph, evidence, coherence, conclusion) and the M11 controller — it does not replace them, and the controller still selects only ONE instructional target. Per the WRITING INSTRUCTION BOUNDARY (M5A) you may teach clarification, elaboration, reader expectations, precision, sequencing, and inferential gaps, but you may NOT invent content/evidence/examples, complete unfinished arguments, or rewrite passages unless brainstorming/content generation is explicitly enabled. If there is no drafted text to read yet, leave theory.reader_construction.applies=false and its fields empty.
 
+REVISION AS DEVELOPMENT FRAMEWORK (Milestone 13 — apply when the current draft can be compared to a prior one, e.g. a revise turn or any later draft of the same writing). Revision is NOT editing; it is developmental CHANGE. Evaluate a revision by identifying how the student's ability to COMMUNICATE has changed between drafts — developmental growth, not textual difference. Record it in theory.revision_development (set applies=true whenever a prior draft exists to compare against). Every revision answers ONE question: "What has the student learned or changed?"
+- COMPARE prior vs current draft → determine what changed, why it changed, whether communication improved, whether the reader's likely understanding improved (M12), and whether the communicative purpose is better fulfilled. Record development_detected (yes/partial/no + brief) and communication_change / reader_change.
+- DEVELOPMENTAL, NOT TEXTUAL: many textual edits may represent ONE developmental gain, and many edits may represent NO growth. NO SCOREKEEPING — never count edits, never reward quantity of revision. Development is a qualitative change in communication. Name the single most important capacity that strengthened in primary_growth (clearer purpose / stronger paragraph function / improved evidence interpretation / improved coherence / stronger reader understanding / greater precision / improved elaboration / stronger conclusion / improved organization).
+- CONSOLIDATION WITH TRANSFER: when meaningful developmental progress occurs, briefly identify what improved, why it improved, how it supports communication, and — crucially — how the student can TRANSFER this understanding to FUTURE writing. Put that in transfer_message. Reinforce the LEARNING, not merely praise improved text.
+- LIMITED PROGRESS / REGRESSION: if revisions did not improve communication (or made it worse), name the ONE remaining developmental opportunity in remaining_opportunity WITHOUT re-teaching every previous concept. The M11 controller still selects exactly ONE instructional target.
+- MULTIPLE REVISIONS: across several drafts, read the developmental TRAJECTORY (e.g. increasing reader awareness, improving evidence interpretation, stronger coherence, increasing precision) — do not merely compare adjacent drafts.
+Per the WRITING INSTRUCTION BOUNDARY (M5A): you may teach developmental growth, communicative improvement, transfer, and revision strategies, but you may NOT rewrite drafts, generate improved versions, or invent content unless brainstorming/content generation is explicitly enabled. If there is no prior draft to compare (first submission), leave theory.revision_development.applies=false and its fields empty.
+
+
 
 
 
@@ -460,6 +483,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "conclusion_function": {"applies": "true only when an ending/conclusion is present or at issue, else false", "functions_in_play": ["conclusion functions at work (completion/reinforce purpose/integrate ideas/explain significance/invite reflection/resolve narrative/answer opening question/return to opening/identify implications/final understanding) — else empty"], "completes_purpose": "does it COMPLETE the overall communicative purpose, or merely stop/summarize/introduce a new idea? — else empty", "relationship_to_opening": "connection to the introduction and to the reader's expectations — else empty", "final_understanding": "what should the reader understand after finishing the piece? — else empty"},
     "scaffolding_control": {"current_unit": "sentence/paragraph/section/whole paper", "diagnosed_opportunities": ["all developmental opportunities seen across frameworks this turn"], "primary_target": "the SINGLE instructional target chosen this cycle", "prioritization_rationale": "why this one (developmental readiness / importance for communication / leverage / dependency)", "instructional_mode": "developmental_question | explicit_instruction | brief_demonstration | guided_revision | reflection | consolidation", "postponed": ["opportunities deferred to later cycles"], "cycle_status": "continue | consolidate_and_return | stop", "stopping_reason": "if stopping: objective achieved / sufficient movement / another domain primary / diminishing returns / student requests independence — else empty", "future_opportunity": "one possible future cycle (named, NOT taught now) — else empty"},
     "reader_construction": {"applies": "true whenever there is drafted text to read, else false", "reader_understanding": "what a reasonable naive reader understands at this point given only what the text has said — else empty", "likely_reader_questions": ["questions the reader would naturally have now — else empty"], "assumed_knowledge": "knowledge assumed but not yet communicated; reasonable inference vs unsupported assumption — else empty", "clarification_needed": "where a reader could be confused — else empty", "elaboration_needed": "where the reader cannot yet understand the intended meaning without more support — else empty", "precision_risk": "where a reasonable reader could interpret this differently than intended — else empty", "next_reader_need": "what the reader would naturally need next — else empty"},
+    "revision_development": {"applies": "true only when a prior draft exists to compare against (revise/later draft), else false", "development_detected": "yes/partial/no + brief — did a developmental capacity strengthen? (edits != growth) — else empty", "primary_growth": "the single most important capacity that got stronger (purpose/paragraph/evidence-interp/coherence/reader-understanding/precision/elaboration/conclusion/organization) — else empty", "communication_change": "did communication actually improve, and how? — else empty", "reader_change": "did the reader's likely understanding improve? — else empty", "remaining_opportunity": "if limited/regressed: the ONE remaining developmental opportunity (do not re-teach everything) — else empty", "transfer_message": "how the student can transfer this understanding to FUTURE writing — else empty"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -519,6 +543,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "conclusion_function": theory.conclusion_function.model_dump(),
         "scaffolding_control": theory.scaffolding_control.model_dump(),
         "reader_construction": theory.reader_construction.model_dump(),
+        "revision_development": theory.revision_development.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,
