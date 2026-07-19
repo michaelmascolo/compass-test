@@ -355,6 +355,26 @@ function frameworkStatuses(theory) {
   return out;
 }
 
+// Teacher view only: strip internal theory names / Milestone tags from the
+// LLM-emitted data strings so no internal terminology leaks into teacher labels.
+// Data/reasoning is untouched; research view shows the raw values.
+function humanizeFramework(s) {
+  if (!s) return s;
+  return s
+    .replace(/\s*\(\s*M\d+[^)]*\)/gi, "")
+    .replace(/\bM\d+\b/gi, "")
+    .replace(/reader construction/gi, "reader understanding")
+    .replace(/communicative purpose/gi, "purpose")
+    .replace(/revision development/gi, "growth across drafts")
+    .replace(/scaffolding controller?/gi, "developmental focus")
+    .replace(/integration (?:and|&) calibration/gi, "overall calibration")
+    .replace(/\bframework\b/gi, "focus")
+    .replace(/\s{2,}/g, " ")
+    .replace(/\s+([—–-])\s*$/, "")
+    .trim()
+    .replace(/^([a-z])/, (m) => m.toUpperCase());
+}
+
 function computeDefaults(theory) {
   const st = frameworkStatuses(theory);
   const map = {
@@ -572,10 +592,22 @@ export default function DevelopmentPanel({
                     <Text value={theory.scaffolding_control?.current_unit} />
                   </KV>
                   <KV k={t("Opportunities noticed", "diagnosed opportunities")}>
-                    <List items={theory.scaffolding_control?.diagnosed_opportunities} />
+                    <List
+                      items={
+                        researchView
+                          ? theory.scaffolding_control?.diagnosed_opportunities
+                          : (theory.scaffolding_control?.diagnosed_opportunities || []).map(humanizeFramework)
+                      }
+                    />
                   </KV>
                   <KV k={t("Focus this turn", "primary target")} accent="text-amber-300">
-                    <Text value={theory.scaffolding_control?.primary_target} />
+                    <Text
+                      value={
+                        researchView
+                          ? theory.scaffolding_control?.primary_target
+                          : humanizeFramework(theory.scaffolding_control?.primary_target)
+                      }
+                    />
                   </KV>
                   <KV k={t("Why this focus?", "why (priority)")}>
                     <Text value={theory.scaffolding_control?.prioritization_rationale} />
@@ -584,7 +616,13 @@ export default function DevelopmentPanel({
                     <Text value={theory.scaffolding_control?.instructional_mode} />
                   </KV>
                   <KV k={t("Postponed opportunities", "postponed")}>
-                    <List items={theory.scaffolding_control?.postponed} />
+                    <List
+                      items={
+                        researchView
+                          ? theory.scaffolding_control?.postponed
+                          : (theory.scaffolding_control?.postponed || []).map(humanizeFramework)
+                      }
+                    />
                   </KV>
                   <KV k={t("Where the coaching stands", "cycle status")} accent="text-sky-300">
                     <Text value={theory.scaffolding_control?.cycle_status} />
@@ -613,10 +651,22 @@ export default function DevelopmentPanel({
                 >
                   <div className="space-y-1.5" data-testid="integration-calibration-block">
                     <KV k={t("Main lens", "primary framework")} accent="text-amber-300">
-                      <Text value={theory.integration_calibration?.primary_framework} />
+                      <Text
+                        value={
+                          researchView
+                            ? theory.integration_calibration?.primary_framework
+                            : humanizeFramework(theory.integration_calibration?.primary_framework)
+                        }
+                      />
                     </KV>
                     <KV k={t("Also considered", "supporting frameworks")}>
-                      <List items={theory.integration_calibration?.supporting_frameworks} />
+                      <List
+                        items={
+                          researchView
+                            ? theory.integration_calibration?.supporting_frameworks
+                            : (theory.integration_calibration?.supporting_frameworks || []).map(humanizeFramework)
+                        }
+                      />
                     </KV>
                     <KV k={t("Is this the right amount?", "calibration check")}>
                       <Text value={theory.integration_calibration?.calibration_check} />
