@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import "@/App.css";
 import { Toaster, toast } from "sonner";
 import TeacherSetup from "@/components/TeacherSetup";
@@ -23,6 +23,10 @@ function App() {
   const [submitting, setSubmitting] = useState(false);
   const [savingTelos, setSavingTelos] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  const notifiedFailRef = useRef(new Set());
+
+  // A turn is being reasoned on in the background whenever any turn is "processing".
+  const isProcessing = !!session?.turns?.some((t) => t.status === "processing");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -42,6 +46,34 @@ function App() {
       .finally(() => setBooting(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The database is the source of truth. Whenever a turn is being reasoned on
+  // in the background, poll the session until it completes (or fails). This
+  // survives reloads, disconnects, and slow (>180s) reasoning — on reconnect the
+  // completed turn is simply loaded from the DB.
+  useEffect(() => {
+    if (!session?.id || !isProcessing) return;
+    const id = session.id;
+    let cancelled = false;
+    const timer = setInterval(async () => {
+      try {
+        const s = await getSession(id);
+        if (cancelled) return;
+        setSession(s);
+        const lastAi = [...(s.turns || [])].reverse().find((t) => t.role === "ai");
+        if (lastAi && lastAi.status === "failed" && !notifiedFailRef.current.has(lastAi.id)) {
+          notifiedFailRef.current.add(lastAi.id);
+          toast.error("The coach couldn't respond. Please send your writing again.");
+        }
+      } catch (e) {
+        // transient network error — keep polling; the DB still holds the work
+      }
+    }, 2500);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, [session?.id, isProcessing]);
 
   const handleBegin = async (form) => {
     setSubmitting(true);
@@ -81,11 +113,11 @@ function App() {
       setSubmitting(true);
       try {
         const updated = await interact(session.id, { kind, content });
-        setSession(updated);
+        setSession(updated); // now holds a "processing" placeholder; polling takes over
       } catch (e) {
         const msg =
-          e?.detail ||
           e?.response?.data?.detail ||
+          e?.detail ||
           "The coach could not respond. Please try again.";
         toast.error(msg);
       } finally {
@@ -136,7 +168,7 @@ function App() {
           <StudentWorkspace
             session={session}
             onSubmit={handleSubmit}
-            loading={submitting}
+            loading={submitting || isProcessing}
             onOpenPanel={() => setPanelOpen(true)}
             onNewSession={handleNewSession}
           />

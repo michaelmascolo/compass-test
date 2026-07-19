@@ -8,13 +8,12 @@ from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import FastAPI, APIRouter, HTTPException
-from fastapi.responses import StreamingResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pydantic import BaseModel, Field
 
-from emergentintegrations.llm.chat import LlmChat, UserMessage, TextDelta, StreamDone
+from emergentintegrations.llm.chat import LlmChat, UserMessage
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -300,6 +299,7 @@ class Turn(BaseModel):
     role: str  # "student" or "ai"
     kind: str = "message"
     content: str
+    status: str = "complete"  # complete | processing | failed | cancelled (durable revision processing)
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -687,7 +687,10 @@ def _parse_engine_output(session: Session, raw: str) -> dict:
     }
 
 
-def _apply_engine_result(session: Session, req: InteractRequest, result: dict) -> None:
+def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, result: dict) -> None:
+    """Fill the pre-persisted placeholder AI turn with the completed reasoning and
+    update the working theory. Mirrors the prior apply logic but targets the
+    existing placeholder turn instead of appending a new one."""
     # snapshot the theory that motivated this response BEFORE replacing it
     session.theory_history.append(
         TheorySnapshot(
@@ -696,7 +699,12 @@ def _apply_engine_result(session: Session, req: InteractRequest, result: dict) -
             theory=session.theory,
         )
     )
-    session.turns.append(Turn(role="ai", kind="invitation", content=result["invitation"]))
+    for t in session.turns:
+        if t.id == ai_turn_id:
+            t.content = result["invitation"]
+            t.kind = "invitation"
+            t.status = "complete"
+            break
     session.telos = result["telos"]
     session.theory = result["theory"]
     session.interactions.append(
@@ -822,7 +830,78 @@ async def _select_relevant_domains(session: Session, req: InteractRequest) -> li
     return [{"domain_name": n, "sections": []} for n in fallback]
 
 
-@api_router.post("/sessions/{session_id}/interact")
+async def _run_engine(session: Session, req: InteractRequest) -> dict:
+    """Run STAGE A (domain selection) + STAGE B (developmental reasoning) with one
+    retry on transient/unreadable failure. Pure logic — no client connection.
+    Raises on unrecoverable failure."""
+    relevant = await _select_relevant_domains(session, req)
+    prompt = _build_prompt(session, req, relevant)
+    _sel_log = {s["domain_name"]: len(s["sections"]) for s in relevant}
+    logger.info(f"[reason] domains/sections={_sel_log} reasoner_prompt_bytes={len(prompt)}")
+
+    last_err = None
+    for attempt in range(2):
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"dev-{session.id}",
+                system_message=SYSTEM_MESSAGE,
+            ).with_model("anthropic", "claude-sonnet-4-6")
+            raw = await chat.send_message(UserMessage(text=prompt))
+            return _parse_engine_output(session, raw)
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            logger.warning(f"reasoner attempt {attempt + 1} failed: {e}")
+            if attempt == 0:
+                await asyncio.sleep(3)
+    raise last_err or RuntimeError("engine failed")
+
+
+async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest) -> None:
+    """Background task: reason independently of the client connection and persist
+    the completed turn to the database. Client disconnects never interrupt this."""
+    try:
+        doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+        if not doc:
+            return
+        session = Session(**doc)
+        # reason against the session WITHOUT the placeholder AI turn so previous-draft
+        # detection and history behave exactly as before.
+        reason_session = session.model_copy(deep=True)
+        reason_session.turns = [t for t in session.turns if t.id != ai_turn_id]
+        result = await _run_engine(reason_session, req)
+
+        # reload fresh, then persist onto the still-processing placeholder
+        doc2 = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+        if not doc2:
+            return
+        session2 = Session(**doc2)
+        ai = next((t for t in session2.turns if t.id == ai_turn_id), None)
+        if ai is None or ai.status != "processing":
+            logger.info(f"[reason] turn {ai_turn_id} no longer processing; discarding result")
+            return
+        _finalize_turn(session2, ai_turn_id, req, result)
+        await db.sessions.update_one(
+            {"id": session_id},
+            {"$set": {
+                "turns": [t.model_dump() for t in session2.turns],
+                "telos": session2.telos.model_dump(),
+                "theory": session2.theory.model_dump(),
+                "theory_history": [s.model_dump() for s in session2.theory_history],
+                "interactions": [i.model_dump() for i in session2.interactions],
+                "updated_at": session2.updated_at,
+            }},
+        )
+        logger.info(f"[reason] completed turn {ai_turn_id} for session {session_id}")
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[reason] failed for turn {ai_turn_id}: {e}")
+        await db.sessions.update_one(
+            {"id": session_id, "turns.id": ai_turn_id},
+            {"$set": {"turns.$.status": "failed", "turns.$.content": "", "updated_at": now_iso()}},
+        )
+
+
+@api_router.post("/sessions/{session_id}/interact", response_model=Session)
 async def interact(session_id: str, req: InteractRequest):
     doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
     if not doc:
@@ -832,66 +911,23 @@ async def interact(session_id: str, req: InteractRequest):
     if not req.content.strip():
         raise HTTPException(status_code=400, detail="Empty submission")
 
-    session.turns.append(Turn(role="student", kind=req.kind, content=req.content.strip()))
+    # prevent duplicate concurrent turns while one is still being prepared
+    if any(t.status == "processing" for t in session.turns):
+        raise HTTPException(status_code=409, detail="A response is already being prepared for this session.")
 
-    async def event_generator():
-        try:
-            # STAGE A: choose relevant domains + sections from the compact index
-            relevant = await _select_relevant_domains(session, req)
-            # STAGE B: reason with only the relevant sections of those domains
-            prompt = _build_prompt(session, req, relevant)
-            _sel_log = {s["domain_name"]: len(s["sections"]) for s in relevant}
-            logger.info(f"[interact] domains/sections={_sel_log} reasoner_prompt_bytes={len(prompt)}")
-
-            result = None
-            last_err = None
-            for attempt in range(2):  # one retry on transient/unreadable failure
-                raw_parts: List[str] = []
-                try:
-                    chat = LlmChat(
-                        api_key=EMERGENT_LLM_KEY,
-                        session_id=f"dev-{session.id}",
-                        system_message=SYSTEM_MESSAGE,
-                    ).with_model("anthropic", "claude-sonnet-4-6")
-                    async for ev in chat.stream_message(UserMessage(text=prompt)):
-                        if isinstance(ev, TextDelta):
-                            raw_parts.append(ev.content)
-                            yield ": tick\n\n"  # heartbeat keeps the connection warm
-                        elif isinstance(ev, StreamDone):
-                            break
-                    result = _parse_engine_output(session, "".join(raw_parts))
-                    break
-                except Exception as e:  # noqa: BLE001
-                    last_err = e
-                    logger.warning(f"reasoner attempt {attempt + 1} failed: {e}")
-                    if attempt == 0:
-                        yield ": retry\n\n"
-                        await asyncio.sleep(3)
-            if result is None:
-                raise last_err or RuntimeError("engine failed")
-
-            _apply_engine_result(session, req, result)
-            await db.sessions.update_one(
-                {"id": session_id},
-                {"$set": {
-                    "turns": [t.model_dump() for t in session.turns],
-                    "telos": session.telos.model_dump(),
-                    "theory": session.theory.model_dump(),
-                    "theory_history": [s.model_dump() for s in session.theory_history],
-                    "interactions": [i.model_dump() for i in session.interactions],
-                    "updated_at": session.updated_at,
-                }},
-            )
-            yield f"event: done\ndata: {json.dumps(session.model_dump())}\n\n"
-        except Exception as e:  # noqa: BLE001
-            logger.error(f"interact stream error: {e}")
-            yield f"event: error\ndata: {json.dumps({'detail': 'The developmental engine could not respond. Please try again.'})}\n\n"
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no", "Connection": "keep-alive"},
+    # persist the student turn + a processing placeholder AI turn IMMEDIATELY,
+    # then reason in the background so client disconnects never lose work.
+    session.turns.append(Turn(role="student", kind=req.kind, content=req.content.strip(), status="complete"))
+    ai_turn = Turn(role="ai", kind="pending", content="", status="processing")
+    session.turns.append(ai_turn)
+    session.updated_at = now_iso()
+    await db.sessions.update_one(
+        {"id": session_id},
+        {"$set": {"turns": [t.model_dump() for t in session.turns], "updated_at": session.updated_at}},
     )
+
+    asyncio.create_task(_run_reasoning(session_id, ai_turn.id, req))
+    return session
 
 
 app.include_router(api_router)
@@ -903,6 +939,22 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.on_event("startup")
+async def recover_orphaned_turns():
+    """A server restart tears down in-flight background tasks. Mark any turns
+    left in 'processing' as 'failed' so the UI is never stuck waiting."""
+    try:
+        res = await db.sessions.update_many(
+            {"turns.status": "processing"},
+            {"$set": {"turns.$[t].status": "failed"}},
+            array_filters=[{"t.status": "processing"}],
+        )
+        if res.modified_count:
+            logger.info(f"[startup] recovered {res.modified_count} session(s) with orphaned processing turns")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[startup] orphan recovery skipped: {e}")
 
 
 @app.on_event("shutdown")

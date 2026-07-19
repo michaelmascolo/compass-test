@@ -56,8 +56,13 @@ export default function StudentWorkspace({
   const [replyMode, setReplyMode] = useState("answer");
   const threadRef = useRef(null);
 
-  const turns = session.turns || [];
-  const started = turns.length > 0;
+  const allTurns = session.turns || [];
+  // Only render completed exchanges; the in-flight placeholder and failed turns
+  // are represented by the thinking indicator / a toast instead.
+  const turns = allTurns.filter(
+    (t) => !(t.role === "ai" && (t.status === "processing" || t.status === "failed"))
+  );
+  const started = allTurns.some((t) => t.role === "student");
 
   useEffect(() => {
     if (threadRef.current) {

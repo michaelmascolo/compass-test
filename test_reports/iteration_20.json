@@ -1,0 +1,45 @@
+{
+  "summary": "Infrastructure Phase 1 (DURABLE REVISION PROCESSING) end-to-end verified. Backend: 8/8 pytest tests pass in 212s against public URL (https://dev-converse.preview.emergentagent.com). POST /api/sessions/{id}/interact now returns in <0.2s with student_turn.status='complete' + ai_turn.status='processing' (kind='pending', empty content); background asyncio task completes reasoning (~55-70s writing, ~55-90s revise) and persists directly via db.sessions.update_one. Concurrent POST while a turn is processing returns HTTP 409 with detail 'A response is already being prepared'. Empty submission still returns 400. Durability confirmed: submit + sleep 80s with NO client connection -> AI turn is status='complete' with populated invitation and single student/ai pair (no duplicates, no lost work). Resubmit-when-idle returns 200 and starts a new processing turn. M1-M14 regression holds through the new flow: intervention.focus='writing' (M5A), scaffolding_control.primary_target present (M11), reader_construction populated (M12), revision_development.applies=False on first writing turn and True after the revise turn (M13), integration_calibration.applies=True with primary_framework populated (M14). The reasoning view correctly EXCLUDES the placeholder AI turn (previous-draft comparison works — the revise turn produced a distinct, focused invitation rather than duplicating the prior one). Interactions/theory_history each grew by exactly 1 per turn. Frontend: ?dev quick-start lands in Student Workspace, submitting a draft flips continue-button to disabled and shows 3 thinking-dot animations, polling delivers the ai-invitation automatically after ~55-70s without any manual refresh, integration-calibration-block (M14) renders inside the Dev Panel. Reconnection UX verified: while a turn was processing, we RELOADED the page and after reload the app immediately re-detected the processing turn (3 thinking-dots visible, continue-button disabled), polling resumed, and the 2nd ai-invitation appeared automatically — no duplicate turns, no lost work. Total conversation ended with 2 student-turn blocks and 2 ai-invitation blocks as expected. The old 60s SSE ingress ceiling that blocked revise turns in iterations 16-19 is gone (POST returns immediately; reasoning finishes in the background regardless of client presence).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions", "issue": "Returns 200 rather than 201 for resource creation. Carry-over from all prior iterations; not blocking."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_durable_processing_iteration20.py",
+    "/app/test_reports/pytest/iter20_durable.xml",
+    "/app/test_reports/pytest/iter20_after_complete.png",
+    "/app/test_reports/pytest/iter20_reload_final.png"
+  ],
+  "action_items": [
+    "None blocking. Durable revision processing is working exactly as specified across backend + frontend."
+  ],
+  "critical_code_review_comments": [
+    "server.py L860-901 (_run_reasoning) — the background task correctly: (1) reloads the session, (2) builds a reason_session that EXCLUDES the placeholder AI turn before invoking _run_engine, (3) reloads fresh again before persistence to avoid clobbering concurrent writes, (4) guards against the placeholder having already been cancelled/finalized (`if ai is None or ai.status != 'processing': return`), (5) on any exception sets status='failed' with empty content atomically via `turns.$.status`. This is a clean and safe implementation. Empirical proof: after 80s of no client connection the AI turn was persisted with a real, coherent developmental invitation and no duplicates.",
+    "server.py L904-930 (interact endpoint) — properly returns Session immediately after asyncio.create_task; POST latency measured at 0.14s. The 409 guard `if any(t.status=='processing' ...)` correctly prevents duplicate processing turns. The student turn + placeholder are persisted BEFORE create_task, so a race between the two POSTs is impossible.",
+    "server.py L944-957 (recover_orphaned_turns) — startup uses `array_filters=[{'t.status': 'processing'}]` with positional operator `turns.$[t].status`, which is the correct MongoDB idiom for updating multiple embedded elements. Note: the ordinary $ positional operator would only update the FIRST processing turn per document; the arrayFilters approach here updates ALL of them. Good.",
+    "App.js L54-76 — polling useEffect keys on both session?.id and isProcessing, uses a `cancelled` flag inside the interval, and clears on unmount. The failed-turn toast uses a Ref to avoid re-firing across polls. Initial-load useEffect (L31-48) does NOT need special reconnection handling because it setSession()'s the loaded doc, which sets isProcessing derived state, which triggers the polling useEffect — the reconnection flow is emergent from good state design.",
+    "StudentWorkspace.jsx L60-63 — turns filter `!(t.role==='ai' && (t.status==='processing' || t.status==='failed'))` correctly hides placeholder + failed turns from the rendered thread. Combined with the thinking-dot indicator, the UX is coherent.",
+    "api.js — interact() is now a plain axios POST; no lingering SSE code. Response type matches the backend Session model.",
+    "Startup orphan recovery is a nice safety net (server restart -> any processing turns marked failed), and the failure path in _run_reasoning shares the same terminal state, so the UI toast + retry path is uniform."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_durable_processing_iteration20.py — NEW. 8 pytest tests across 4 classes: TestImmediateReturnAndBackgroundCompletion (4), TestResubmitAndReviseRegression (2), TestDurabilityAcrossDisconnect (1), TestGuards (1). Verifies immediate return, 409 concurrency, background completion via polling, M1-M14 regression on writing turn, resubmit-when-idle, revise turn regression (M13 applies=True), 80s-disconnect durability, and empty-submission 400. Run sequentially (`-n0`) since the module-scoped fixture serializes a writing->revise sequence."
+  ],
+  "success_rate": {
+    "backend": "100% (8/8 pytest tests pass in 212s)",
+    "frontend": "100% (initial submit + polling + M14 panel + reload/reconnection + 2nd polling completion all pass; no duplicate turns; thinking-dots + disabled buttons behave correctly)"
+  },
+  "test_credentials": "N/A (no auth in this app).",
+  "seed_data_creation": "3 preset sessions created in MongoDB across the backend pytest run + 2 in the frontend automation runs (5 total). Harmless — same pattern as prior iterations, tagged with teacher_notes='TEST_iteration20' where applicable.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Durable processing is now the transport layer for ALL interact requests. Tests should NOT expect SSE anymore — /api/sessions/{id}/interact is a fast JSON POST returning the session (with a processing placeholder), and the client polls GET /api/sessions/{id} every 2.5s until the last AI turn's status flips to 'complete' or 'failed'. For backend correctness, use `_wait_until_idle(sid, max_wait=~220)` — writing turns ~55-70s, revise ~55-90s in normal load, but can spike to 175s+ under LLM contention (see M14 30-case eval). For durability tests, simply don't poll — 80-120s of doing nothing then GET is sufficient. For UI regression, use ?dev bypass and rely on the appearance of [data-testid='ai-invitation'] blocks under the running poller. Startup orphan recovery is verified by code review + main agent already curl-verified; if you want to test it live: submit a turn, then `sudo supervisorctl restart backend` before it completes, then GET the session — the turn should have status='failed'. The 60s SSE ingress ceiling that blocked prior iterations 16-19 is no longer a concern. Public URL: https://dev-converse.preview.emergentagent.com.",
+  "rca of the issue": "No defects to RCA. The infrastructure change (SSE -> immediate JSON return + background task + client polling) is a clean architectural fix for the prior 60s ingress cutoff and durability gap. Verified: (a) client disconnect during reasoning does NOT tear down the background task because it is decoupled from the request-response lifecycle via asyncio.create_task (not spawned inside a StreamingResponse generator); (b) db.sessions.update_one fires regardless of client presence; (c) the placeholder-turn design gives the UI a clear 'processing' signal without polluting the reasoning view (the reason_session filters the placeholder out at L871); (d) the 409 guard eliminates the previously-possible race of two submissions creating parallel AI turns; (e) startup orphan recovery ensures a server restart cannot leave a session UI hung on a processing indicator."
+}
