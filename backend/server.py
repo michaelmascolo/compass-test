@@ -196,6 +196,21 @@ class ScaffoldingControl(BaseModel):
     future_opportunity: str = ""           # one possible future cycle (named, NOT taught now)
 
 
+class ReaderConstruction(BaseModel):
+    """M12 — a dynamic model of what a reasonable NAÏVE reader (who knows only what the text has
+    already communicated) understands at the current point, and what they would naturally need next.
+    NOT audience adaptation — it models the evolving understanding the text itself has built.
+    Informs (does not replace) all frameworks; the M11 controller still selects ONE target."""
+    applies: bool = False
+    reader_understanding: str = ""     # what a reasonable reader understands at this point given only what the text has said
+    likely_reader_questions: List[str] = Field(default_factory=list)  # questions the reader would naturally have now (what does this mean? why important? how connect? what next?)
+    assumed_knowledge: str = ""        # knowledge the writer assumes but has not yet communicated (reasonable inference vs unsupported assumption)
+    clarification_needed: str = ""     # where a reader could be confused / needs clarification
+    elaboration_needed: str = ""       # where the reader cannot yet understand the intended meaning without more support (elaboration = reader understanding, not more words)
+    precision_risk: str = ""           # where a reasonable reader could interpret this differently than the writer intends
+    next_reader_need: str = ""         # what that reader would naturally need next
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
@@ -205,6 +220,7 @@ class DevelopmentalTheory(BaseModel):
     coherence_function: CoherenceFunction = Field(default_factory=CoherenceFunction)
     conclusion_function: ConclusionFunction = Field(default_factory=ConclusionFunction)
     scaffolding_control: ScaffoldingControl = Field(default_factory=ScaffoldingControl)
+    reader_construction: ReaderConstruction = Field(default_factory=ReaderConstruction)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -380,6 +396,16 @@ RECURSIVE DEVELOPMENTAL SCAFFOLDING CONTROLLER (Milestone 11 — the master orch
 STOPPING RULES → set scaffolding_control.cycle_status (continue | consolidate_and_return | stop) and, when stopping, scaffolding_control.stopping_reason. End the cycle when: the current objective is achieved; sufficient developmental movement has occurred; another writing domain has become primary; continued interaction yields diminishing returns; or the student asks to continue independently. Two rules are MANDATORY, not optional: (a) INDEPENDENCE REQUEST — if the student signals in any way that they want to proceed on their own (e.g., "let me take it from here", "I've got it", "I want to try this myself", "keep writing on my own"), you MUST set cycle_status=stop (or consolidate_and_return), give stopping_reason="student requests independence", briefly consolidate, and hand back control — do NOT open a new instructional target or keep questioning. (b) DIMINISHING RETURNS ON A TARGET — if the student has already taken up the SAME primary target across one or more revisions and the draft now substantially satisfies it, do NOT keep asking about that target turn after turn; set cycle_status=consolidate_and_return (or stop), consolidate the gain, and either return control or move on only if a clearly more important target has become primary. AVOID endless instructional loops — never re-teach a target the student has already absorbed.
 FUTURE CYCLES: you MAY name ONE possible future developmental opportunity in scaffolding_control.future_opportunity, but do NOT teach it now. This controller governs sequencing only; it never overrides the WRITING INSTRUCTION BOUNDARY (M5A) or the one-invitation rule.
 
+READER CONSTRUCTION FRAMEWORK (Milestone 12 — the reader model that informs every other framework; apply every turn there is text to read). Writing is a communicative act between writer and reader. Continually construct a model of what a reasonable NAÏVE reader — one who knows ONLY what the text has already communicated — understands at each point, and what they would naturally need next. This is NOT audience adaptation; it is anticipating the evolving understanding the text itself builds. Record it in theory.reader_construction (set applies=true whenever there is drafted text to read). Internally ask, in order: "What would a reasonable reader understand at this point?" then "What would that reader naturally need next?"
+- BUILD A DYNAMIC READER MODEL → reader_understanding: estimate whether the reader understands the current idea, lacks needed background, is likely to become confused, has unanswered questions, needs elaboration/clarification/stronger connections, or can reasonably infer what is unstated. The model evolves as the text develops.
+- LIKELY READER QUESTIONS → likely_reader_questions: capture the questions a reader would naturally have now (What does this mean? Why is this important? How does this connect? What supports this? What happened next? How does this relate to the previous paragraph? Am I missing something?). These stay internal reasoning unless used developmentally.
+- ASSUMED KNOWLEDGE → assumed_knowledge: does the writer assume knowledge not yet communicated? Distinguish a REASONABLE INFERENCE (the reader can supply it) from an UNSUPPORTED ASSUMPTION (a genuine gap).
+- ELABORATION → elaboration_needed: needed only when the reader cannot YET understand the intended meaning. Teach elaboration as supporting reader understanding, NOT as adding more words.
+- PRECISION → precision_risk: could a reasonable reader interpret this differently than the writer intends? Instruction targets SHARED UNDERSTANDING, not grammatical correctness.
+- NEXT READER NEED → next_reader_need: what the reader would naturally need next.
+DEVELOPMENTAL USE: determine "What misunderstanding is most likely?" then "What single developmental invitation would most improve the reader's understanding?" Reader Construction FEEDS the other frameworks (purpose, paragraph, evidence, coherence, conclusion) and the M11 controller — it does not replace them, and the controller still selects only ONE instructional target. Per the WRITING INSTRUCTION BOUNDARY (M5A) you may teach clarification, elaboration, reader expectations, precision, sequencing, and inferential gaps, but you may NOT invent content/evidence/examples, complete unfinished arguments, or rewrite passages unless brainstorming/content generation is explicitly enabled. If there is no drafted text to read yet, leave theory.reader_construction.applies=false and its fields empty.
+
+
 
 
 
@@ -433,6 +459,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "coherence_function": {"applies": "true only when continuity/coherence/transitions are present or at issue, else false", "intended_relationship": "the relationship the writer is trying to communicate (sequence/cause-effect/comparison/contrast/elaboration/concession/emphasis/problem-solution/question-answer/chronology...) — else empty", "level": "which level(s) at issue: sentence-to-sentence / paragraph-level / paragraph-to-paragraph / whole-piece — else empty", "resources_in_use": ["transitional resources present (transition words, repetition, conceptual links, parallel structure, pronoun reference, shared vocabulary, chronological/logical progression, cause-effect, comparison/contrast, rhetorical questions) — else empty"], "reader_can_follow": "will the reader understand why each idea appears and how ideas connect? — else empty"},
     "conclusion_function": {"applies": "true only when an ending/conclusion is present or at issue, else false", "functions_in_play": ["conclusion functions at work (completion/reinforce purpose/integrate ideas/explain significance/invite reflection/resolve narrative/answer opening question/return to opening/identify implications/final understanding) — else empty"], "completes_purpose": "does it COMPLETE the overall communicative purpose, or merely stop/summarize/introduce a new idea? — else empty", "relationship_to_opening": "connection to the introduction and to the reader's expectations — else empty", "final_understanding": "what should the reader understand after finishing the piece? — else empty"},
     "scaffolding_control": {"current_unit": "sentence/paragraph/section/whole paper", "diagnosed_opportunities": ["all developmental opportunities seen across frameworks this turn"], "primary_target": "the SINGLE instructional target chosen this cycle", "prioritization_rationale": "why this one (developmental readiness / importance for communication / leverage / dependency)", "instructional_mode": "developmental_question | explicit_instruction | brief_demonstration | guided_revision | reflection | consolidation", "postponed": ["opportunities deferred to later cycles"], "cycle_status": "continue | consolidate_and_return | stop", "stopping_reason": "if stopping: objective achieved / sufficient movement / another domain primary / diminishing returns / student requests independence — else empty", "future_opportunity": "one possible future cycle (named, NOT taught now) — else empty"},
+    "reader_construction": {"applies": "true whenever there is drafted text to read, else false", "reader_understanding": "what a reasonable naive reader understands at this point given only what the text has said — else empty", "likely_reader_questions": ["questions the reader would naturally have now — else empty"], "assumed_knowledge": "knowledge assumed but not yet communicated; reasonable inference vs unsupported assumption — else empty", "clarification_needed": "where a reader could be confused — else empty", "elaboration_needed": "where the reader cannot yet understand the intended meaning without more support — else empty", "precision_risk": "where a reasonable reader could interpret this differently than intended — else empty", "next_reader_need": "what the reader would naturally need next — else empty"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -491,6 +518,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "coherence_function": theory.coherence_function.model_dump(),
         "conclusion_function": theory.conclusion_function.model_dump(),
         "scaffolding_control": theory.scaffolding_control.model_dump(),
+        "reader_construction": theory.reader_construction.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,

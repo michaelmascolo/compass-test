@@ -248,7 +248,44 @@ export default function DevelopmentPanel({
                   ) : null}
                 </div>
               </Block>
-              {theory.paragraph_function?.applies ? (
+              {theory.reader_construction?.applies ? (
+                <Block label="Reader Construction (M12)">
+                  <div className="space-y-1.5" data-testid="reader-construction-block">
+                    <div>
+                      <span className="text-stone-500">reader understands:</span>{" "}
+                      <span className="text-amber-300">
+                        <Text value={theory.reader_construction?.reader_understanding} />
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">likely questions:</span>{" "}
+                      <List items={theory.reader_construction?.likely_reader_questions} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">assumed knowledge:</span>{" "}
+                      <Text value={theory.reader_construction?.assumed_knowledge} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">clarification needed:</span>{" "}
+                      <Text value={theory.reader_construction?.clarification_needed} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">elaboration needed:</span>{" "}
+                      <Text value={theory.reader_construction?.elaboration_needed} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">precision risk:</span>{" "}
+                      <Text value={theory.reader_construction?.precision_risk} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">next reader need:</span>{" "}
+                      <span className="text-sky-300">
+                        <Text value={theory.reader_construction?.next_reader_need} />
+                      </span>
+                    </div>
+                  </div>
+                </Block>
+              ) : null}
                 <Block label="Paragraph Function (M7)">
                   <div className="space-y-1.5" data-testid="paragraph-function-block">
                     <div>

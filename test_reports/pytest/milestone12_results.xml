@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="7" time="386.903" timestamp="2026-07-19T01:42:21.483051+00:00" hostname="agent-env-3627894e-c20b-4446-9c49-c717db2e143a"><testcase classname="tests.test_milestone12_reader_construction.TestCRUDAndDefaults" name="test_crud_and_default_reader_construction" time="0.344" /><testcase classname="tests.test_milestone12_reader_construction.TestCRUDAndDefaults" name="test_get_nonexistent_returns_404" time="0.055" /><testcase classname="tests.test_milestone12_reader_construction.TestHiddenAssumption" name="test_hidden_assumption_populates_assumed_knowledge" time="54.916" /><testcase classname="tests.test_milestone12_reader_construction.TestAmbiguousPrecision" name="test_ambiguous_populates_precision_risk_and_not_grammar" time="53.799" /><testcase classname="tests.test_milestone12_reader_construction.TestInferentialGap" name="test_inferential_gap_populates_elaboration_or_clarification" time="53.374" /><testcase classname="tests.test_milestone12_reader_construction.TestEvolvingReaderModel" name="test_reader_model_evolves_across_turns" time="101.904"><failure message="AssertionError: {'version': 1, 'telos': {'governing_pedagogical_purpose': 'Help the student communicate clearly to a reader who knows only what the text says.', 'immediate_task_purpose': 'Draft your essay.', 'teacher_intentions': '', 'assignment_context': 'TEST_M12 — Explain how a chosen process works to a naive reader.', ...}, 'theory': {'current_telos': '', 'communicative_purpose': {'primary': '', 'secondary': [], 'inferred_from': '', 'uncertainty': ''}, 'paragraph_function': {'applies': False, 'purpose': '', 'contribution_to_whole': '', 'coherence': '', ...}, 'evidence_function': {'applies': False, 'forms': [], 'function': '', 'interpretation_gap': '', ...}, ...}, 'created_at': '2026-07-19T01:45:47.937469+00:00'}&#10;assert (True and 'communicative_purpose' in {'version': 1, 'telos': {'governing_pedagogical_purpose': 'Help the student communicate clearly to a reader who knows only what the text says.', 'immediate_task_purpose': 'Draft your essay.', 'teacher_intentions': '', 'assignment_context': 'TEST_M12 — Explain how a chosen process works to a naive reader.', ...}, 'theory': {'current_telos': '', 'communicative_purpose': {'primary': '', 'secondary': [], 'inferred_from': '', 'uncertainty': ''}, 'paragraph_function': {'applies': False, 'purpose': '', 'contribution_to_whole': '', 'coherence': '', ...}, 'evidence_function': {'applies': False, 'forms': [], 'function': '', 'interpretation_gap': '', ...}, ...}, 'created_at': '2026-07-19T01:45:47.937469+00:00'})&#10; +  where True = isinstance({'version': 1, 'telos': {'governing_pedagogical_purpose': 'Help the student communicate clearly to a reader who knows only what the text says.', 'immediate_task_purpose': 'Draft your essay.', 'teacher_intentions': '', 'assignment_context': 'TEST_M12 — Explain how a chosen process works to a naive reader.', ...}, 'theory': {'current_telos': '', 'communicative_purpose': {'primary': '', 'secondary': [], 'inferred_from': '', 'uncertainty': ''}, 'paragraph_function': {'applies': False, 'purpose': '', 'contribution_to_whole': '', 'coherence': '', ...}, 'evidence_function': {'applies': False, 'forms': [], 'function': '', 'interpretation_gap': '', ...}, ...}, 'created_at': '2026-07-19T01:45:47.937469+00:00'}, dict)">self = &lt;test_milestone12_reader_construction.TestEvolvingReaderModel object at 0xf91b2d2d8550&gt;
+client = &lt;requests.sessions.Session object at 0xf91b2d182650&gt;
+
+    def test_reader_model_evolves_across_turns(self, client):
+        sid = _new_session(
+            client,
+            assignment="TEST_M12 — Explain how a chosen process works to a naive reader.",
+            purpose="Help the student communicate clearly to a reader who knows only what the text says.",
+            task="Draft your essay.",
+        )
+        draft1 = "Photosynthesis is how plants make food."
+        status1, s1, err1 = sse_interact_with_retry(client, sid, {"kind": "writing", "content": draft1})
+        assert status1 == 200 and s1 is not None, f"turn1 SSE failed: err={err1}"
+        _assert_common(s1, weak_text=draft1)
+        sc1 = _assert_scaffolding_ok(s1)
+        rc1 = _assert_reader_applies(s1)
+        ru1 = rc1["reader_understanding"].strip()
+    
+        draft2 = ("Photosynthesis is how plants make food. Inside the leaf, chloroplasts "
+                  "capture sunlight and use it to combine water and carbon dioxide into "
+                  "sugar, releasing oxygen as a byproduct.")
+        status2, s2, err2 = sse_interact_with_retry(client, sid, {"kind": "revise", "content": draft2})
+        assert status2 == 200 and s2 is not None, f"turn2 SSE failed: err={err2}"
+        _assert_common(s2, weak_text=draft2)
+        sc2 = _assert_scaffolding_ok(s2)
+        rc2 = _assert_reader_applies(s2)
+        ru2 = rc2["reader_understanding"].strip()
+    
+        # (e) Reader model EVOLVES — reader_understanding changes between turns.
+        assert ru1 != ru2, (
+            f"reader_understanding must evolve when the revision adds new content.\n"
+            f"turn1: {ru1!r}\nturn2: {ru2!r}"
+        )
+    
+        # M1-M5A regression: theory_history v1..vN preserved (v1 not overwritten).
+        th = s2.get("theory_history", [])
+        assert len(th) &gt;= 2, f"theory_history must have v1..vN across turns: len={len(th)}"
+        # Prior version must include a reader_construction dict (schema present pre-M12 or from turn1).
+        v_first = th[0]
+&gt;       assert isinstance(v_first, dict) and "communicative_purpose" in v_first, v_first
+E       AssertionError: {'version': 1, 'telos': {'governing_pedagogical_purpose': 'Help the student communicate clearly to a reader who knows only what the text says.', 'immediate_task_purpose': 'Draft your essay.', 'teacher_intentions': '', 'assignment_context': 'TEST_M12 — Explain how a chosen process works to a naive reader.', ...}, 'theory': {'current_telos': '', 'communicative_purpose': {'primary': '', 'secondary': [], 'inferred_from': '', 'uncertainty': ''}, 'paragraph_function': {'applies': False, 'purpose': '', 'contribution_to_whole': '', 'coherence': '', ...}, 'evidence_function': {'applies': False, 'forms': [], 'function': '', 'interpretation_gap': '', ...}, ...}, 'created_at': '2026-07-19T01:45:47.937469+00:00'}
+E       assert (True and 'communicative_purpose' in {'version': 1, 'telos': {'governing_pedagogical_purpose': 'Help the student communicate clearly to a reader who knows only what the text says.', 'immediate_task_purpose': 'Draft your essay.', 'teacher_intentions': '', 'assignment_context': 'TEST_M12 — Explain how a chosen process works to a naive reader.', ...}, 'theory': {'current_telos': '', 'communicative_purpose': {'primary': '', 'secondary': [], 'inferred_from': '', 'uncertainty': ''}, 'paragraph_function': {'applies': False, 'purpose': '', 'contribution_to_whole': '', 'coherence': '', ...}, 'evidence_function': {'applies': False, 'forms': [], 'function': '', 'interpretation_gap': '', ...}, ...}, 'created_at': '2026-07-19T01:45:47.937469+00:00'})
+E        +  where True = isinstance({'version': 1, 'telos': {'governing_pedagogical_purpose': 'Help the student communicate clearly to a reader who knows only what the text says.', 'immediate_task_purpose': 'Draft your essay.', 'teacher_intentions': '', 'assignment_context': 'TEST_M12 — Explain how a chosen process works to a naive reader.', ...}, 'theory': {'current_telos': '', 'communicative_purpose': {'primary': '', 'secondary': [], 'inferred_from': '', 'uncertainty': ''}, 'paragraph_function': {'applies': False, 'purpose': '', 'contribution_to_whole': '', 'coherence': '', ...}, 'evidence_function': {'applies': False, 'forms': [], 'function': '', 'interpretation_gap': '', ...}, ...}, 'created_at': '2026-07-19T01:45:47.937469+00:00'}, dict)
+
+backend/tests/test_milestone12_reader_construction.py:427: AssertionError</failure></testcase><testcase classname="tests.test_milestone12_reader_construction.TestM6toM11Regression" name="test_supported_body_paragraph_preserves_all_frameworks" time="122.392"><failure message="AssertionError: SSE failed: err=None&#10;assert (200 == 200 and None is not None)">self = &lt;test_milestone12_reader_construction.TestM6toM11Regression object at 0xf91b2d2d9390&gt;
+client = &lt;requests.sessions.Session object at 0xf91b2d182650&gt;
+
+    def test_supported_body_paragraph_preserves_all_frameworks(self, client):
+        sid = _new_session(
+            client,
+            assignment="TEST_M12 — Argue whether social media improves or harms teen friendships.",
+            purpose="Help the student communicate clearly to a naive reader.",
+            task="Draft a body paragraph.",
+        )
+        # Supported body paragraph — enough substance to trigger pf/ef/cf.applies.
+        draft = (
+            "Social media damages close friendships because it optimizes for breadth of "
+            "contact over depth of attention. For example, a teen may exchange twenty "
+            "quick reactions with different acquaintances in a single hour, yet spend no "
+            "sustained time with a single close friend that same day. This matters because "
+            "close friendship, unlike acquaintance, is built through the kind of focused "
+            "attention that quick reactions cannot substitute for; when a platform's "
+            "design rewards constant shallow contact, the deep attention that intimate "
+            "friendship depends on is quietly displaced."
+        )
+        status, s, err = sse_interact_with_retry(client, sid, {"kind": "writing", "content": draft})
+&gt;       assert status == 200 and s is not None, f"SSE failed: err={err}"
+E       AssertionError: SSE failed: err=None
+E       assert (200 == 200 and None is not None)
+
+backend/tests/test_milestone12_reader_construction.py:473: AssertionError</failure></testcase></testsuite></testsuites>
