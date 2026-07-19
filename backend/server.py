@@ -327,6 +327,7 @@ class SessionCreate(BaseModel):
     pedagogical_purpose: str
     current_writing_task: str
     teacher_notes: Optional[str] = ""
+    assignment_prompt: Optional[str] = ""  # display-only reminder shown to the student; NOT fed to the engine
 
 
 class TelosEdit(BaseModel):
@@ -348,6 +349,7 @@ class Session(BaseModel):
     pedagogical_purpose: str
     current_writing_task: str
     teacher_notes: Optional[str] = ""
+    assignment_prompt: Optional[str] = ""
     turns: List[Turn] = Field(default_factory=list)
     telos: Telos = Field(default_factory=Telos)
     theory: DevelopmentalTheory = Field(default_factory=DevelopmentalTheory)

@@ -11,6 +11,13 @@ const FIELDS = [
     multiline: false,
   },
   {
+    key: "assignment_prompt",
+    label: "Assignment Prompt",
+    placeholder: "e.g. Should cities ban cars from their downtown cores? Take a position and defend it.",
+    hint: "The question the student is answering. Stays visible the whole session to keep them on track. (optional)",
+    multiline: true,
+  },
+  {
     key: "pedagogical_purpose",
     label: "Pedagogical Purpose",
     placeholder: "e.g. Students should learn to organize an argument so each paragraph advances a single claim toward the thesis.",
@@ -36,6 +43,7 @@ const FIELDS = [
 export default function TeacherSetup({ onBegin, submitting, onQuickStart }) {
   const [form, setForm] = useState({
     assignment: "",
+    assignment_prompt: "",
     pedagogical_purpose: "",
     current_writing_task: "",
     teacher_notes: "",
@@ -110,7 +118,7 @@ export default function TeacherSetup({ onBegin, submitting, onQuickStart }) {
                   className="block font-mono-panel text-xs uppercase tracking-[0.15em] text-stone-700 mb-2"
                 >
                   {f.label}
-                  {f.key !== "teacher_notes" && (
+                  {f.key !== "teacher_notes" && f.key !== "assignment_prompt" && (
                     <span className="text-[#8C3A2A]"> *</span>
                   )}
                 </label>

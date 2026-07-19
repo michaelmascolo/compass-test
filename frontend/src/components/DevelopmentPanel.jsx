@@ -13,6 +13,8 @@ import {
   Circle,
   MinusCircle,
   Loader2,
+  GraduationCap,
+  Microscope,
 } from "lucide-react";
 
 const SectionLabel = ({ children }) => (
@@ -64,14 +66,14 @@ const GroupHeader = ({ children }) => (
 
 // Status is communicated with an icon + a text label (never color alone).
 const STATUS_META = {
-  primary: { label: "Primary", Icon: Target, cls: "text-amber-300 border-amber-500/40 bg-amber-500/10" },
-  supporting: { label: "Supporting", Icon: Link2, cls: "text-sky-300 border-sky-500/40 bg-sky-500/10" },
-  postponed: { label: "Postponed", Icon: Clock, cls: "text-stone-400 border-stone-600 bg-stone-800/50" },
-  applicable: { label: "Applicable", Icon: Circle, cls: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" },
-  not_applicable: { label: "Not applicable", Icon: MinusCircle, cls: "text-stone-500 border-stone-700 bg-stone-900" },
+  primary: { label: "Primary", tlabel: "Focus", Icon: Target, cls: "text-amber-300 border-amber-500/40 bg-amber-500/10" },
+  supporting: { label: "Supporting", tlabel: "Supporting", Icon: Link2, cls: "text-sky-300 border-sky-500/40 bg-sky-500/10" },
+  postponed: { label: "Postponed", tlabel: "Postponed", Icon: Clock, cls: "text-stone-400 border-stone-600 bg-stone-800/50" },
+  applicable: { label: "Applicable", tlabel: "In view", Icon: Circle, cls: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" },
+  not_applicable: { label: "Not applicable", tlabel: "Not now", Icon: MinusCircle, cls: "text-stone-500 border-stone-700 bg-stone-900" },
 };
 
-const Badge = ({ status }) => {
+const Badge = ({ status, research }) => {
   const m = STATUS_META[status];
   if (!m) return null;
   const I = m.Icon;
@@ -81,9 +83,20 @@ const Badge = ({ status }) => {
       className={`shrink-0 inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-sm border ${m.cls}`}
     >
       <I className="h-3 w-3" />
-      {m.label}
+      {research ? m.label : m.tlabel}
     </span>
   );
+};
+
+// Teacher-facing labels. Internal theory names appear only in Research/Developer view.
+const FW_TEACHER = {
+  communicative_purpose: "What the Writing Is Trying to Do",
+  paragraph_function: "How This Paragraph Works",
+  evidence_function: "How Evidence Is Working",
+  coherence_function: "How Ideas Connect",
+  conclusion_function: "How the Ending Works",
+  reader_construction: "Reader Understanding",
+  revision_development: "Student Growth",
 };
 
 function Accordion({ id, title, badge, open, onToggle, accent, children }) {
@@ -395,7 +408,7 @@ function TelosEditor({ session, onSave, saving }) {
         className="w-full flex items-center justify-between px-5 py-2.5 text-stone-400 hover:text-stone-100 transition-colors"
       >
         <span className="flex items-center gap-2 text-[11px] uppercase tracking-[0.18em]">
-          <Pencil className="h-3 w-3" /> Teacher · revise telos
+          <Pencil className="h-3 w-3" /> Teacher · edit assignment & purpose
         </span>
         <RotateCcw className={`h-3 w-3 transition-transform ${open ? "rotate-180" : ""}`} />
       </button>
@@ -447,6 +460,9 @@ export default function DevelopmentPanel({
   // open/close is preserved while viewing the same turn.
   const turnKey = interactions.length;
   const [openMap, setOpenMap] = useState(() => computeDefaults(theory));
+  const [researchView, setResearchView] = useState(false);
+  // teacher label by default; internal/research label when the toggle is on
+  const t = (teacher, research) => (researchView ? research : teacher);
 
   useEffect(() => {
     setOpenMap(computeDefaults(theory));
@@ -488,27 +504,45 @@ export default function DevelopmentPanel({
           >
             <div className="flex items-center justify-between px-5 py-4 border-b border-stone-800 shrink-0">
               <div className="flex items-center gap-2 text-stone-200">
-                <Terminal className="h-4 w-4 text-amber-500" />
+                {researchView ? (
+                  <Terminal className="h-4 w-4 text-amber-500" />
+                ) : (
+                  <GraduationCap className="h-4 w-4 text-amber-500" />
+                )}
                 <span className="text-xs uppercase tracking-[0.2em]">
-                  Developmental Guide Engine
+                  {t("Teaching Insight", "Developmental Guide Engine")}
                 </span>
               </div>
-              <button
-                onClick={onClose}
-                data-testid="close-dev-panel-button"
-                className="text-stone-500 hover:text-stone-200 transition-colors"
-                aria-label="Close development panel"
-              >
-                <X className="h-4 w-4" />
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  data-testid="toggle-research-view"
+                  onClick={() => setResearchView((v) => !v)}
+                  aria-pressed={researchView}
+                  className="inline-flex items-center gap-1.5 text-[9px] uppercase tracking-[0.14em] px-2 py-1 rounded-sm border border-stone-700 text-stone-400 hover:text-stone-100 hover:border-stone-500 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500"
+                  title="Toggle teacher / research view"
+                >
+                  <Microscope className="h-3 w-3" />
+                  {researchView ? "Research view" : "Teacher view"}
+                </button>
+                <button
+                  onClick={onClose}
+                  data-testid="close-dev-panel-button"
+                  className="text-stone-500 hover:text-stone-200 transition-colors"
+                  aria-label="Close development panel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
             </div>
 
             <TelosEditor session={session} onSave={onEditTelos} saving={savingTelos} />
 
             <div className="px-5 py-2.5 border-b border-stone-800 shrink-0 flex items-center justify-between gap-2">
               <p className="text-[10px] text-stone-500 leading-relaxed">
-                Provisional working theory of the developing system. Revised (not
-                appended) each turn.
+                {researchView
+                  ? "Provisional working theory of the developing system. Revised (not appended) each turn."
+                  : "The coach's reasoning for this turn. Updates as the student writes and revises."}
                 {session.theory_history?.length
                   ? ` v${session.theory_history.length + 1}`
                   : " v1"}
@@ -528,40 +562,40 @@ export default function DevelopmentPanel({
               {/* 1 — Scaffolding Controller (the one decision that matters) */}
               <Accordion
                 id="scaffolding_control"
-                title="Scaffolding Controller (M11)"
+                title={t("Current Developmental Focus", "Scaffolding Controller (M11)")}
                 accent="border-l-2 border-l-amber-500"
                 open={openMap.scaffolding_control}
                 onToggle={() => toggle("scaffolding_control")}
               >
                 <div className="space-y-1.5" data-testid="scaffolding-control-block">
-                  <KV k="unit">
+                  <KV k={t("What we're looking at", "unit")}>
                     <Text value={theory.scaffolding_control?.current_unit} />
                   </KV>
-                  <KV k="diagnosed opportunities">
+                  <KV k={t("Opportunities noticed", "diagnosed opportunities")}>
                     <List items={theory.scaffolding_control?.diagnosed_opportunities} />
                   </KV>
-                  <KV k="primary target" accent="text-amber-300">
+                  <KV k={t("Focus this turn", "primary target")} accent="text-amber-300">
                     <Text value={theory.scaffolding_control?.primary_target} />
                   </KV>
-                  <KV k="why (priority)">
+                  <KV k={t("Why this focus?", "why (priority)")}>
                     <Text value={theory.scaffolding_control?.prioritization_rationale} />
                   </KV>
-                  <KV k="mode" accent="text-emerald-300">
+                  <KV k={t("How the coach is helping", "mode")} accent="text-emerald-300">
                     <Text value={theory.scaffolding_control?.instructional_mode} />
                   </KV>
-                  <KV k="postponed">
+                  <KV k={t("Postponed opportunities", "postponed")}>
                     <List items={theory.scaffolding_control?.postponed} />
                   </KV>
-                  <KV k="cycle status" accent="text-sky-300">
+                  <KV k={t("Where the coaching stands", "cycle status")} accent="text-sky-300">
                     <Text value={theory.scaffolding_control?.cycle_status} />
                   </KV>
                   {theory.scaffolding_control?.stopping_reason ? (
-                    <KV k="stopping reason">
+                    <KV k={t("Why the coach paused", "stopping reason")}>
                       <Text value={theory.scaffolding_control?.stopping_reason} />
                     </KV>
                   ) : null}
                   {theory.scaffolding_control?.future_opportunity ? (
-                    <KV k="future opportunity">
+                    <KV k={t("For a later session", "future opportunity")}>
                       <Text value={theory.scaffolding_control?.future_opportunity} />
                     </KV>
                   ) : null}
@@ -572,25 +606,25 @@ export default function DevelopmentPanel({
               {theory.integration_calibration?.applies ? (
                 <Accordion
                   id="integration_calibration"
-                  title="Integration & Calibration (M14)"
+                  title={t("Why This Focus", "Integration & Calibration (M14)")}
                   accent="border-l-2 border-l-sky-500"
                   open={openMap.integration_calibration}
                   onToggle={() => toggle("integration_calibration")}
                 >
                   <div className="space-y-1.5" data-testid="integration-calibration-block">
-                    <KV k="primary framework" accent="text-amber-300">
+                    <KV k={t("Main lens", "primary framework")} accent="text-amber-300">
                       <Text value={theory.integration_calibration?.primary_framework} />
                     </KV>
-                    <KV k="supporting frameworks">
+                    <KV k={t("Also considered", "supporting frameworks")}>
                       <List items={theory.integration_calibration?.supporting_frameworks} />
                     </KV>
-                    <KV k="calibration check">
+                    <KV k={t("Is this the right amount?", "calibration check")}>
                       <Text value={theory.integration_calibration?.calibration_check} />
                     </KV>
-                    <KV k="consistency check">
+                    <KV k={t("Would apply the same elsewhere?", "consistency check")}>
                       <Text value={theory.integration_calibration?.consistency_check} />
                     </KV>
-                    <KV k="integration notes">
+                    <KV k={t("How it fits together", "integration notes")}>
                       <Text value={theory.integration_calibration?.integration_notes} />
                     </KV>
                   </div>
@@ -600,11 +634,11 @@ export default function DevelopmentPanel({
               {/* 3 — Primary Active Framework */}
               {primaryFw ? (
                 <>
-                  <GroupHeader>Primary Active Framework</GroupHeader>
+                  <GroupHeader>{t("Current Focus Area", "Primary Active Framework")}</GroupHeader>
                   <Accordion
                     id={primaryFw.id}
-                    title={primaryFw.label}
-                    badge={<Badge status="primary" />}
+                    title={researchView ? primaryFw.label : FW_TEACHER[primaryFw.id]}
+                    badge={<Badge status="primary" research={researchView} />}
                     open={openMap[primaryFw.id]}
                     onToggle={() => toggle(primaryFw.id)}
                   >
@@ -616,13 +650,13 @@ export default function DevelopmentPanel({
               {/* 4 — Other Applicable Frameworks */}
               {otherApplicable.length > 0 ? (
                 <>
-                  <GroupHeader>Other Applicable Frameworks</GroupHeader>
+                  <GroupHeader>{t("Also In View", "Other Applicable Frameworks")}</GroupHeader>
                   {otherApplicable.map((fw) => (
                     <Accordion
                       key={fw.id}
                       id={fw.id}
-                      title={fw.label}
-                      badge={<Badge status={statuses[fw.id].status} />}
+                      title={researchView ? fw.label : FW_TEACHER[fw.id]}
+                      badge={<Badge status={statuses[fw.id].status} research={researchView} />}
                       open={openMap[fw.id]}
                       onToggle={() => toggle(fw.id)}
                     >
@@ -635,13 +669,13 @@ export default function DevelopmentPanel({
               {/* 5 — Inactive Frameworks */}
               {inactive.length > 0 ? (
                 <>
-                  <GroupHeader>Inactive Frameworks</GroupHeader>
+                  <GroupHeader>{t("Not Relevant Right Now", "Inactive Frameworks")}</GroupHeader>
                   {inactive.map((fw) => (
                     <Accordion
                       key={fw.id}
                       id={fw.id}
-                      title={fw.label}
-                      badge={<Badge status="not_applicable" />}
+                      title={researchView ? fw.label : FW_TEACHER[fw.id]}
+                      badge={<Badge status="not_applicable" research={researchView} />}
                       open={openMap[fw.id]}
                       onToggle={() => toggle(fw.id)}
                     >
@@ -652,51 +686,51 @@ export default function DevelopmentPanel({
               ) : null}
 
               {/* 6 — Intervention / Instructional Output */}
-              <GroupHeader>Instructional Output</GroupHeader>
+              <GroupHeader>{t("What the Coach Said", "Instructional Output")}</GroupHeader>
               <Accordion
                 id="intervention"
-                title="Intervention & Selected Invitation"
+                title={t("The Invitation & Coaching Move", "Intervention & Selected Invitation")}
                 open={openMap.intervention}
                 onToggle={() => toggle("intervention")}
               >
                 <div className="space-y-3">
                   <div>
-                    <SectionLabel>Selected Invitation</SectionLabel>
+                    <SectionLabel>{t("The invitation this turn", "Selected Invitation")}</SectionLabel>
                     <div className="text-amber-200" data-testid="selected-invitation">
                       <Text value={last?.selected_invitation?.invitation} />
                     </div>
                   </div>
                   <div className="space-y-1.5" data-testid="intervention-block">
-                    <KV k="type" accent="text-amber-300">
+                    <KV k={t("Kind of move", "type")} accent="text-amber-300">
                       <Text value={last?.intervention?.type} />
                     </KV>
-                    <KV k="cultural resource">
+                    <KV k={t("Concept in play", "cultural resource")}>
                       <Text value={last?.intervention?.cultural_resource} />
                     </KV>
-                    <KV k="interpretation">
+                    <KV k={t("What the coach noticed", "interpretation")}>
                       <Text value={last?.intervention?.interpretation} />
                     </KV>
-                    <KV k="instruction">
+                    <KV k={t("What the coach taught", "instruction")}>
                       <Text value={last?.intervention?.instruction} />
                     </KV>
-                    <KV k="consolidation">
+                    <KV k={t("What was reinforced", "consolidation")}>
                       <Text value={last?.intervention?.consolidation} />
                     </KV>
-                    <KV k="timing">
+                    <KV k={t("Why now", "timing")}>
                       <Text value={last?.intervention?.timing_rationale} />
                     </KV>
                     <KV
-                      k="focus"
+                      k={t("Writing vs. content", "focus")}
                       accent={last?.intervention?.focus === "content" ? "text-orange-300" : "text-emerald-300"}
                     >
                       <Text value={last?.intervention?.focus} />
                     </KV>
-                    <KV k="writing-not-content check">
+                    <KV k={t("Ownership check", "writing-not-content check")}>
                       <Text value={last?.intervention?.writing_not_content_check} />
                     </KV>
                   </div>
                   <div>
-                    <SectionLabel>Rationale (coherence, not optimality)</SectionLabel>
+                    <SectionLabel>{t("Why this invitation", "Rationale (coherence, not optimality)")}</SectionLabel>
                     <div className="text-stone-300">
                       <Text value={last?.selected_invitation?.selection_basis} />
                     </div>
@@ -704,14 +738,16 @@ export default function DevelopmentPanel({
                 </div>
               </Accordion>
 
-              {/* Full engine internals — all remaining reasoning, preserved & accessible */}
-              <GroupHeader>Working Theory Detail</GroupHeader>
-              <Accordion
-                id="detail"
-                title="Full engine internals"
-                open={openMap.detail}
-                onToggle={() => toggle("detail")}
-              >
+              {/* Full engine internals — research/developer view only */}
+              {researchView ? (
+                <>
+                  <GroupHeader>Working Theory Detail</GroupHeader>
+                  <Accordion
+                    id="detail"
+                    title="Full engine internals"
+                    open={openMap.detail}
+                    onToggle={() => toggle("detail")}
+                  >
                 <Block label="Current Telos">
                   <Text value={theory.current_telos || telos.governing_pedagogical_purpose} />
                 </Block>
@@ -802,6 +838,8 @@ export default function DevelopmentPanel({
                   <Text value={last?.observed_reorganization} />
                 </Block>
               </Accordion>
+                </>
+              ) : null}
             </div>
           </motion.aside>
         </>

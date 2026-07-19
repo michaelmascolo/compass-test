@@ -1,0 +1,82 @@
+{
+  "summary": "Verified UI-only enhancements: (1) assignment_prompt backend passthrough + Teacher Setup optional field, (2) persistent assignment-prompt box in Student Workspace, (3) Development Panel Teacher/Research view toggle. All 4 backend pytest checks pass. Full frontend flow verified end-to-end via ?dev preset with a completed AI turn (LLM ~55-65s). No regressions in durable-processing / intervention.focus / scaffolding_control / integration_calibration.applies.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "notes_for_main_agent": [
+    "MINOR (not a bug per spec, but worth surfacing): the LLM engine still outputs internal framework names (e.g. 'Reader Construction', 'Central Claim / Thesis') inside the *data* it produces for integration_calibration.primary_framework and .supporting_frameworks. In Teacher view the ACCORDION TITLES and BADGE LABELS are correctly relabeled (via FW_TEACHER + STATUS_META.tlabel), but the raw KV row 'Also considered:' still shows the model's own internal-name strings verbatim (e.g. '> Reader Construction'). The review request framed this as UI-labels-only, so this is out of scope for this phase — flagging it in case teacher-facing polish later wants to map those data values through FW_TEACHER too."
+  ],
+  "verified_behaviors": {
+    "teacher_setup": [
+      "Assignment Prompt field renders (data-testid='input-assignment_prompt') between Assignment and Pedagogical Purpose, multiline textarea",
+      "No required '*' on Assignment Prompt or Teacher Notes labels; asterisk is present on the other three",
+      "Form submits with all 3 required fields even when assignment_prompt is empty",
+      "Begin button disabled until required fields filled"
+    ],
+    "workspace_prompt_box": [
+      "data-testid='assignment-prompt' renders with label 'PROMPT — THE QUESTION YOU'RE ANSWERING' and preset prompt text",
+      "Visible before writing, remains visible after submitting a draft (across AI turn cycle)"
+    ],
+    "backend_passthrough": [
+      "POST /api/sessions with assignment_prompt stores and returns it on the session",
+      "GET /api/sessions/{id} returns the same assignment_prompt",
+      "Omitting assignment_prompt defaults to '' (no crash)",
+      "Static-source assertion: 'assignment_prompt' is NOT referenced inside _build_prompt (engine input) — display-only"
+    ],
+    "dev_panel_teacher_view_default": [
+      "Toggle button text = 'Teacher view'",
+      "accordion-toggle-scaffolding_control title = 'Current Developmental Focus'",
+      "accordion-toggle-integration_calibration title = 'Why This Focus'",
+      "Framework accordions show teacher titles (What the Writing Is Trying to Do / Reader Understanding / How This Paragraph Works / Student Growth / etc.), NO (Mxx) tags",
+      "KV keys inside scaffolding-control-block: 'Focus this turn', 'Why this focus?', 'Postponed opportunities' present",
+      "Group headers 'Current Focus Area' and 'What the Coach Said' present",
+      "No 'Working Theory Detail' accordion",
+      "Status badges use teacher labels: Focus / Supporting / Postponed / In view / Not now",
+      "No 'Current Telos' Block visible"
+    ],
+    "dev_panel_research_view": [
+      "Clicking toggle switches text to 'Research view'",
+      "accordion-toggle-scaffolding_control title = 'Scaffolding Controller (M11)'",
+      "accordion-toggle-integration_calibration title = 'Integration & Calibration (M14)'",
+      "All 7 framework accordions show internal names with M-numbers (M6-M13)",
+      "accordion-toggle-detail ('Full engine internals') appears; expands with 'Current Telos' + candidate-invitation-0 populated",
+      "Status badges use internal labels: Primary / Supporting / Postponed / Applicable / Not applicable"
+    ],
+    "toggle_reversibility": [
+      "Toggling from Research back to Teacher view removes M-numbers, hides detail accordion, restores teacher labels"
+    ],
+    "testids_unchanged": [
+      "scaffolding-control-block, integration-calibration-block, intervention-block, selected-invitation, framework blocks, framework-status-* all resolve"
+    ],
+    "regression": [
+      "POST /interact returns immediately with a 'processing' turn (implicit — UI shows thinking dots then completes)",
+      "Polling GET /sessions reaches status='complete' within ~55-65s",
+      "intervention.focus = 'writing' on latest interaction",
+      "scaffolding_control.primary_target populated ('Deepen the claim's reasoning — ...')",
+      "integration_calibration.applies = true",
+      "Accordion default-expansion behavior held (primary/supporting expanded, not_applicable collapsed)"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_assignment_prompt_iteration22.py",
+    "/app/test_reports/pytest/iteration22_results.xml"
+  ],
+  "critical_code_review_comments": [
+    "server.py — SessionCreate + Session correctly add optional 'assignment_prompt' passthrough; create_session uses payload.model_dump() so the field flows through without modification. _build_prompt does not reference it, satisfying the display-only guarantee.",
+    "DevelopmentPanel.jsx — the t(teacher, research) helper cleanly routes every user-facing label; FW_TEACHER covers all 7 framework ids. STATUS_META has both label + tlabel keeping badges accessible in both views. Working Theory Detail is properly gated behind researchView.",
+    "TeacherSetup.jsx — asterisk exclusion is correct ('teacher_notes' AND 'assignment_prompt' skipped). 'ready' does not require assignment_prompt.",
+    "MINOR: FW_TEACHER map is used for accordion titles but not applied to the raw data-string values that the LLM emits inside integration_calibration.supporting_frameworks / .primary_framework. Result: strings like 'Reader Construction' can appear in the 'Also considered' KV row in Teacher view. Not a spec violation for this phase but a future polish opportunity."
+  ],
+  "action_items": [],
+  "updated_files": [
+    "/app/backend/tests/test_assignment_prompt_iteration22.py (new)"
+  ],
+  "success_rate": { "backend": "100%", "frontend": "100%" },
+  "seed_data_creation": "Two ephemeral TEST_ sessions created during backend test (no cleanup needed; unique ids). One ?dev preset session created for UI testing (id logged: 3b517a85-2470-4e76-8821-72fdbd162c28).",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iteration_22 verified the UI-only teacher/research toggle + assignment_prompt passthrough. If future changes revisit the DevelopmentPanel, note that some LLM-emitted data strings (framework names in supporting_frameworks/primary_framework KVs) still contain internal M-terminology in Teacher view — main agent decided this is out of scope for now."
+}

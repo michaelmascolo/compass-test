@@ -11,6 +11,8 @@ const STORAGE_KEY = "dws_session_id";
 // Preset teacher context so testers can skip Teacher Setup and start writing immediately.
 const TEST_PRESET = {
   assignment: "Argue whether social media improves or harms teen friendships.",
+  assignment_prompt:
+    "Does social media improve or harm teen friendships? Take a clear position and defend it.",
   pedagogical_purpose:
     "Help the student form and clarify a central claim that organizes the essay, and understand what each part of the writing is doing for the reader.",
   current_writing_task: "Draft your essay.",

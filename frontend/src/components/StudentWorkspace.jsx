@@ -8,6 +8,7 @@ import {
   FlaskConical,
   BookOpen,
   RotateCcw,
+  HelpCircle,
 } from "lucide-react";
 
 function ThreadBubble({ turn }) {
@@ -130,6 +131,20 @@ export default function StudentWorkspace({
                 {session.current_writing_task}
               </p>
             </div>
+            {session.assignment_prompt ? (
+              <div
+                data-testid="assignment-prompt"
+                className="mt-4 rounded-sm bg-[#8C3A2A]/[0.06] border border-[#8C3A2A]/25 px-4 py-3"
+              >
+                <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-[#8C3A2A] flex items-center gap-1.5">
+                  <HelpCircle className="h-3.5 w-3.5" />
+                  Prompt — the question you're answering
+                </p>
+                <p className="text-stone-800 mt-1 leading-relaxed font-serif-display text-lg">
+                  {session.assignment_prompt}
+                </p>
+              </div>
+            ) : null}
           </div>
 
           <div className="px-6 sm:px-12 pb-10 flex-1 flex flex-col">
