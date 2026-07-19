@@ -1,0 +1,298 @@
+[
+  {
+    "id": "S1_arg_explicit",
+    "paragraph_type": "argument",
+    "scope_signal": "explicit single-paragraph",
+    "assignment": "Write ONE self-contained paragraph (not an essay) arguing a single idea. This paragraph is the whole assignment.",
+    "session_id": "c309a157-ceb9-4282-bfa7-36a77cdd5b6b",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "A library fine is a strange kind of punishment: it charges the people who returned the book late but still returned it, while doing nothing about the ones who never bring books back at all. If the goal is to get books circulating, fines aim at the wrong target \u2014 they nudge the already-conscientious and shrug at the truly careless. Dropping them, as many libraries now have, doesn't reward irresponsibility; it just stops pretending that a few cents a day was ever the thing holding the collection together.",
+        "elapsed_s": 70,
+        "ai_invitation": "This paragraph is doing real argumentative work \u2014 it states a position, challenges the logic of fines, and lands a clean closing move. Here's a useful question to sit with: the paragraph asserts that dropping fines 'doesn't reward irresponsibility,' but that's exactly the objection a skeptical reader is likely to press. What is the paragraph doing to help a reader who isn't already convinced see why that's true rather than just claimed?",
+        "primary_target": "Evidence-interpretation gap in the rebuttal: the student asserts the conclusion a skeptical reader most needs to see demonstrated",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "developmental_question",
+        "iv_focus": "writing",
+        "ic_primary_framework": "evidence_function (interpretation gap in the rebuttal)",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S2_reflective_explicit",
+    "paragraph_type": "reflective",
+    "scope_signal": "explicit single-paragraph",
+    "assignment": "In a single, complete paragraph, reflect on something small that changed how you think. One paragraph only.",
+    "session_id": "7d25f9a2-0b36-468d-8f77-93a00678ee0b",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "I used to think patience was a kind of waiting, until I spent a summer teaching my grandmother to text. She'd hunt for each letter, apologize, start over. What I felt wasn't waiting; it was the slow embarrassment of realizing how fast I expected the world to move, and how rarely I'd extended to anyone the room she was asking for. Patience, it turned out, wasn't doing nothing. It was staying present while someone else caught up, without making them feel the cost of it.",
+        "elapsed_s": 75,
+        "ai_invitation": "This paragraph already does something rare \u2014 it earns its insight through the scene rather than announcing it. As you read back through, notice where the paragraph shifts from showing the experience to naming what it meant: what does that moment of shift do for a reader who has been following your grandmother's hands across the keyboard?",
+        "primary_target": "Help the student name and become conscious of the scene-to-insight pivot as an intentional reflective writing move, so they can transfer it.",
+        "instructional_mode": "reflection",
+        "cycle_status": "consolidate_and_return",
+        "stopping_reason": "Draft substantially achieves the communicative purpose; continued instruction risks over-teaching a capable response.",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "ic_primary_framework": "paragraph function and conclusion function \u2014 both confirm the arc is complete and the pivot is the key move",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S3_analytical_explicit",
+    "paragraph_type": "analytical",
+    "scope_signal": "explicit single-paragraph",
+    "assignment": "Write one self-contained analytical paragraph. It is not part of a larger essay.",
+    "session_id": "bd5f6c97-1bb8-428f-aa97-cf60dfd7cb9e",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "The diner's fluorescent light in Hopper's 'Nighthawks' does the opposite of what light usually does in a painting: instead of warming the scene, it exposes it. The glass wraps the four figures in a bright box with no visible door, so the very thing that lets us see them is what seals them off from the dark street. Hopper makes brightness feel like isolation \u2014 the couple sit inches apart and look nowhere, lit up and unreachable, as if being seen and being alone had become the same condition.",
+        "elapsed_s": 75,
+        "ai_invitation": "Your paragraph performs its analytical job with real skill \u2014 the claim about light-as-isolation is clear, the evidence is precise, and the final sentence lands with interpretive force. Before you consider this finished: look at that last sentence and ask yourself what work it is doing that the rest of the paragraph hasn't already done. Is it completing the analysis, or is it the analysis? What does your answer tell you about where the paragraph's center of gravity actually sits?",
+        "primary_target": "Reflective awareness of the paragraph's center of gravity \u2014 where does the core interpretation actually live, and is that where the student intended it?",
+        "instructional_mode": "reflection",
+        "cycle_status": "consolidate_and_return",
+        "stopping_reason": "Paragraph substantially achieves its communicative purpose; intervention is light forward invitation to reflective awareness, then return control.",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "ic_primary_framework": "Paragraph function \u2014 reflective awareness of where interpretive culmination sits",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S4_explanatory_explicit",
+    "paragraph_type": "explanatory",
+    "scope_signal": "explicit single-paragraph",
+    "assignment": "Explain one idea clearly in a single paragraph for a general reader. One paragraph is the complete task.",
+    "session_id": "73256492-8d6b-40b7-8dbd-65ad2f1f0917",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Noise-cancelling headphones don't block sound so much as answer it. A tiny microphone listens to the low hum around you \u2014 an engine, a fan \u2014 and the headphones instantly generate a matching wave that is its exact opposite: where the incoming wave pushes, the new one pulls. The two collide and flatten each other before they reach your ear, which is why the effect works best on steady drones and barely touches sudden, irregular sounds like a voice. You aren't hearing silence; you're hearing two noises cancel to almost nothing.",
+        "elapsed_s": 75,
+        "ai_invitation": "Your explanation earns something most writing about audio technology doesn't: the reader finishes knowing not just *what* happens but *why the limits exist* \u2014 the final sentence makes the mechanism explain its own boundary. That's doing real work. One question to sit with: who do you imagine reading this, and does every sentence serve that reader's level of familiarity with sound waves? Read it once with a specific person in mind and see whether anything assumes more than they'd bring.",
+        "primary_target": "Reader construction \u2014 does the student's model of the general reader match the paragraph's actual demands?",
+        "instructional_mode": "reflection",
+        "cycle_status": "consolidate_and_return",
+        "stopping_reason": "Sufficient developmental movement; paragraph is highly effective; one forward invitation is the calibrated response.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "ic_primary_framework": "Reader construction (M12) \u2014 whether assumed knowledge fits the actual general reader",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S5_narrative_explicit",
+    "paragraph_type": "narrative",
+    "scope_signal": "explicit single-paragraph (flash)",
+    "assignment": "Write a single complete paragraph of flash narrative. It stands on its own.",
+    "session_id": "020ba66d-88d0-4d10-b655-4b6a21ebedc7",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "The last day of the pool's season, the lifeguard let us stay past closing while she coiled the ropes. We floated on our backs in water going gray with dusk, not talking, listening to the filter tick down. Someone's radio played a song none of us would remember by name but all of us would recognize for years, the way you recognize a smell from a house you no longer live in. Then the underwater lights clicked off, and we climbed out into a summer that was, though we didn't say it, already over.",
+        "elapsed_s": 70,
+        "ai_invitation": "This paragraph does something quietly powerful \u2014 it uses a shared sensory moment to carry a feeling the characters never name aloud. As you read it back, notice the final sentence: it announces the summer is over, which is the emotional landing the whole piece has been building toward. What does that sentence do for the reader that the earlier images couldn't do alone, and is there anything in how you've written it that you'd want to reconsider?",
+        "primary_target": "Conclusion function: the relationship between the final explicit statement and the sensory-image buildup \u2014 does naming the meaning complete or over-explain?",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "developmental_question",
+        "iv_focus": "writing",
+        "ic_primary_framework": "conclusion_function (final sentence's relationship to the imagistic buildup)",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [
+          "the\\ whole\\ piece"
+        ],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S6_arg_noscope",
+    "paragraph_type": "argument",
+    "scope_signal": "no scope hint",
+    "assignment": "Argue a single idea.",
+    "session_id": "9cf50d08-621d-44ab-ae7a-33c52d89a8f6",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Ranking hospitals by patient-satisfaction scores sounds fair until you notice what it actually rewards: the hospitals that make sick people comfortable, not the ones that make them well. A patient who leaves annoyed but alive rates their care lower than one who was pampered through a minor stay. Tie funding to those scores and you quietly pressure doctors to prescribe the pleasant thing over the necessary one \u2014 to treat the survey instead of the illness.",
+        "elapsed_s": 65,
+        "ai_invitation": "Your paragraph is doing sharp, purposeful argumentative work \u2014 it moves from observation to mechanism to consequence in a way that earns its point rather than announcing it. You've written one coherent movement; now I want to ask you to name, in a single sentence, the one idea this paragraph is trying to get a reader to accept. What is the claim it lands on?",
+        "primary_target": "Articulating the implicit claim \u2014 naming the one idea the paragraph is built to establish.",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 implicit claim (observable_organization H)",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S7_analytical_noscope",
+    "paragraph_type": "analytical",
+    "scope_signal": "no scope hint",
+    "assignment": "Analyze how something creates its effect.",
+    "session_id": "51bb1bcc-e895-4f18-b805-73f704586f8d",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "A grocery store hides its staples \u2014 milk, eggs, bread \u2014 along the very back wall, and this is not laziness but design. To reach the things you actually came for, you must walk past everything you didn't, and the store bets, correctly, that proximity will do the persuading. The layout turns a short errand into a long corridor of small temptations, so the map of the store is really a map of how attention decays over distance.",
+        "elapsed_s": 70,
+        "ai_invitation": "You've opened with a sharp observation \u2014 the store's layout as intentional design \u2014 and your final sentence lands a striking interpretive move: 'the map of the store is really a map of how attention decays over distance.' That sentence is doing a lot of work. What is the single idea your whole analysis is trying to establish for the reader \u2014 the claim your evidence of layout, proximity, and attention is meant to support?",
+        "primary_target": "Identifying and consolidating the controlling claim \u2014 what the analysis is trying to establish.",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 governing claim not yet consolidated",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S8_explanatory_mild",
+    "paragraph_type": "explanatory",
+    "scope_signal": "mild ('a paragraph')",
+    "assignment": "Write a paragraph explaining a concept to a curious reader.",
+    "session_id": "695c8ce9-db1b-4f87-b092-9f6d23965bbc",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Compound interest feels like magic mostly because our intuition is built for addition, not multiplication. If you add the same amount every year, growth is a straight line; but interest pays you on your interest, so each year's gain is slightly larger than the last, and the line quietly bends upward. Over a few years the difference is boring. Over forty, it's the difference between a modest sum and a life-changing one \u2014 which is why the most valuable ingredient isn't the rate, it's the time.",
+        "elapsed_s": 70,
+        "ai_invitation": "Your paragraph does real explanatory work \u2014 it earns its ending claim rather than just stating it. Before you finish, consider what a curious reader would naturally ask right after your final sentence: why does time matter more than rate? Your paragraph gestures at the answer through its examples, but the last sentence asserts it as a conclusion. What is the job of that final sentence \u2014 is it completing the explanation, or is it making a new claim the paragraph hasn't fully supported yet?",
+        "primary_target": "The ending claim's relationship to the explanation \u2014 does the paragraph complete the explanation or make a new unsupported claim?",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "developmental_question",
+        "iv_focus": "writing",
+        "ic_primary_framework": "paragraph_function (conclusion / ending claim's job)",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S9_reflective_revise",
+    "paragraph_type": "reflective",
+    "scope_signal": "explicit single-paragraph + revision (stopping check)",
+    "assignment": "Write a single self-contained reflective paragraph. Not an essay.",
+    "session_id": "9a86e9e0-5964-454b-b274-219635651675",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Learning to sail taught me that control and steering are not the same thing. You cannot make the wind do anything; you can only decide how to meet it. For a while that felt like a loss. Later it felt like the only honest way anything works.",
+        "elapsed_s": 75,
+        "ai_invitation": "Your reflection lands somewhere that feels like an insight \u2014 that 'meeting' something you can't control is different from losing control of it. Right now that insight arrives, but the reader doesn't yet see what made it feel like a loss first, and then like honesty. What was the moment, or the experience, that moved you from one feeling to the other?",
+        "primary_target": "Experiential grounding \u2014 inviting the student to locate the specific moment or shift that moved them from 'loss' to 'honesty,' so the insight is earned rather than asserted.",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "developmental_question",
+        "iv_focus": "writing",
+        "ic_primary_framework": "evidence_function (experiential grounding for a reflective purpose)",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      },
+      {
+        "turn": 2,
+        "kind": "writing",
+        "student": "Learning to sail taught me that control and steering are not the same thing. You can't command the wind, only choose the angle at which you meet it \u2014 and the boat moves not despite the resistance but because of it. For a while that felt like defeat, like admitting I was at the mercy of something bigger. Now it feels less like surrender than like literacy: the wind was always going to have its say, and the skill was never silencing it, only learning to read it well enough to go somewhere anyway.",
+        "elapsed_s": 80,
+        "ai_invitation": "You've expanded the sailing experience considerably \u2014 the new draft adds the image of meeting the wind at an angle, the boat moving because of resistance, and the metaphor of literacy. That's real developmental movement. One question: the shift from 'defeat' to 'literacy' is now more richly named, but what was the moment or action on the water that first made you feel the difference? What were you actually doing when the understanding changed?",
+        "primary_target": "Experiential anchoring \u2014 inviting the student to identify the specific moment or action when the felt understanding shifted, to let the reader travel through it rather than hear it named.",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "ic_primary_framework": "evidence_function (experiential anchoring for reflective purpose)",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  },
+  {
+    "id": "S10_arg_revise",
+    "paragraph_type": "argument",
+    "scope_signal": "explicit single-paragraph + revision (stopping check)",
+    "assignment": "Write ONE complete paragraph arguing a position. This paragraph is the entire piece.",
+    "session_id": "823b394c-48a1-440b-aafd-dad8d96e52c8",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Autocorrect makes us worse spellers by making spelling feel unnecessary. When every mistake is fixed before we notice it, we stop building the memory that catches the next one. The convenience is real, but so is the quiet erosion underneath it.",
+        "elapsed_s": 65,
+        "ai_invitation": "Your paragraph already does clear argumentative work \u2014 it states a position, names a mechanism, and ends with a sharp summary image. Before you consider this finished, try to answer: what does your reader need to *see or understand* in order to believe that the memory-building process actually breaks down? Right now the paragraph asserts that mechanism; what would help a reader grasp how it works?",
+        "primary_target": "Evidence function: the paragraph asserts a causal mechanism without grounding it for a skeptical reader.",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "ic_primary_framework": "Evidence function (M8) \u2014 the persuasive purpose is not yet fully served because the mechanism is ungrounded.",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      },
+      {
+        "turn": 2,
+        "kind": "writing",
+        "student": "Autocorrect makes us worse spellers precisely because it works so well. Every error it silently repairs is an error we never have to notice, and noticing is how the memory that prevents the next mistake gets built. The tool doesn't just fix the word in front of us; it removes the small, useful friction that used to teach us. The convenience is genuine \u2014 but it's the kind that quietly bills us later, in a skill we stopped practicing without ever deciding to.",
+        "elapsed_s": 80,
+        "ai_invitation": "Your revision made the mechanism more visible \u2014 you added a specific step ('noticing is how the memory gets built') and a new idea ('useful friction') that sharpen the causal chain considerably. A skeptical reader still has to take your word that this friction-removal actually produces a lasting skill deficit, not just a momentary reliance. What does the reader need to see \u2014 a situation, a pattern, an experience \u2014 to feel that the cost you're describing is real rather than possible?",
+        "primary_target": "Evidence grounding: help the reader feel the cost is real, not merely possible.",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "ic_primary_framework": "Evidence function (M8) \u2014 grounding the mechanism for a skeptical reader.",
+        "essay_assume_flags": [],
+        "scope_or_stop_flags": [],
+        "F1_recurs": false
+      }
+    ]
+  }
+]
