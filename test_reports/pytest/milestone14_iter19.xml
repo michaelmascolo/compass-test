@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="243.867" timestamp="2026-07-19T14:17:25.299384+00:00" hostname="agent-env-3627894e-c20b-4446-9c49-c717db2e143a"><testcase classname="tests.test_milestone14_iteration19.TestM14IntegrationCalibration" name="test_t1_messy_first_draft_populates_integration_calibration" time="51.338" /><testcase classname="tests.test_milestone14_iteration19.TestM14IntegrationCalibration" name="test_t2_revise_growth_maintains_integration_calibration" time="192.436"><failure message="AssertionError: turn2 SSE failed: err=None&#10;assert (200 == 200 and None is not None)">self = &lt;test_milestone14_iteration19.TestM14IntegrationCalibration object at 0xfc2557b6d190&gt;
+client = &lt;requests.sessions.Session object at 0xfc2557e57d90&gt;
+state = {'sid': '1bdb7ced-952b-48c9-8006-803f51adffa8', 't1_pt': 'Forming a controlling claim that takes an arguable position', 't1_pf': 'Central Claim / Thesis (communicative purpose: persuade)'}
+
+    def test_t2_revise_growth_maintains_integration_calibration(self, client, state):
+        # A substantive revision that adds a claim + causal mechanism.
+        revised = (
+            "Social media harms close teen friendships because constant, shallow "
+            "contact crowds out the focused, in-person attention that deep friendship "
+            "needs to grow. When teens replace long conversations with quick likes and "
+            "comments, they lose the practice of listening carefully to one person over time."
+        )
+        status, s, err = sse_with_retry(client, state["sid"], {"kind": "revise", "content": revised})
+&gt;       assert status == 200 and s is not None, f"turn2 SSE failed: err={err}"
+E       AssertionError: turn2 SSE failed: err=None
+E       assert (200 == 200 and None is not None)
+
+tests/test_milestone14_iteration19.py:229: AssertionError</failure></testcase></testsuite></testsuites>

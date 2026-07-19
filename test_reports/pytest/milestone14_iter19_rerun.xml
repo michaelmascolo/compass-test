@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="2" time="247.366" timestamp="2026-07-19T14:24:54.047448+00:00" hostname="agent-env-3627894e-c20b-4446-9c49-c717db2e143a"><testcase classname="tests.test_milestone14_iteration19.TestM14IntegrationCalibration" name="test_t1_messy_first_draft_populates_integration_calibration" time="54.847" /><testcase classname="tests.test_milestone14_iteration19.TestM14IntegrationCalibration" name="test_t2_revise_growth_maintains_integration_calibration" time="192.450"><failure message="AssertionError: turn2 SSE failed: err=None&#10;assert (200 == 200 and None is not None)">self = &lt;test_milestone14_iteration19.TestM14IntegrationCalibration object at 0xf899b6ec8050&gt;
+client = &lt;requests.sessions.Session object at 0xf899b7524390&gt;
+state = {'sid': 'a201be0c-e15a-4ee4-9a5d-277cf70ed00a', 't1_pt': 'Forming a controlling claim — student must articulate a position before any other element can function', 't1_pf': 'Central Claim / Thesis — no controlling idea exists yet'}
+
+    def test_t2_revise_growth_maintains_integration_calibration(self, client, state):
+        # A substantive revision that adds a claim + causal mechanism.
+        revised = (
+            "Social media harms close teen friendships because constant, shallow "
+            "contact crowds out the focused, in-person attention that deep friendship "
+            "needs to grow. When teens replace long conversations with quick likes and "
+            "comments, they lose the practice of listening carefully to one person over time."
+        )
+        status, s, err = sse_with_retry(client, state["sid"], {"kind": "revise", "content": revised})
+&gt;       assert status == 200 and s is not None, f"turn2 SSE failed: err={err}"
+E       AssertionError: turn2 SSE failed: err=None
+E       assert (200 == 200 and None is not None)
+
+tests/test_milestone14_iteration19.py:229: AssertionError</failure></testcase></testsuite></testsuites>
