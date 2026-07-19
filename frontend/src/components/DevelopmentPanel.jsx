@@ -1,6 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Terminal, X, Pencil, Save, RotateCcw } from "lucide-react";
+import {
+  Terminal,
+  X,
+  Pencil,
+  Save,
+  RotateCcw,
+  ChevronRight,
+  Target,
+  Link2,
+  Clock,
+  Circle,
+  MinusCircle,
+  Loader2,
+} from "lucide-react";
 
 const SectionLabel = ({ children }) => (
   <div className="text-[10px] uppercase tracking-[0.2em] text-amber-500 mb-1.5">
@@ -32,6 +45,318 @@ const List = ({ items }) => {
 
 const Text = ({ value }) =>
   value ? <span>{value}</span> : <span className="text-stone-600">—</span>;
+
+// key/value row used throughout the reasoning blocks
+const KV = ({ k, accent, children }) => (
+  <div>
+    <span className="text-stone-500">{k}:</span>{" "}
+    {accent ? <span className={accent}>{children}</span> : children}
+  </div>
+);
+
+const GroupHeader = ({ children }) => (
+  <div className="text-[10px] uppercase tracking-[0.22em] text-stone-500 mt-5 mb-2 flex items-center gap-2">
+    <span className="h-px flex-1 bg-stone-800" />
+    {children}
+    <span className="h-px flex-1 bg-stone-800" />
+  </div>
+);
+
+// Status is communicated with an icon + a text label (never color alone).
+const STATUS_META = {
+  primary: { label: "Primary", Icon: Target, cls: "text-amber-300 border-amber-500/40 bg-amber-500/10" },
+  supporting: { label: "Supporting", Icon: Link2, cls: "text-sky-300 border-sky-500/40 bg-sky-500/10" },
+  postponed: { label: "Postponed", Icon: Clock, cls: "text-stone-400 border-stone-600 bg-stone-800/50" },
+  applicable: { label: "Applicable", Icon: Circle, cls: "text-emerald-300 border-emerald-500/40 bg-emerald-500/10" },
+  not_applicable: { label: "Not applicable", Icon: MinusCircle, cls: "text-stone-500 border-stone-700 bg-stone-900" },
+};
+
+const Badge = ({ status }) => {
+  const m = STATUS_META[status];
+  if (!m) return null;
+  const I = m.Icon;
+  return (
+    <span
+      data-testid={`framework-status-${status}`}
+      className={`shrink-0 inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.12em] px-1.5 py-0.5 rounded-sm border ${m.cls}`}
+    >
+      <I className="h-3 w-3" />
+      {m.label}
+    </span>
+  );
+};
+
+function Accordion({ id, title, badge, open, onToggle, accent, children }) {
+  return (
+    <div className={`border border-stone-800 rounded-sm mb-2 bg-stone-950/30 ${accent || ""}`}>
+      <button
+        type="button"
+        data-testid={`accordion-toggle-${id}`}
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-controls={`accordion-panel-${id}`}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-left hover:bg-stone-800/40 transition-colors focus:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 rounded-sm"
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <ChevronRight
+            className={`h-3.5 w-3.5 shrink-0 text-stone-500 transition-transform ${open ? "rotate-90" : ""}`}
+          />
+          <span className="text-[11px] uppercase tracking-[0.14em] text-stone-200 truncate">
+            {title}
+          </span>
+        </span>
+        {badge}
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            id={`accordion-panel-${id}`}
+            role="region"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden"
+          >
+            <div className="px-3.5 pb-3 pt-1 text-stone-300 leading-relaxed text-[13px]">
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// --- Framework definitions (data + testids preserved exactly) --------------
+const FRAMEWORKS = [
+  {
+    id: "communicative_purpose",
+    label: "Communicative Purpose (M6)",
+    keywords: ["communicative purpose", "whole essay", "essay purpose", "central claim", "thesis", "claim", "purpose"],
+    applies: () => true, // no applies field — always an active lens
+    content: (t) => (
+      <div className="space-y-1.5" data-testid="communicative-purpose-block">
+        <KV k="primary" accent="text-amber-300">
+          <Text value={t.communicative_purpose?.primary} />
+        </KV>
+        <KV k="secondary">
+          <List items={t.communicative_purpose?.secondary} />
+        </KV>
+        <KV k="inferred from">
+          <Text value={t.communicative_purpose?.inferred_from} />
+        </KV>
+        {t.communicative_purpose?.uncertainty ? (
+          <KV k="uncertainty">
+            <Text value={t.communicative_purpose?.uncertainty} />
+          </KV>
+        ) : null}
+      </div>
+    ),
+  },
+  {
+    id: "paragraph_function",
+    label: "Paragraph Function (M7)",
+    keywords: ["paragraph"],
+    applies: (t) => !!t.paragraph_function?.applies,
+    content: (t) => (
+      <div className="space-y-1.5" data-testid="paragraph-function-block">
+        <KV k="purpose" accent="text-amber-300">
+          <Text value={t.paragraph_function?.purpose} />
+        </KV>
+        <KV k="contribution to whole">
+          <Text value={t.paragraph_function?.contribution_to_whole} />
+        </KV>
+        <KV k="coherence">
+          <Text value={t.paragraph_function?.coherence} />
+        </KV>
+        <KV k="development">
+          <Text value={t.paragraph_function?.development} />
+        </KV>
+        <KV k="placement">
+          <Text value={t.paragraph_function?.placement} />
+        </KV>
+      </div>
+    ),
+  },
+  {
+    id: "evidence_function",
+    label: "Evidence Function (M8)",
+    keywords: ["evidence", "support"],
+    applies: (t) => !!t.evidence_function?.applies,
+    content: (t) => (
+      <div className="space-y-1.5" data-testid="evidence-function-block">
+        <KV k="forms">
+          <List items={t.evidence_function?.forms} />
+        </KV>
+        <KV k="function" accent="text-amber-300">
+          <Text value={t.evidence_function?.function} />
+        </KV>
+        <KV k="interpretation gap">
+          <Text value={t.evidence_function?.interpretation_gap} />
+        </KV>
+        <KV k="quality (functional)">
+          <Text value={t.evidence_function?.quality} />
+        </KV>
+      </div>
+    ),
+  },
+  {
+    id: "coherence_function",
+    label: "Transitions & Coherence (M9)",
+    keywords: ["coherence", "transition", "flow"],
+    applies: (t) => !!t.coherence_function?.applies,
+    content: (t) => (
+      <div className="space-y-1.5" data-testid="coherence-function-block">
+        <KV k="intended relationship" accent="text-amber-300">
+          <Text value={t.coherence_function?.intended_relationship} />
+        </KV>
+        <KV k="level">
+          <Text value={t.coherence_function?.level} />
+        </KV>
+        <KV k="resources in use">
+          <List items={t.coherence_function?.resources_in_use} />
+        </KV>
+        <KV k="reader can follow">
+          <Text value={t.coherence_function?.reader_can_follow} />
+        </KV>
+      </div>
+    ),
+  },
+  {
+    id: "conclusion_function",
+    label: "Conclusion / Completion (M10)",
+    keywords: ["conclusion", "completion", "ending"],
+    applies: (t) => !!t.conclusion_function?.applies,
+    content: (t) => (
+      <div className="space-y-1.5" data-testid="conclusion-function-block">
+        <KV k="functions in play">
+          <List items={t.conclusion_function?.functions_in_play} />
+        </KV>
+        <KV k="completes purpose" accent="text-amber-300">
+          <Text value={t.conclusion_function?.completes_purpose} />
+        </KV>
+        <KV k="relationship to opening">
+          <Text value={t.conclusion_function?.relationship_to_opening} />
+        </KV>
+        <KV k="final understanding">
+          <Text value={t.conclusion_function?.final_understanding} />
+        </KV>
+      </div>
+    ),
+  },
+  {
+    id: "reader_construction",
+    label: "Reader Construction (M12)",
+    keywords: ["reader"],
+    applies: (t) => !!t.reader_construction?.applies,
+    content: (t) => (
+      <div className="space-y-1.5" data-testid="reader-construction-block">
+        <KV k="reader understands" accent="text-amber-300">
+          <Text value={t.reader_construction?.reader_understanding} />
+        </KV>
+        <KV k="likely questions">
+          <List items={t.reader_construction?.likely_reader_questions} />
+        </KV>
+        <KV k="assumed knowledge">
+          <Text value={t.reader_construction?.assumed_knowledge} />
+        </KV>
+        <KV k="clarification needed">
+          <Text value={t.reader_construction?.clarification_needed} />
+        </KV>
+        <KV k="elaboration needed">
+          <Text value={t.reader_construction?.elaboration_needed} />
+        </KV>
+        <KV k="precision risk">
+          <Text value={t.reader_construction?.precision_risk} />
+        </KV>
+        <KV k="next reader need" accent="text-sky-300">
+          <Text value={t.reader_construction?.next_reader_need} />
+        </KV>
+      </div>
+    ),
+  },
+  {
+    id: "revision_development",
+    label: "Revision as Development (M13)",
+    keywords: ["revision", "revise", "growth"],
+    applies: (t) => !!t.revision_development?.applies,
+    content: (t) => (
+      <div className="space-y-1.5" data-testid="revision-development-block">
+        <KV k="development detected" accent="text-amber-300">
+          <Text value={t.revision_development?.development_detected} />
+        </KV>
+        <KV k="primary growth">
+          <Text value={t.revision_development?.primary_growth} />
+        </KV>
+        <KV k="communication change">
+          <Text value={t.revision_development?.communication_change} />
+        </KV>
+        <KV k="reader change">
+          <Text value={t.revision_development?.reader_change} />
+        </KV>
+        <KV k="remaining opportunity">
+          <Text value={t.revision_development?.remaining_opportunity} />
+        </KV>
+        <KV k="transfer message" accent="text-emerald-300">
+          <Text value={t.revision_development?.transfer_message} />
+        </KV>
+      </div>
+    ),
+  },
+];
+
+function pickPrimary(theory, appliesMap) {
+  const pf = (theory.integration_calibration?.primary_framework || "").toLowerCase();
+  let best = null;
+  let bestIdx = Infinity;
+  for (const fw of FRAMEWORKS) {
+    if (!appliesMap[fw.id]) continue;
+    for (const k of fw.keywords) {
+      const i = pf.indexOf(k);
+      if (i >= 0 && i < bestIdx) {
+        bestIdx = i;
+        best = fw.id;
+      }
+    }
+  }
+  return best;
+}
+
+function frameworkStatuses(theory) {
+  const supp = (theory.integration_calibration?.supporting_frameworks || []).join(" ").toLowerCase();
+  const postponed = (theory.scaffolding_control?.postponed || []).join(" ").toLowerCase();
+  const appliesMap = {};
+  for (const fw of FRAMEWORKS) appliesMap[fw.id] = fw.applies(theory);
+  const primaryId = pickPrimary(theory, appliesMap);
+  const out = { __primary: primaryId };
+  for (const fw of FRAMEWORKS) {
+    let status;
+    if (!appliesMap[fw.id]) status = "not_applicable";
+    else if (fw.id === primaryId) status = "primary";
+    else if (fw.keywords.some((k) => postponed.includes(k))) status = "postponed";
+    else if (fw.keywords.some((k) => supp.includes(k))) status = "supporting";
+    else status = "applicable";
+    out[fw.id] = { applies: appliesMap[fw.id], status };
+  }
+  return out;
+}
+
+function computeDefaults(theory) {
+  const st = frameworkStatuses(theory);
+  const map = {
+    scaffolding_control: true,
+    integration_calibration: true,
+    intervention: true,
+    detail: false,
+  };
+  for (const fw of FRAMEWORKS) {
+    const s = st[fw.id].status;
+    // expand primary + supporting; collapse not-applicable, postponed, plain-applicable
+    map[fw.id] = s === "primary" || s === "supporting";
+  }
+  return map;
+}
 
 function TelosEditor({ session, onSave, saving }) {
   const [open, setOpen] = useState(false);
@@ -111,11 +436,35 @@ export default function DevelopmentPanel({
   onEditTelos,
   savingTelos,
 }) {
-  if (!session) return null;
-  const theory = session.theory || {};
-  const telos = session.telos || {};
-  const interactions = session.interactions || [];
+  const theory = session?.theory || {};
+  const telos = session?.telos || {};
+  const interactions = session?.interactions || [];
   const last = interactions[interactions.length - 1];
+  const processing = (session?.turns || []).some((t) => t.status === "processing");
+
+  // Accordion open-state. Recomputed to defaults ONLY when a new completed turn
+  // arrives (interactions.length changes) — never on every poll — so manual
+  // open/close is preserved while viewing the same turn.
+  const turnKey = interactions.length;
+  const [openMap, setOpenMap] = useState(() => computeDefaults(theory));
+
+  useEffect(() => {
+    setOpenMap(computeDefaults(theory));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [turnKey, session?.id]);
+
+  const toggle = useCallback((id) => {
+    setOpenMap((prev) => ({ ...prev, [id]: !prev[id] }));
+  }, []);
+
+  if (!session) return null;
+
+  const statuses = frameworkStatuses(theory);
+  const primaryFw = FRAMEWORKS.find((f) => statuses[f.id].status === "primary");
+  const otherApplicable = FRAMEWORKS.filter((f) =>
+    ["supporting", "applicable", "postponed"].includes(statuses[f.id].status)
+  );
+  const inactive = FRAMEWORKS.filter((f) => statuses[f.id].status === "not_applicable");
 
   return (
     <AnimatePresence>
@@ -154,440 +503,305 @@ export default function DevelopmentPanel({
               </button>
             </div>
 
-            <TelosEditor
-              session={session}
-              onSave={onEditTelos}
-              saving={savingTelos}
-            />
+            <TelosEditor session={session} onSave={onEditTelos} saving={savingTelos} />
 
-            <div className="px-5 py-2.5 border-b border-stone-800 shrink-0">
+            <div className="px-5 py-2.5 border-b border-stone-800 shrink-0 flex items-center justify-between gap-2">
               <p className="text-[10px] text-stone-500 leading-relaxed">
-                Testing / teacher review — provisional working theory of the
-                developing system. Revised (not appended) each turn.
+                Provisional working theory of the developing system. Revised (not
+                appended) each turn.
                 {session.theory_history?.length
                   ? ` v${session.theory_history.length + 1}`
                   : " v1"}
               </p>
+              {processing ? (
+                <span
+                  data-testid="panel-processing-indicator"
+                  className="shrink-0 inline-flex items-center gap-1 text-[9px] uppercase tracking-[0.12em] text-amber-300 border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 rounded-sm"
+                >
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  Reasoning
+                </span>
+              ) : null}
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scroll px-5 py-5">
-              <Block label="Current Telos">
-                <Text value={theory.current_telos || telos.governing_pedagogical_purpose} />
-              </Block>
-              <Block label="Communicative Purpose">
-                <div className="space-y-1.5" data-testid="communicative-purpose-block">
-                  <div>
-                    <span className="text-stone-500">primary:</span>{" "}
-                    <span className="text-amber-300">
-                      <Text value={theory.communicative_purpose?.primary} />
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-stone-500">secondary:</span>{" "}
-                    <List items={theory.communicative_purpose?.secondary} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">inferred from:</span>{" "}
-                    <Text value={theory.communicative_purpose?.inferred_from} />
-                  </div>
-                  {theory.communicative_purpose?.uncertainty ? (
-                    <div>
-                      <span className="text-stone-500">uncertainty:</span>{" "}
-                      <Text value={theory.communicative_purpose?.uncertainty} />
-                    </div>
-                  ) : null}
-                </div>
-              </Block>
-              <Block label="Scaffolding Controller (M11)">
+              {/* 1 — Scaffolding Controller (the one decision that matters) */}
+              <Accordion
+                id="scaffolding_control"
+                title="Scaffolding Controller (M11)"
+                accent="border-l-2 border-l-amber-500"
+                open={openMap.scaffolding_control}
+                onToggle={() => toggle("scaffolding_control")}
+              >
                 <div className="space-y-1.5" data-testid="scaffolding-control-block">
-                  <div>
-                    <span className="text-stone-500">unit:</span>{" "}
+                  <KV k="unit">
                     <Text value={theory.scaffolding_control?.current_unit} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">diagnosed opportunities:</span>{" "}
+                  </KV>
+                  <KV k="diagnosed opportunities">
                     <List items={theory.scaffolding_control?.diagnosed_opportunities} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">primary target:</span>{" "}
-                    <span className="text-amber-300">
-                      <Text value={theory.scaffolding_control?.primary_target} />
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-stone-500">why (priority):</span>{" "}
+                  </KV>
+                  <KV k="primary target" accent="text-amber-300">
+                    <Text value={theory.scaffolding_control?.primary_target} />
+                  </KV>
+                  <KV k="why (priority)">
                     <Text value={theory.scaffolding_control?.prioritization_rationale} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">mode:</span>{" "}
-                    <span className="text-emerald-300">
-                      <Text value={theory.scaffolding_control?.instructional_mode} />
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-stone-500">postponed:</span>{" "}
+                  </KV>
+                  <KV k="mode" accent="text-emerald-300">
+                    <Text value={theory.scaffolding_control?.instructional_mode} />
+                  </KV>
+                  <KV k="postponed">
                     <List items={theory.scaffolding_control?.postponed} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">cycle status:</span>{" "}
-                    <span className="text-sky-300">
-                      <Text value={theory.scaffolding_control?.cycle_status} />
-                    </span>
-                  </div>
+                  </KV>
+                  <KV k="cycle status" accent="text-sky-300">
+                    <Text value={theory.scaffolding_control?.cycle_status} />
+                  </KV>
                   {theory.scaffolding_control?.stopping_reason ? (
-                    <div>
-                      <span className="text-stone-500">stopping reason:</span>{" "}
+                    <KV k="stopping reason">
                       <Text value={theory.scaffolding_control?.stopping_reason} />
-                    </div>
+                    </KV>
                   ) : null}
                   {theory.scaffolding_control?.future_opportunity ? (
-                    <div>
-                      <span className="text-stone-500">future opportunity:</span>{" "}
+                    <KV k="future opportunity">
                       <Text value={theory.scaffolding_control?.future_opportunity} />
-                    </div>
+                    </KV>
                   ) : null}
                 </div>
-              </Block>
-              {theory.integration_calibration?.applies ? (
-                <Block label="Integration & Calibration (M14)">
-                  <div className="space-y-1.5" data-testid="integration-calibration-block">
-                    <div>
-                      <span className="text-stone-500">primary framework:</span>{" "}
-                      <span className="text-amber-300">
-                        <Text value={theory.integration_calibration?.primary_framework} />
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-500">supporting frameworks:</span>{" "}
-                      <List items={theory.integration_calibration?.supporting_frameworks} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">calibration check:</span>{" "}
-                      <Text value={theory.integration_calibration?.calibration_check} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">consistency check:</span>{" "}
-                      <Text value={theory.integration_calibration?.consistency_check} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">integration notes:</span>{" "}
-                      <Text value={theory.integration_calibration?.integration_notes} />
-                    </div>
-                  </div>
-                </Block>
-              ) : null}
-              {theory.reader_construction?.applies ? (
-                <Block label="Reader Construction (M12)">
-                  <div className="space-y-1.5" data-testid="reader-construction-block">
-                    <div>
-                      <span className="text-stone-500">reader understands:</span>{" "}
-                      <span className="text-amber-300">
-                        <Text value={theory.reader_construction?.reader_understanding} />
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-500">likely questions:</span>{" "}
-                      <List items={theory.reader_construction?.likely_reader_questions} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">assumed knowledge:</span>{" "}
-                      <Text value={theory.reader_construction?.assumed_knowledge} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">clarification needed:</span>{" "}
-                      <Text value={theory.reader_construction?.clarification_needed} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">elaboration needed:</span>{" "}
-                      <Text value={theory.reader_construction?.elaboration_needed} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">precision risk:</span>{" "}
-                      <Text value={theory.reader_construction?.precision_risk} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">next reader need:</span>{" "}
-                      <span className="text-sky-300">
-                        <Text value={theory.reader_construction?.next_reader_need} />
-                      </span>
-                    </div>
-                  </div>
-                </Block>
-              ) : null}
-              {theory.revision_development?.applies ? (
-                <Block label="Revision as Development (M13)">
-                  <div className="space-y-1.5" data-testid="revision-development-block">
-                    <div>
-                      <span className="text-stone-500">development detected:</span>{" "}
-                      <span className="text-amber-300">
-                        <Text value={theory.revision_development?.development_detected} />
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-500">primary growth:</span>{" "}
-                      <Text value={theory.revision_development?.primary_growth} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">communication change:</span>{" "}
-                      <Text value={theory.revision_development?.communication_change} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">reader change:</span>{" "}
-                      <Text value={theory.revision_development?.reader_change} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">remaining opportunity:</span>{" "}
-                      <Text value={theory.revision_development?.remaining_opportunity} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">transfer message:</span>{" "}
-                      <span className="text-emerald-300">
-                        <Text value={theory.revision_development?.transfer_message} />
-                      </span>
-                    </div>
-                  </div>
-                </Block>
-              ) : null}
-                <Block label="Paragraph Function (M7)">
-                  <div className="space-y-1.5" data-testid="paragraph-function-block">
-                    <div>
-                      <span className="text-stone-500">purpose:</span>{" "}
-                      <span className="text-amber-300">
-                        <Text value={theory.paragraph_function?.purpose} />
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-500">contribution to whole:</span>{" "}
-                      <Text value={theory.paragraph_function?.contribution_to_whole} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">coherence:</span>{" "}
-                      <Text value={theory.paragraph_function?.coherence} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">development:</span>{" "}
-                      <Text value={theory.paragraph_function?.development} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">placement:</span>{" "}
-                      <Text value={theory.paragraph_function?.placement} />
-                    </div>
-                  </div>
-                </Block>
-              ) : null}
-              {theory.evidence_function?.applies ? (
-                <Block label="Evidence Function (M8)">
-                  <div className="space-y-1.5" data-testid="evidence-function-block">
-                    <div>
-                      <span className="text-stone-500">forms:</span>{" "}
-                      <List items={theory.evidence_function?.forms} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">function:</span>{" "}
-                      <span className="text-amber-300">
-                        <Text value={theory.evidence_function?.function} />
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-500">interpretation gap:</span>{" "}
-                      <Text value={theory.evidence_function?.interpretation_gap} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">quality (functional):</span>{" "}
-                      <Text value={theory.evidence_function?.quality} />
-                    </div>
-                  </div>
-                </Block>
-              ) : null}
-              {theory.coherence_function?.applies ? (
-                <Block label="Transitions & Coherence (M9)">
-                  <div className="space-y-1.5" data-testid="coherence-function-block">
-                    <div>
-                      <span className="text-stone-500">intended relationship:</span>{" "}
-                      <span className="text-amber-300">
-                        <Text value={theory.coherence_function?.intended_relationship} />
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-500">level:</span>{" "}
-                      <Text value={theory.coherence_function?.level} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">resources in use:</span>{" "}
-                      <List items={theory.coherence_function?.resources_in_use} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">reader can follow:</span>{" "}
-                      <Text value={theory.coherence_function?.reader_can_follow} />
-                    </div>
-                  </div>
-                </Block>
-              ) : null}
-              {theory.conclusion_function?.applies ? (
-                <Block label="Conclusion / Completion (M10)">
-                  <div className="space-y-1.5" data-testid="conclusion-function-block">
-                    <div>
-                      <span className="text-stone-500">functions in play:</span>{" "}
-                      <List items={theory.conclusion_function?.functions_in_play} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">completes purpose:</span>{" "}
-                      <span className="text-amber-300">
-                        <Text value={theory.conclusion_function?.completes_purpose} />
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-stone-500">relationship to opening:</span>{" "}
-                      <Text value={theory.conclusion_function?.relationship_to_opening} />
-                    </div>
-                    <div>
-                      <span className="text-stone-500">final understanding:</span>{" "}
-                      <Text value={theory.conclusion_function?.final_understanding} />
-                    </div>
-                  </div>
-                </Block>
-              ) : null}
-              <Block label="Current Organization (relative to telos)">
-                <Text value={theory.current_organization} />
-              </Block>
-              <Block label="Observed Developmental Movement">
-                <div className="space-y-2">
-                  <div>
-                    <span className="text-stone-500">differentiation:</span>{" "}
-                    <List items={theory.observed_differentiations} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">integration:</span>{" "}
-                    <List items={theory.observed_integrations} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">coordination:</span>{" "}
-                    <List items={theory.observed_coordinations} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">intentional control:</span>{" "}
-                    <Text value={theory.emerging_intentional_control} />
-                  </div>
-                </div>
-              </Block>
-              <Block label="Currently Relevant Canonical Domains">
-                <List items={theory.currently_relevant_domains} />
-              </Block>
-              <Block label="Active Tension(s)">
-                <span className="text-amber-300">
-                  <List items={theory.unresolved_tensions} />
-                </span>
-              </Block>
-              <Block label="Cultural Resources (in use / potential)">
-                <div className="space-y-1.5">
-                  <div>
-                    <span className="text-stone-500">in use:</span>{" "}
-                    <List items={theory.cultural_resources_in_use} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">potential:</span>{" "}
-                    <List items={theory.potential_cultural_resources} />
-                  </div>
-                </div>
-              </Block>
-              <Block label="Evidence — Supporting">
-                <List items={theory.supporting_evidence} />
-              </Block>
-              <Block label="Evidence — Complicating / Contradicting">
-                <List items={theory.complicating_evidence} />
-              </Block>
-              <Block label="Alternative Interpretations (preserved)">
-                <List items={theory.alternative_interpretations} />
-              </Block>
-              <Block label="Current Uncertainty">
-                <List items={theory.current_uncertainty} />
-              </Block>
-              <Block label="Possible Reorganizations">
-                <List items={theory.possible_reorganizations} />
-              </Block>
+              </Accordion>
 
-              <Block label="Candidate Invitations (internal)">
-                {last?.candidate_invitations?.length ? (
-                  <div className="space-y-3">
-                    {last.candidate_invitations.map((c, i) => (
-                      <div
-                        key={i}
-                        data-testid={`candidate-invitation-${i}`}
-                        className="border border-stone-800 rounded-sm p-2.5 bg-stone-950/50"
-                      >
-                        <div className="text-stone-200">
-                          {i + 1}. {c.invitation}
-                        </div>
-                        <div className="text-[11px] text-stone-500 mt-1">
-                          addresses: {c.developmental_possibility || "—"}
-                        </div>
-                        <div className="text-[11px] text-stone-500">
-                          could learn: {c.what_ai_could_learn || "—"}
-                        </div>
-                        <div className="text-[11px] text-stone-500">
-                          risk: {c.uncertainty_or_risk || "—"}
-                        </div>
-                      </div>
-                    ))}
+              {/* 2 — Integration & Calibration */}
+              {theory.integration_calibration?.applies ? (
+                <Accordion
+                  id="integration_calibration"
+                  title="Integration & Calibration (M14)"
+                  accent="border-l-2 border-l-sky-500"
+                  open={openMap.integration_calibration}
+                  onToggle={() => toggle("integration_calibration")}
+                >
+                  <div className="space-y-1.5" data-testid="integration-calibration-block">
+                    <KV k="primary framework" accent="text-amber-300">
+                      <Text value={theory.integration_calibration?.primary_framework} />
+                    </KV>
+                    <KV k="supporting frameworks">
+                      <List items={theory.integration_calibration?.supporting_frameworks} />
+                    </KV>
+                    <KV k="calibration check">
+                      <Text value={theory.integration_calibration?.calibration_check} />
+                    </KV>
+                    <KV k="consistency check">
+                      <Text value={theory.integration_calibration?.consistency_check} />
+                    </KV>
+                    <KV k="integration notes">
+                      <Text value={theory.integration_calibration?.integration_notes} />
+                    </KV>
                   </div>
-                ) : (
-                  <span className="text-stone-600">—</span>
-                )}
-              </Block>
-              <Block label="Selected Invitation">
-                <div className="text-amber-200" data-testid="selected-invitation">
-                  <Text value={last?.selected_invitation?.invitation} />
-                </div>
-              </Block>
-              <Block label="Developmental Instruction — Intervention">
-                <div className="space-y-1.5" data-testid="intervention-block">
+                </Accordion>
+              ) : null}
+
+              {/* 3 — Primary Active Framework */}
+              {primaryFw ? (
+                <>
+                  <GroupHeader>Primary Active Framework</GroupHeader>
+                  <Accordion
+                    id={primaryFw.id}
+                    title={primaryFw.label}
+                    badge={<Badge status="primary" />}
+                    open={openMap[primaryFw.id]}
+                    onToggle={() => toggle(primaryFw.id)}
+                  >
+                    {primaryFw.content(theory)}
+                  </Accordion>
+                </>
+              ) : null}
+
+              {/* 4 — Other Applicable Frameworks */}
+              {otherApplicable.length > 0 ? (
+                <>
+                  <GroupHeader>Other Applicable Frameworks</GroupHeader>
+                  {otherApplicable.map((fw) => (
+                    <Accordion
+                      key={fw.id}
+                      id={fw.id}
+                      title={fw.label}
+                      badge={<Badge status={statuses[fw.id].status} />}
+                      open={openMap[fw.id]}
+                      onToggle={() => toggle(fw.id)}
+                    >
+                      {fw.content(theory)}
+                    </Accordion>
+                  ))}
+                </>
+              ) : null}
+
+              {/* 5 — Inactive Frameworks */}
+              {inactive.length > 0 ? (
+                <>
+                  <GroupHeader>Inactive Frameworks</GroupHeader>
+                  {inactive.map((fw) => (
+                    <Accordion
+                      key={fw.id}
+                      id={fw.id}
+                      title={fw.label}
+                      badge={<Badge status="not_applicable" />}
+                      open={openMap[fw.id]}
+                      onToggle={() => toggle(fw.id)}
+                    >
+                      {fw.content(theory)}
+                    </Accordion>
+                  ))}
+                </>
+              ) : null}
+
+              {/* 6 — Intervention / Instructional Output */}
+              <GroupHeader>Instructional Output</GroupHeader>
+              <Accordion
+                id="intervention"
+                title="Intervention & Selected Invitation"
+                open={openMap.intervention}
+                onToggle={() => toggle("intervention")}
+              >
+                <div className="space-y-3">
                   <div>
-                    <span className="text-stone-500">type:</span>{" "}
-                    <span className="text-amber-300">
+                    <SectionLabel>Selected Invitation</SectionLabel>
+                    <div className="text-amber-200" data-testid="selected-invitation">
+                      <Text value={last?.selected_invitation?.invitation} />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5" data-testid="intervention-block">
+                    <KV k="type" accent="text-amber-300">
                       <Text value={last?.intervention?.type} />
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-stone-500">cultural resource:</span>{" "}
-                    <Text value={last?.intervention?.cultural_resource} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">interpretation:</span>{" "}
-                    <Text value={last?.intervention?.interpretation} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">instruction:</span>{" "}
-                    <Text value={last?.intervention?.instruction} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">consolidation:</span>{" "}
-                    <Text value={last?.intervention?.consolidation} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">timing:</span>{" "}
-                    <Text value={last?.intervention?.timing_rationale} />
-                  </div>
-                  <div>
-                    <span className="text-stone-500">focus:</span>{" "}
-                    <span className={last?.intervention?.focus === "content" ? "text-orange-300" : "text-emerald-300"}>
+                    </KV>
+                    <KV k="cultural resource">
+                      <Text value={last?.intervention?.cultural_resource} />
+                    </KV>
+                    <KV k="interpretation">
+                      <Text value={last?.intervention?.interpretation} />
+                    </KV>
+                    <KV k="instruction">
+                      <Text value={last?.intervention?.instruction} />
+                    </KV>
+                    <KV k="consolidation">
+                      <Text value={last?.intervention?.consolidation} />
+                    </KV>
+                    <KV k="timing">
+                      <Text value={last?.intervention?.timing_rationale} />
+                    </KV>
+                    <KV
+                      k="focus"
+                      accent={last?.intervention?.focus === "content" ? "text-orange-300" : "text-emerald-300"}
+                    >
                       <Text value={last?.intervention?.focus} />
-                    </span>
+                    </KV>
+                    <KV k="writing-not-content check">
+                      <Text value={last?.intervention?.writing_not_content_check} />
+                    </KV>
                   </div>
                   <div>
-                    <span className="text-stone-500">writing-not-content check:</span>{" "}
-                    <Text value={last?.intervention?.writing_not_content_check} />
+                    <SectionLabel>Rationale (coherence, not optimality)</SectionLabel>
+                    <div className="text-stone-300">
+                      <Text value={last?.selected_invitation?.selection_basis} />
+                    </div>
                   </div>
                 </div>
-              </Block>
-              <Block label="Rationale for Selection (coherence, not optimality)">
-                <Text value={last?.selected_invitation?.selection_basis} />
-              </Block>
-              <Block label="Change From Previous Interaction">
-                <Text value={theory.changes_since_previous} />
-              </Block>
-              <Block label="Observed Reorganization (this turn)">
-                <Text value={last?.observed_reorganization} />
-              </Block>
+              </Accordion>
+
+              {/* Full engine internals — all remaining reasoning, preserved & accessible */}
+              <GroupHeader>Working Theory Detail</GroupHeader>
+              <Accordion
+                id="detail"
+                title="Full engine internals"
+                open={openMap.detail}
+                onToggle={() => toggle("detail")}
+              >
+                <Block label="Current Telos">
+                  <Text value={theory.current_telos || telos.governing_pedagogical_purpose} />
+                </Block>
+                <Block label="Current Organization (relative to telos)">
+                  <Text value={theory.current_organization} />
+                </Block>
+                <Block label="Observed Developmental Movement">
+                  <div className="space-y-2">
+                    <KV k="differentiation">
+                      <List items={theory.observed_differentiations} />
+                    </KV>
+                    <KV k="integration">
+                      <List items={theory.observed_integrations} />
+                    </KV>
+                    <KV k="coordination">
+                      <List items={theory.observed_coordinations} />
+                    </KV>
+                    <KV k="intentional control">
+                      <Text value={theory.emerging_intentional_control} />
+                    </KV>
+                  </div>
+                </Block>
+                <Block label="Currently Relevant Canonical Domains">
+                  <List items={theory.currently_relevant_domains} />
+                </Block>
+                <Block label="Active Tension(s)">
+                  <span className="text-amber-300">
+                    <List items={theory.unresolved_tensions} />
+                  </span>
+                </Block>
+                <Block label="Cultural Resources (in use / potential)">
+                  <div className="space-y-1.5">
+                    <KV k="in use">
+                      <List items={theory.cultural_resources_in_use} />
+                    </KV>
+                    <KV k="potential">
+                      <List items={theory.potential_cultural_resources} />
+                    </KV>
+                  </div>
+                </Block>
+                <Block label="Evidence — Supporting">
+                  <List items={theory.supporting_evidence} />
+                </Block>
+                <Block label="Evidence — Complicating / Contradicting">
+                  <List items={theory.complicating_evidence} />
+                </Block>
+                <Block label="Alternative Interpretations (preserved)">
+                  <List items={theory.alternative_interpretations} />
+                </Block>
+                <Block label="Current Uncertainty">
+                  <List items={theory.current_uncertainty} />
+                </Block>
+                <Block label="Possible Reorganizations">
+                  <List items={theory.possible_reorganizations} />
+                </Block>
+                <Block label="Candidate Invitations (internal)">
+                  {last?.candidate_invitations?.length ? (
+                    <div className="space-y-3">
+                      {last.candidate_invitations.map((c, i) => (
+                        <div
+                          key={i}
+                          data-testid={`candidate-invitation-${i}`}
+                          className="border border-stone-800 rounded-sm p-2.5 bg-stone-950/50"
+                        >
+                          <div className="text-stone-200">
+                            {i + 1}. {c.invitation}
+                          </div>
+                          <div className="text-[11px] text-stone-500 mt-1">
+                            addresses: {c.developmental_possibility || "—"}
+                          </div>
+                          <div className="text-[11px] text-stone-500">
+                            could learn: {c.what_ai_could_learn || "—"}
+                          </div>
+                          <div className="text-[11px] text-stone-500">
+                            risk: {c.uncertainty_or_risk || "—"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-stone-600">—</span>
+                  )}
+                </Block>
+                <Block label="Change From Previous Interaction">
+                  <Text value={theory.changes_since_previous} />
+                </Block>
+                <Block label="Observed Reorganization (this turn)">
+                  <Text value={last?.observed_reorganization} />
+                </Block>
+              </Accordion>
             </div>
           </motion.aside>
         </>
