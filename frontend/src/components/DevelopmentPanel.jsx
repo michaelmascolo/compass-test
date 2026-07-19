@@ -248,6 +248,34 @@ export default function DevelopmentPanel({
                   ) : null}
                 </div>
               </Block>
+              {theory.integration_calibration?.applies ? (
+                <Block label="Integration & Calibration (M14)">
+                  <div className="space-y-1.5" data-testid="integration-calibration-block">
+                    <div>
+                      <span className="text-stone-500">primary framework:</span>{" "}
+                      <span className="text-amber-300">
+                        <Text value={theory.integration_calibration?.primary_framework} />
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-stone-500">supporting frameworks:</span>{" "}
+                      <List items={theory.integration_calibration?.supporting_frameworks} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">calibration check:</span>{" "}
+                      <Text value={theory.integration_calibration?.calibration_check} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">consistency check:</span>{" "}
+                      <Text value={theory.integration_calibration?.consistency_check} />
+                    </div>
+                    <div>
+                      <span className="text-stone-500">integration notes:</span>{" "}
+                      <Text value={theory.integration_calibration?.integration_notes} />
+                    </div>
+                  </div>
+                </Block>
+              ) : null}
               {theory.reader_construction?.applies ? (
                 <Block label="Reader Construction (M12)">
                   <div className="space-y-1.5" data-testid="reader-construction-block">

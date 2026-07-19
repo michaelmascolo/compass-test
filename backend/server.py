@@ -224,6 +224,19 @@ class RevisionDevelopment(BaseModel):
     transfer_message: str = ""         # how the student can transfer this understanding to FUTURE writing (part of consolidation)
 
 
+class IntegrationCalibration(BaseModel):
+    """M14 — the integration & calibration meta-check. Ensures the many frameworks (M6–M13)
+    operate as ONE coherent instructional system: frameworks cooperate (never compete),
+    the intervention is proportional to actual need, and decisions are consistent across
+    equivalent situations. Populated every turn (applies=True). Never overrides the M11 single target."""
+    applies: bool = False
+    primary_framework: str = ""            # which framework's opportunity is primary this turn (aligns with M11 primary_target)
+    supporting_frameworks: List[str] = Field(default_factory=list)  # frameworks that SUPPORT (not compete with) the primary; unify overlapping opportunities into one focus
+    calibration_check: str = ""            # is the intervention proportional? (guards over-/under-teaching, unnecessary intervention, unmotivated target-shifting)
+    consistency_check: str = ""            # would an equivalent writing situation receive the same priority?
+    integration_notes: str = ""           # how frameworks were unified into one coherent interpretation; any cross-framework transfer noted for consolidation
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
@@ -235,6 +248,7 @@ class DevelopmentalTheory(BaseModel):
     scaffolding_control: ScaffoldingControl = Field(default_factory=ScaffoldingControl)
     reader_construction: ReaderConstruction = Field(default_factory=ReaderConstruction)
     revision_development: RevisionDevelopment = Field(default_factory=RevisionDevelopment)
+    integration_calibration: IntegrationCalibration = Field(default_factory=IntegrationCalibration)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -427,6 +441,15 @@ REVISION AS DEVELOPMENT FRAMEWORK (Milestone 13 — apply when the current draft
 - MULTIPLE REVISIONS: across several drafts, read the developmental TRAJECTORY (e.g. increasing reader awareness, improving evidence interpretation, stronger coherence, increasing precision) — do not merely compare adjacent drafts.
 Per the WRITING INSTRUCTION BOUNDARY (M5A): you may teach developmental growth, communicative improvement, transfer, and revision strategies, but you may NOT rewrite drafts, generate improved versions, or invent content unless brainstorming/content generation is explicitly enabled. If there is no prior draft to compare (first submission), leave theory.revision_development.applies=false and its fields empty.
 
+DEVELOPMENTAL INTEGRATION & CALIBRATION (Milestone 14 — the final coherence meta-check; apply EVERY turn, after all other frameworks and after the M11 controller has proposed a target). You now hold many frameworks (M6 purpose, M7 paragraph, M8 evidence, M9 coherence, M10 conclusion, M12 reader, M13 revision). They must operate as ONE coherent instructional system — never competing. Record this check in theory.integration_calibration (applies=true every turn). Verify, in order:
+- INTEGRATED REASONING: when multiple frameworks apply, confirm they point to COMPATIBLE recommendations. If several frameworks identify the SAME underlying developmental opportunity, UNIFY them into one instructional focus — never issue duplicate or conflicting invitations. Name the primary_framework (must align with the M11 primary_target) and list supporting_frameworks that reinforce it.
+- CALIBRATION → calibration_check: is the intervention PROPORTIONAL to the actual developmental need? Guard against over-teaching, under-teaching, unnecessary intervention, and shifting targets without a developmental reason. If the draft is strong, a light forward invitation (or stopping) is the calibrated response; if genuinely weak, the highest-leverage single target — never pile on.
+- CONSISTENCY → consistency_check: would an equivalent writing situation receive the SAME instructional priority? Make equivalent problems get equivalent priorities.
+- TRANSFER ACROSS FRAMEWORKS → integration_notes: recognize when growth in one framework supports another (improved purpose strengthens conclusions; stronger reader construction improves elaboration; improved coherence supports paragraph function). Let these relationships inform CONSOLIDATION, while still maintaining exactly ONE instructional target.
+- SELF-CHECK before finalizing: Is the selected target the highest-leverage opportunity? Are other frameworks supporting rather than competing? Is this intervention proportional? Is the invitation developmentally appropriate? If any answer is no, re-unify around the single best target before producing the one student-facing invitation.
+This layer NEVER overrides the M11 one-target rule, the one-invitation rule, or the M5A boundary; it only guarantees the whole system yields ONE coherent, calibrated, consistent developmental interpretation.
+
+
 
 
 
@@ -484,6 +507,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "scaffolding_control": {"current_unit": "sentence/paragraph/section/whole paper", "diagnosed_opportunities": ["all developmental opportunities seen across frameworks this turn"], "primary_target": "the SINGLE instructional target chosen this cycle", "prioritization_rationale": "why this one (developmental readiness / importance for communication / leverage / dependency)", "instructional_mode": "developmental_question | explicit_instruction | brief_demonstration | guided_revision | reflection | consolidation", "postponed": ["opportunities deferred to later cycles"], "cycle_status": "continue | consolidate_and_return | stop", "stopping_reason": "if stopping: objective achieved / sufficient movement / another domain primary / diminishing returns / student requests independence — else empty", "future_opportunity": "one possible future cycle (named, NOT taught now) — else empty"},
     "reader_construction": {"applies": "true whenever there is drafted text to read, else false", "reader_understanding": "what a reasonable naive reader understands at this point given only what the text has said — else empty", "likely_reader_questions": ["questions the reader would naturally have now — else empty"], "assumed_knowledge": "knowledge assumed but not yet communicated; reasonable inference vs unsupported assumption — else empty", "clarification_needed": "where a reader could be confused — else empty", "elaboration_needed": "where the reader cannot yet understand the intended meaning without more support — else empty", "precision_risk": "where a reasonable reader could interpret this differently than intended — else empty", "next_reader_need": "what the reader would naturally need next — else empty"},
     "revision_development": {"applies": "true only when a prior draft exists to compare against (revise/later draft), else false", "development_detected": "yes/partial/no + brief — did a developmental capacity strengthen? (edits != growth) — else empty", "primary_growth": "the single most important capacity that got stronger (purpose/paragraph/evidence-interp/coherence/reader-understanding/precision/elaboration/conclusion/organization) — else empty", "communication_change": "did communication actually improve, and how? — else empty", "reader_change": "did the reader's likely understanding improve? — else empty", "remaining_opportunity": "if limited/regressed: the ONE remaining developmental opportunity (do not re-teach everything) — else empty", "transfer_message": "how the student can transfer this understanding to FUTURE writing — else empty"},
+    "integration_calibration": {"applies": "true every turn", "primary_framework": "which framework's opportunity is primary this turn (aligns with scaffolding_control.primary_target)", "supporting_frameworks": ["frameworks that SUPPORT (not compete with) the primary — unify overlapping opportunities into one focus"], "calibration_check": "is the intervention proportional to the actual need? (guards over-/under-teaching, unnecessary intervention, unmotivated target-shifting)", "consistency_check": "would an equivalent writing situation receive the same priority?", "integration_notes": "how frameworks were unified into one coherent interpretation; any cross-framework transfer for consolidation"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -544,6 +568,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "scaffolding_control": theory.scaffolding_control.model_dump(),
         "reader_construction": theory.reader_construction.model_dump(),
         "revision_development": theory.revision_development.model_dump(),
+        "integration_calibration": theory.integration_calibration.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,
