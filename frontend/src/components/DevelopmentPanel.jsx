@@ -198,6 +198,56 @@ export default function DevelopmentPanel({
                   ) : null}
                 </div>
               </Block>
+              <Block label="Scaffolding Controller (M11)">
+                <div className="space-y-1.5" data-testid="scaffolding-control-block">
+                  <div>
+                    <span className="text-stone-500">unit:</span>{" "}
+                    <Text value={theory.scaffolding_control?.current_unit} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">diagnosed opportunities:</span>{" "}
+                    <List items={theory.scaffolding_control?.diagnosed_opportunities} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">primary target:</span>{" "}
+                    <span className="text-amber-300">
+                      <Text value={theory.scaffolding_control?.primary_target} />
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500">why (priority):</span>{" "}
+                    <Text value={theory.scaffolding_control?.prioritization_rationale} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">mode:</span>{" "}
+                    <span className="text-emerald-300">
+                      <Text value={theory.scaffolding_control?.instructional_mode} />
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-stone-500">postponed:</span>{" "}
+                    <List items={theory.scaffolding_control?.postponed} />
+                  </div>
+                  <div>
+                    <span className="text-stone-500">cycle status:</span>{" "}
+                    <span className="text-sky-300">
+                      <Text value={theory.scaffolding_control?.cycle_status} />
+                    </span>
+                  </div>
+                  {theory.scaffolding_control?.stopping_reason ? (
+                    <div>
+                      <span className="text-stone-500">stopping reason:</span>{" "}
+                      <Text value={theory.scaffolding_control?.stopping_reason} />
+                    </div>
+                  ) : null}
+                  {theory.scaffolding_control?.future_opportunity ? (
+                    <div>
+                      <span className="text-stone-500">future opportunity:</span>{" "}
+                      <Text value={theory.scaffolding_control?.future_opportunity} />
+                    </div>
+                  ) : null}
+                </div>
+              </Block>
               {theory.paragraph_function?.applies ? (
                 <Block label="Paragraph Function (M7)">
                   <div className="space-y-1.5" data-testid="paragraph-function-block">

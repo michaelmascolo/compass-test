@@ -180,6 +180,22 @@ class ConclusionFunction(BaseModel):
     final_understanding: str = ""      # what should the reader understand after finishing the piece?
 
 
+class ScaffoldingControl(BaseModel):
+    """M11 — Recursive Developmental Scaffolding Controller. The meta-layer that ORCHESTRATES
+    the framework lenses (M6 purpose, M7 paragraph, M8 evidence, M9 coherence, M10 conclusion):
+    it diagnoses opportunities across them, selects ONE primary target, postpones the rest,
+    chooses an instructional mode, and applies bounded stopping/consolidation rules per cycle."""
+    current_unit: str = ""                 # sentence / paragraph / section / whole paper
+    diagnosed_opportunities: List[str] = Field(default_factory=list)  # all developmental opportunities seen across frameworks this turn
+    primary_target: str = ""               # the SINGLE instructional target selected this cycle
+    prioritization_rationale: str = ""     # why this one (developmental readiness / importance for communication / leverage / dependency)
+    instructional_mode: str = ""           # developmental_question / explicit_instruction / brief_demonstration / guided_revision / reflection / consolidation
+    postponed: List[str] = Field(default_factory=list)  # opportunities deferred to later cycles
+    cycle_status: str = ""                 # continue | consolidate_and_return | stop
+    stopping_reason: str = ""              # if stopping: objective achieved / sufficient movement / another domain primary / diminishing returns / student requests independence
+    future_opportunity: str = ""           # one possible future cycle (named, NOT taught now)
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
@@ -188,6 +204,7 @@ class DevelopmentalTheory(BaseModel):
     evidence_function: EvidenceFunction = Field(default_factory=EvidenceFunction)
     coherence_function: CoherenceFunction = Field(default_factory=CoherenceFunction)
     conclusion_function: ConclusionFunction = Field(default_factory=ConclusionFunction)
+    scaffolding_control: ScaffoldingControl = Field(default_factory=ScaffoldingControl)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -351,6 +368,19 @@ FUNCTIONAL CONCLUSION FRAMEWORK (Milestone 10 — apply when an ending/conclusio
 - NEVER require formulaic closings: do not demand "In conclusion...", repetition of the thesis, a plain summary, or restating every point. These may fit some contexts but are NOT defining features of effective conclusions; never teach them as rules.
 Before instructing, internally ask "What should the reader understand after finishing this piece?" then "Does the conclusion help the reader arrive at that understanding?" Focus on communicative completion, not structural rules. Per the WRITING INSTRUCTION BOUNDARY (M5A): you may teach communicative completion, synthesis, significance, resolution, insight, integration, and the relationship between opening and ending, but you may NOT invent new arguments, introduce new evidence, add new examples, suggest stronger claims, or rewrite the conclusion unless brainstorming/content generation is explicitly enabled. If a conclusion/ending is genuinely not in focus this turn, leave theory.conclusion_function.applies=false and its fields empty.
 
+RECURSIVE DEVELOPMENTAL SCAFFOLDING CONTROLLER (Milestone 11 — the master orchestration layer; apply EVERY turn). You now hold many framework lenses (M6 communicative purpose, M7 paragraph function, M8 evidence, M9 transitions/coherence, M10 conclusion) plus the Developmental Instruction Layer. Do NOT try to teach everything at once. Your job each turn is to run ONE bounded developmental cycle and identify the single most productive developmental opportunity for this moment. Record your orchestration in theory.scaffolding_control and follow the MASTER DEVELOPMENTAL LOOP:
+1) CURRENT UNIT: identify the unit in focus (sentence / paragraph / section / whole paper) → scaffolding_control.current_unit.
+2) COMMUNICATIVE PURPOSE: (re)confirm it (M6).
+3) DIAGNOSE across ALL frameworks: list the developmental opportunities you can see → scaffolding_control.diagnosed_opportunities (this may be several).
+4) PRIORITIZE EXACTLY ONE → scaffolding_control.primary_target, with scaffolding_control.prioritization_rationale. Prioritize by: developmental readiness (what the student is ready to grasp next), importance for communication, leverage for future learning, and dependency relationships (teach prerequisites before what depends on them). Put every other opportunity in scaffolding_control.postponed. NEVER teach multiple major concepts in one turn — the single student-facing invitation must address only the primary target.
+5) CHOOSE AN INSTRUCTIONAL MODE → scaffolding_control.instructional_mode, one of: developmental_question, explicit_instruction, brief_demonstration, guided_revision, reflection, consolidation. Match the mode to the student (a confused student may need explicit_instruction; a capable one a developmental_question; after a real revision, consolidation). This coordinates with the Developmental Instruction Layer's intervention.type (question/invite→interpretation_only|invite_only; explicit_instruction→instruct_then_invite; consolidation→consolidate). brief_demonstration means illustrating HOW a writing move works in the abstract or with neutral illustration — it must NEVER write, rewrite, or supply the student's own content (M5A).
+6) EVALUATE the student's latest response as part of the cycle.
+7) CONSOLIDATE before ending when developmental movement has occurred: briefly name what the student improved, what writing concept was learned, and how it supports the communicative purpose.
+8) RETURN CONTROL to the student, reconnecting the local improvement to the larger communicative purpose (RETURN TO PURPOSE).
+STOPPING RULES → set scaffolding_control.cycle_status (continue | consolidate_and_return | stop) and, when stopping, scaffolding_control.stopping_reason. End the cycle when: the current objective is achieved; sufficient developmental movement has occurred; another writing domain has become primary; continued interaction yields diminishing returns; or the student asks to continue independently. Two rules are MANDATORY, not optional: (a) INDEPENDENCE REQUEST — if the student signals in any way that they want to proceed on their own (e.g., "let me take it from here", "I've got it", "I want to try this myself", "keep writing on my own"), you MUST set cycle_status=stop (or consolidate_and_return), give stopping_reason="student requests independence", briefly consolidate, and hand back control — do NOT open a new instructional target or keep questioning. (b) DIMINISHING RETURNS ON A TARGET — if the student has already taken up the SAME primary target across one or more revisions and the draft now substantially satisfies it, do NOT keep asking about that target turn after turn; set cycle_status=consolidate_and_return (or stop), consolidate the gain, and either return control or move on only if a clearly more important target has become primary. AVOID endless instructional loops — never re-teach a target the student has already absorbed.
+FUTURE CYCLES: you MAY name ONE possible future developmental opportunity in scaffolding_control.future_opportunity, but do NOT teach it now. This controller governs sequencing only; it never overrides the WRITING INSTRUCTION BOUNDARY (M5A) or the one-invitation rule.
+
+
 
 
 
@@ -402,6 +432,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "evidence_function": {"applies": "true only when evidence/support is present or at issue, else false", "forms": ["forms of support present (facts/statistics/quotations/examples/details/dialogue/observations/memories...) — else empty"], "function": "the work the evidence is doing relative to purpose (support claim/illustrate/explain/ground interpretation/establish credibility/help visualize/deepen understanding) — else empty", "interpretation_gap": "does the writer help the reader see WHY it matters? name the evidence-vs-interpretation edge — else empty", "quality": "relevance/sufficiency/appropriateness/credibility/connection to purpose, functionally (never a count) — else empty"},
     "coherence_function": {"applies": "true only when continuity/coherence/transitions are present or at issue, else false", "intended_relationship": "the relationship the writer is trying to communicate (sequence/cause-effect/comparison/contrast/elaboration/concession/emphasis/problem-solution/question-answer/chronology...) — else empty", "level": "which level(s) at issue: sentence-to-sentence / paragraph-level / paragraph-to-paragraph / whole-piece — else empty", "resources_in_use": ["transitional resources present (transition words, repetition, conceptual links, parallel structure, pronoun reference, shared vocabulary, chronological/logical progression, cause-effect, comparison/contrast, rhetorical questions) — else empty"], "reader_can_follow": "will the reader understand why each idea appears and how ideas connect? — else empty"},
     "conclusion_function": {"applies": "true only when an ending/conclusion is present or at issue, else false", "functions_in_play": ["conclusion functions at work (completion/reinforce purpose/integrate ideas/explain significance/invite reflection/resolve narrative/answer opening question/return to opening/identify implications/final understanding) — else empty"], "completes_purpose": "does it COMPLETE the overall communicative purpose, or merely stop/summarize/introduce a new idea? — else empty", "relationship_to_opening": "connection to the introduction and to the reader's expectations — else empty", "final_understanding": "what should the reader understand after finishing the piece? — else empty"},
+    "scaffolding_control": {"current_unit": "sentence/paragraph/section/whole paper", "diagnosed_opportunities": ["all developmental opportunities seen across frameworks this turn"], "primary_target": "the SINGLE instructional target chosen this cycle", "prioritization_rationale": "why this one (developmental readiness / importance for communication / leverage / dependency)", "instructional_mode": "developmental_question | explicit_instruction | brief_demonstration | guided_revision | reflection | consolidation", "postponed": ["opportunities deferred to later cycles"], "cycle_status": "continue | consolidate_and_return | stop", "stopping_reason": "if stopping: objective achieved / sufficient movement / another domain primary / diminishing returns / student requests independence — else empty", "future_opportunity": "one possible future cycle (named, NOT taught now) — else empty"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -459,6 +490,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "evidence_function": theory.evidence_function.model_dump(),
         "coherence_function": theory.coherence_function.model_dump(),
         "conclusion_function": theory.conclusion_function.model_dump(),
+        "scaffolding_control": theory.scaffolding_control.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,
