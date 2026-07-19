@@ -1,0 +1,994 @@
+[
+  {
+    "id": "P1_ms_weak_argument",
+    "profile": "Middle school (grade 7), weak writer, argument",
+    "special": "very weak fragmented draft; turn2 = compliance-style minimal revision; turn3 = unexpected/off-target revision",
+    "assignment": "Should phones be allowed in school? Write to convince your principal.",
+    "session_id": "f3bf0e39-aeec-46e8-89c3-e9047bf22aa9",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Phones should be aloud in school. Because there fun and you can text your mom. Also games. My teacher takes them and its not fair. Phones are good.",
+        "elapsed_s": 75.0,
+        "ai_invitation": "You're arguing that phones belong in school \u2014 your principal can see you have an opinion. Here's one thing that will make that opinion land as an argument: a claim is something a reader could actually push back on and you'd have a reason to defend. Look at your first sentence \u2014 'Phones should be allowed in school' \u2014 and ask yourself: what's the one strongest reason your principal should say yes? Try rewriting that opening sentence so it tells the principal not just what you want, but why they should agree.",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "explain reasons"
+        ],
+        "primary_target": "Establish a controlling claim that gives the essay a reason the principal could engage with",
+        "instructional_mode": "explicit_instruction",
+        "postponed": [
+          "evidence interpretation",
+          "audience awareness",
+          "paragraph coherence"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 controlling claim with reason",
+        "ic_supporting": [
+          "Reader Construction (principal needs a reason to engage)",
+          "Paragraph Purpose (no governing idea)"
+        ],
+        "ic_calibration_check": "Proportional \u2014 first draft, foundational issue; one concept is the right scope.",
+        "ic_consistency_check": "Yes \u2014 equivalent first persuasive draft with no claim would receive same priority.",
+        "iv_type": "instruct_then_invite",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Claim",
+        "iv_writing_not_content_check": "Teaches the communicative function of a claim (arguability, reason-giving) without supplying any specific reason or content of my own.",
+        "reader_applies": true,
+        "reader_next_need": "A reason attached to the position so the reader knows what to weigh.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "Phones should be allowed in school because there fun and you can text your mom if there is a emergency. Also you can play games at lunch. My teacher takes them and its not fair. Phones are good and helpful.",
+        "elapsed_s": 80.0,
+        "ai_invitation": "You've added more detail this time \u2014 'emergency' and 'helpful' show you're already thinking about reasons that could matter to a principal. Here's something writers do when they want to persuade someone: they give their main reason right up front, so the reader immediately knows what the whole argument is built on. Looking at your opening sentence, what is the single strongest reason a principal \u2014 not a friend \u2014 would actually find convincing? Try rewriting just that first sentence with that one reason built in.",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "explain reasons"
+        ],
+        "primary_target": "Focus the claim on one principal-relevant reason (narrowing from opinion to arguable position)",
+        "instructional_mode": "explicit_instruction",
+        "postponed": [
+          "evidence interpretation",
+          "audience elaboration",
+          "paragraph coherence"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 narrow to one governing reason",
+        "ic_supporting": [
+          "Reader Construction (principal needs one clear reason to evaluate)",
+          "Revision Development (student moved toward reasoning \u2014 build on it)"
+        ],
+        "ic_calibration_check": "Proportional \u2014 student made a real move; next invitation extends it rather than re-teaching the same concept.",
+        "ic_consistency_check": "Yes \u2014 equivalent draft with competing reasons in an opener would receive the same narrowing invitation.",
+        "iv_type": "instruct_then_invite",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Claim with one governing reason",
+        "iv_writing_not_content_check": "Teaches the communicative function of a focused claim (one governing reason); supplies no specific reason or content of the student's own.",
+        "reader_applies": true,
+        "reader_next_need": "One clear governing reason so the reader knows what the argument is built on.",
+        "revision_applies": true,
+        "revision_growth": "movement toward reasoned claim \u2014 student embedded 'because' in the thesis and specified 'emergency,' showing emerging awareness that reasons belong in the claim.",
+        "revision_remaining": "Select and commit to one principal-relevant reason as the governing claim.",
+        "revision_transfer": "Attaching 'because' to a claim is a move any persuasive writer can use \u2014 the next step in any argument is choosing the single strongest reason and letting everything else support it."
+      },
+      {
+        "turn": 3,
+        "kind": "revise",
+        "student": "I think phones should be allowed. Here is a story. One time my friend got hurt and I called my mom on my phone. So phones help in emergencies. Thats my reason.",
+        "elapsed_s": 75.0,
+        "ai_invitation": "You've made a real move here \u2014 you picked one moment (your friend getting hurt) and let it carry the whole reason. That's a writer's instinct: one clear example is stronger than a list. Now look at your last sentence: 'That's my reason.' Your principal is reading this. What is the reason, exactly \u2014 the one thing you want the principal to walk away believing about why phones belong in school?",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "explain via example"
+        ],
+        "primary_target": "Articulate the one reason as an explicit governing claim \u2014 move from 'That's my reason' to stating what the reason IS",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "connecting anecdote to principal's perspective",
+          "evidence interpretation/significance",
+          "paragraph structure beyond single unit"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 make implicit claim explicit",
+        "ic_supporting": [
+          "Reader Construction (principal needs a statable claim)",
+          "Revision Development (consolidate the real growth before pushing further)"
+        ],
+        "ic_calibration_check": "Student made a large move; proportional response is consolidation + one focused forward invitation, not new instruction.",
+        "ic_consistency_check": "Yes \u2014 equivalent draft with implicit claim inside narrative would receive same explicit-claim invitation.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "explicit governing claim",
+        "iv_writing_not_content_check": "Teaches the communicative function of an explicit claim (what the reader needs to evaluate the argument); supplies no substantive ideas.",
+        "reader_applies": true,
+        "reader_next_need": "An explicit governing claim the principal can evaluate and agree or disagree with.",
+        "revision_applies": true,
+        "revision_growth": "organization \u2014 student moved from competing reasons in a list to a single coherent narrative built around one reason; demonstrates meaningful choice and focus.",
+        "revision_remaining": "Make the governing claim explicit rather than leaving it implicit inside the story conclusion.",
+        "revision_transfer": "Choosing one strong example and building around it is a transferable writer's strategy \u2014 in any argument, one well-chosen, well-explained reason beats a pile of thin ones."
+      }
+    ]
+  },
+  {
+    "id": "P2_ms_avg_narrative",
+    "profile": "Middle school (grade 8), average writer, personal narrative",
+    "special": "narrative purpose must NOT be forced into claim-evidence; meaning-making focus",
+    "assignment": "Write a personal narrative about a time something didn't go as planned.",
+    "session_id": "9d8bfc36-049a-47fe-ba92-b58371104f74",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "The day of the science fair everything went wrong. I woke up late. Then my volcano broke in the car. When I got there my poster fell off the board. The judges came and I was so nervous. I dont really remember what I said. Then it was over and I went home.",
+        "elapsed_s": 70.0,
+        "ai_invitation": "You've captured the shape of a rough day \u2014 things keep going wrong, one after another. Right now your opening line drops us straight into the chaos, which has real energy. As you think about the reader coming to this cold, what do you most want them to understand about *why* that day mattered to you \u2014 what was at stake before everything fell apart?",
+        "purpose_primary": "narrate",
+        "purpose_secondary": [
+          "reflect"
+        ],
+        "primary_target": "Establish significance/stakes \u2014 what mattered about this day before or as things went wrong",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "scene/description development",
+          "conclusion/reflection",
+          "evidence interpretation"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "communicative purpose / opening significance (M6 + Opening domain)",
+        "ic_supporting": [
+          "reader_construction (M12) \u2014 confirms reader needs stakes",
+          "paragraph_function (M7) \u2014 confirms paragraph lacks controlling purpose beyond list"
+        ],
+        "ic_calibration_check": "Proportional \u2014 one foundational question about stakes; not over-teaching scene, structure, or conclusion yet.",
+        "ic_consistency_check": "Any first narrative draft this bare would receive the same stakes-first invitation.",
+        "iv_type": "interpretation_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Significance (Opening domain)",
+        "iv_writing_not_content_check": "Teaches the communicative function of establishing stakes for the reader in a narrative opening; supplies no substantive ideas or claims of its own.",
+        "reader_applies": true,
+        "reader_next_need": "A sense of what was at stake so the mishaps feel like they matter.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "The day of the science fair everything went wrong. I woke up late because my alarm didnt go off. In the car my volcano cracked and blue goo leaked on the seat. My mom was mad. When I got to school my poster fell off the board twice. The judges came over and I froze. I mumbled something about baking soda. Then it was over. On the way home I felt like a failure but my mom said at least I showed up.",
+        "elapsed_s": 80.0,
+        "ai_invitation": "You've added real texture this time \u2014 the blue goo on the seat, your mom's reaction, mumbling about baking soda, and especially that last line where she says 'at least you showed up.' That ending moment does something: it gives the reader a small turning point after the failure. Now here's a question to sit with: what did it feel like to hear your mom say that \u2014 did it actually help, or did it land differently than she meant it? What you decide about that feeling is where your story's meaning lives.",
+        "purpose_primary": "narrate",
+        "purpose_secondary": [
+          "reflect"
+        ],
+        "primary_target": "Interpret the meaning of the closing moment \u2014 what did the mother's comment actually do to the student's feeling of failure?",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "opening stakes/significance",
+          "scene development",
+          "evidence interpretation elsewhere"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "reflection / conclusion function (M10 + M6 secondary purpose)",
+        "ic_supporting": [
+          "reader_construction (M12) \u2014 confirms reader needs the student's interpretation of the closing moment",
+          "evidence_function (M8) \u2014 dialogue is present but uninterpreted"
+        ],
+        "ic_calibration_check": "Proportional \u2014 one focused question about the meaning of the closing moment; consolidating the revision gain first, then a single forward invitation.",
+        "ic_consistency_check": "Any narrative that introduces a turning point without interpreting it would receive the same invitation.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "reflection (writer's interpretation of what an experience meant)",
+        "iv_writing_not_content_check": "Teaches the communicative function of reflection in narrative (interpreting a turning point for the reader) \u2014 supplies no substantive ideas, only asks the student to access and articulate their own.",
+        "reader_applies": true,
+        "reader_next_need": "The student's reflection on what that moment meant \u2014 did it help? did it ring hollow? did something shift?",
+        "revision_applies": true,
+        "revision_growth": "elaboration and reader understanding \u2014 the draft now grounds the reader in concrete experience and opens a reflective door",
+        "revision_remaining": "The student's interpretation of the closing moment \u2014 what the mother's comment meant \u2014 is the one remaining gap between a list-with-details and a complete narrative.",
+        "revision_transfer": "Adding specific, sensory detail makes events feel real; a piece of dialogue can carry enormous meaning \u2014 the next skill is showing the reader what that moment meant by staying in it a little longer."
+      },
+      {
+        "turn": 3,
+        "kind": "revise",
+        "student": "The day of the science fair everything went wrong. My alarm never went off, so I woke up late with my heart already pounding. In the car my volcano cracked and blue goo leaked across the seat while my mom sighed. At school my poster kept falling off the board like it didnt want to be seen either. When the judges came I froze and mumbled about baking soda and vinegar. It was over in two minutes. On the way home I felt like a failure, but my mom said showing up scared is braver than staying home. I think she was right, even though I still didnt want to talk about it.",
+        "elapsed_s": 85.0,
+        "ai_invitation": "You've done something real here \u2014 the revision sharpened every detail and gave your mom's line new weight: 'showing up scared is braver than staying home' lands as more than consolation now. Your last sentence \u2014 'I think she was right, even though I still didn't want to talk about it' \u2014 is doing interesting work. That 'even though' holds a tension: being right and not wanting to face it at the same time. What is that tension actually about for you \u2014 what does it feel like to half-believe something that doesn't quite fix the feeling yet?",
+        "purpose_primary": "narrate",
+        "purpose_secondary": [
+          "reflect"
+        ],
+        "primary_target": "The 'even though' \u2014 what does it feel like to half-believe something that doesn't fully resolve the feeling?",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "opening stakes",
+          "scene expansion",
+          "paragraph structure"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "reflection / conclusion function (M10 + M6 secondary)",
+        "ic_supporting": [
+          "reader_construction (M12) \u2014 confirms reader is stopped by 'even though'",
+          "evidence_function (M8) \u2014 interpretation present but the tension in it unexamined"
+        ],
+        "ic_calibration_check": "Proportional \u2014 one focused developmental question about the 'even though'; consolidation of revision gain first.",
+        "ic_consistency_check": "Any narrative that introduces a qualified interpretive close would receive the same invitation.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "qualifying interpretation as reflective honesty",
+        "iv_writing_not_content_check": "Teaches the communicative function of a qualifying interpretive clause as a reflective narrative move; supplies no substantive ideas about what the tension should mean.",
+        "reader_applies": true,
+        "reader_next_need": "One more sentence that names or explores what that tension actually felt like.",
+        "revision_applies": true,
+        "revision_growth": "reflection \u2014 student now attempts to interpret the closing moment rather than merely report it",
+        "revision_remaining": "The tension in 'even though I still didn't want to talk about it' \u2014 examining what that resistance is.",
+        "revision_transfer": "Adding your own interpretation of a moment is what turns a story into a narrative with meaning; the qualifying 'even though' shows you're being honest \u2014 the next skill is staying in that honesty long enough to name what's underneath it."
+      }
+    ]
+  },
+  {
+    "id": "P3_hs_avg_explanatory",
+    "profile": "High school (grade 10), average writer, explanatory",
+    "special": "reader construction is central (naive reader); no invented facts",
+    "assignment": "Explain how vaccines work to a reader who knows nothing about biology.",
+    "session_id": "a5497ce6-c190-4f0a-9a3a-0bfa15873878",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Vaccines work by using your immune system. They put a weak version of a germ in your body. Then your body makes antibodies. So next time you dont get sick. Thats basically how vaccines work.",
+        "elapsed_s": 60.0,
+        "ai_invitation": "You've got the core process down \u2014 weak germ, antibodies, protection. Your reader, though, knows nothing about biology, so they may hit a wall at 'antibodies': what are those, and why does making them mean you won't get sick? Before you revise, try writing one sentence \u2014 just for yourself \u2014 that answers: what does an antibody actually DO for your reader's body?",
+        "purpose_primary": "explain",
+        "purpose_secondary": [],
+        "primary_target": "Reader-oriented elaboration: what 'antibodies' are and what they do, as the central unexplained gap blocking comprehension",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "Conclusion completion",
+          "Orienting introduction",
+          "Explicit connective language"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Reader Construction (M12) \u2014 undefined key term blocking comprehension",
+        "ic_supporting": [
+          "Audience Awareness (canonical)",
+          "Paragraph Function (coherence/development)",
+          "Coherence Function (broken causal link)"
+        ],
+        "ic_calibration_check": "Single, highest-leverage gap identified; one question asked; proportional to a first short draft.",
+        "ic_consistency_check": "Any explanation draft with an undefined technical term for a naive reader would receive this same priority.",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "",
+        "iv_writing_not_content_check": "Teaches the communicative function of elaborating a key term for a naive reader; supplies no substantive ideas about what antibodies are.",
+        "reader_applies": true,
+        "reader_next_need": "A plain-language explanation of what an antibody is and what it does.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "Vaccines work with your immune system, which is the part of your body that fights germs. A vaccine puts a weak or dead version of a germ into your body. Your body sees it and makes antibodies, which are like tiny soldiers. The antibodies remember the germ. So if the real germ comes later, your body already knows how to fight it and you dont get sick.",
+        "elapsed_s": 70.0,
+        "ai_invitation": "You've made a real improvement here \u2014 you explained what the immune system is, defined antibodies as 'tiny soldiers,' and built a clearer causal chain. Your reader can now follow the sequence much better. One place where the explanation still leaves the reader mid-thought: the antibodies 'remember the germ,' and then suddenly 'your body already knows how to fight it' \u2014 but how does that memory actually become protection? What is your reader picturing happening in that moment?",
+        "purpose_primary": "explain",
+        "purpose_secondary": [],
+        "primary_target": "Elaborating the memory-to-protection mechanism \u2014 how does remembering translate into fighting the real germ?",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "Strengthening conclusion beyond assertion",
+          "Connecting the analogy more explicitly to the memory step"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Reader Construction (M12) \u2014 memory-to-protection mechanism is the remaining comprehension gap",
+        "ic_supporting": [
+          "Paragraph Function (development)",
+          "Coherence Function (causal chain)",
+          "Conclusion Function (completion vs. assertion)"
+        ],
+        "ic_calibration_check": "Proportional \u2014 one gap remains; one question asked; consolidation of real revision growth included.",
+        "ic_consistency_check": "Any explanatory draft with an asserted but unexplained causal mechanism for a naive reader would receive this priority.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Elaboration of mechanism for naive reader",
+        "iv_writing_not_content_check": "Invitation targets elaboration function \u2014 how writers bridge a causal assertion to reader understanding \u2014 without supplying any biological content.",
+        "reader_applies": true,
+        "reader_next_need": "A brief plain-language explanation of what happens when the remembered germ returns.",
+        "revision_applies": true,
+        "revision_growth": "reader-understanding / elaboration \u2014 student now anticipates reader needs by defining key terms and using analogy.",
+        "revision_remaining": "Explaining how antibody memory translates into active protection when the real germ arrives.",
+        "revision_transfer": "Defining terms and using analogy to build a naive reader's understanding is a transferable strategy for any explanatory writing \u2014 whenever you introduce a specialized concept, ask what a newcomer would need to picture it."
+      },
+      {
+        "turn": 3,
+        "kind": "answer",
+        "student": "I wasnt sure if a reader would know what an antibody actually is or how the body remembers. I was trying to make it simple with the soldier idea.",
+        "elapsed_s": 65.0,
+        "ai_invitation": "You've already spotted the right gap \u2014 your reader doesn't yet know what 'remembering' actually does. The soldier analogy got them to the memory step; now try writing one or two sentences that tell the reader what happens when the real, full-strength germ shows up: what do those remembered soldiers do, and why does that stop the person from getting sick?",
+        "purpose_primary": "explain",
+        "purpose_secondary": [],
+        "primary_target": "Elaborating the memory-to-protection mechanism in the student's own words.",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "Strengthening closing sentence to complete rather than assert the outcome"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Reader Construction (M12) \u2014 student has self-identified the comprehension gap; invitation targets its elaboration.",
+        "ic_supporting": [
+          "Audience Awareness (anticipate reader need)",
+          "Coherence Function (completing the causal chain)"
+        ],
+        "ic_calibration_check": "Light, focused \u2014 student named the gap; one invitation to write through it is proportional.",
+        "ic_consistency_check": "Any explanatory draft where the writer self-identifies a reader gap would receive this same focused forward invitation.",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "",
+        "iv_writing_not_content_check": "Invitation asks student to elaborate a causal mechanism they control \u2014 teaches explanatory elaboration for a naive reader; supplies no substantive ideas of my own.",
+        "reader_applies": true,
+        "reader_next_need": "A plain-language account of what the remembered antibodies do when the real germ arrives.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      }
+    ]
+  },
+  {
+    "id": "P4_hs_strong_analytical",
+    "profile": "High school (grade 12), strong writer, literary analysis",
+    "special": "strong draft; interpretation gap vs. more evidence; should not over-teach",
+    "assignment": "Analyze how a poem creates its emotional effect.",
+    "session_id": "e88a42b8-aeac-4572-a121-66337b8a58be",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "In 'Those Winter Sundays,' Hayden builds guilt through cold. The father wakes 'in the blueblack cold' and 'with cracked hands that ached.' The speaker 'spoke indifferently to him.' The repeated cold imagery makes the fathers love feel invisible, like the boy only understands it now, looking back. The last lines, 'What did I know of loves austere and lonely offices,' turn the poem into a confession.",
+        "elapsed_s": 70.0,
+        "ai_invitation": "Your reading is already doing real analytical work \u2014 you notice the cold imagery and connect it to the speaker's belated understanding of love. Now look at your final sentence: you say the last lines 'turn the poem into a confession.' That's a strong move. What, specifically, is being confessed, and to whom? Pushing on that question will sharpen the controlling idea your whole analysis is reaching toward.",
+        "purpose_primary": "analyze",
+        "purpose_secondary": [
+          "interpret"
+        ],
+        "primary_target": "Clarify and sharpen the controlling interpretive claim embedded in 'confession'",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation (what cold specifically means vs. hardship)",
+          "transition before 'spoke indifferently'"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 the student needs to articulate the controlling interpretive idea",
+        "ic_supporting": [
+          "Reader Construction (reader lacks a clear claim to orient the analysis)",
+          "Evidence Function (interpretation gap becomes addressable once the claim is stated)"
+        ],
+        "ic_calibration_check": "Proportional: the draft is genuinely promising; a light developmental question toward the claim is sufficient \u2014 no need for explicit instruction on thesis mechanics.",
+        "ic_consistency_check": "Yes \u2014 any first analytical draft lacking a stated claim but possessing interpretive momentum would receive this same priority.",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "",
+        "iv_writing_not_content_check": "Teaches the communicative function of a controlling claim by directing attention to the student's own word 'confession'; supplies no substantive ideas.",
+        "reader_applies": true,
+        "reader_next_need": "A clear statement of what the analysis interprets the poem to be doing or saying.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "In 'Those Winter Sundays,' Hayden builds a quiet guilt through images of cold and labor. The father wakes 'in the blueblack cold' and works 'with cracked hands that ached from labor.' No one thanks him. The speaker admits he 'spoke indifferently to him,' and the flat word 'indifferently' shows how ordinary the neglect was. By ending with the question 'What did I know, what did I know / of loves austere and lonely offices,' Hayden makes the poem a confession spoken across time \u2014 the adult finally naming a love the child could not see.",
+        "elapsed_s": 80.0,
+        "ai_invitation": "Your revision has done real work: you've named what 'indifferently' shows, explained the closing question as a confession 'spoken across time,' and grounded the claim in the adult speaker's retrospective recognition. The controlling idea is now close to explicit \u2014 'the adult finally naming a love the child could not see' is doing thesis work. Here's the next move: look at your opening sentence alongside that closing idea. Does 'builds a quiet guilt' fully capture what you've just argued the poem does, or is there a more precise claim hiding in your final phrase that could govern the whole paragraph?",
+        "purpose_primary": "analyze",
+        "purpose_secondary": [
+          "interpret"
+        ],
+        "primary_target": "Align the opening claim with the richer interpretive idea the student has already articulated at the close",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "explicit connection between cold imagery and the confession/retrospection argument"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 precision and alignment of controlling idea",
+        "ic_supporting": [
+          "Reader Construction (reader notices the opening/closing mismatch)",
+          "Revision Development (growth in evidence interpretation is the gain; thesis alignment is the next edge)"
+        ],
+        "ic_calibration_check": "Proportional \u2014 the draft is strong; a single developmental question toward claim alignment is sufficient, no explicit instruction needed.",
+        "ic_consistency_check": "Yes \u2014 any draft where evidence interpretation has strengthened but the opening claim hasn't yet caught up would receive this same priority.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Claim \u2014 precision and alignment of governing idea",
+        "iv_writing_not_content_check": "Teaches claim precision and alignment (a writing function); supplies no substantive ideas \u2014 the student's own closing phrase is the material.",
+        "reader_applies": true,
+        "reader_next_need": "A single controlling idea that the rest of the paragraph can be seen to serve.",
+        "revision_applies": true,
+        "revision_growth": "evidence interpretation \u2014 the student now explains what evidence shows rather than labeling it",
+        "revision_remaining": "Opening claim and closing interpretive phrase are in mild tension; aligning them would give the paragraph a single governing idea.",
+        "revision_transfer": "Explaining what each quotation shows (not just what it says) is the core move in literary analysis \u2014 carry this habit into every body paragraph and every future essay."
+      }
+    ]
+  },
+  {
+    "id": "P5_college_strong_argument_nearperfect",
+    "profile": "College freshman, strong writer, argument (near-perfect)",
+    "special": "almost-perfect writing; repeated revisions; system should stop/consolidate not invent problems",
+    "assignment": "Argue a position on whether universities should require standardized tests.",
+    "session_id": "41659a67-e66f-4b0a-8dcd-db23bbc314a8",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Universities should stop requiring standardized tests, not because the tests measure nothing, but because they measure the wrong thing at the wrong moment. A single Saturday morning cannot capture four years of intellectual growth, yet it disproportionately shapes admissions. Worse, the scores track family income more faithfully than they track future performance, quietly converting a supposed meritocracy into an inherited one. Test-optional policies do not lower standards; they relocate them to the fuller record of a student's actual work.",
+        "elapsed_s": 65.0,
+        "ai_invitation": "You've opened with a sharp, arguable claim and even gestured at the reasoning behind it \u2014 the income-tracking point and the 'fuller record' idea do real work. As you move into the body of the argument, each paragraph will need to do a specific job for that claim. Before you draft the next section, what is the one job your first body paragraph needs to do to advance your argument?",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "analyze (critique how tests function as a meritocratic mechanism)"
+        ],
+        "primary_target": "Paragraph purpose: what job must the first body paragraph do to advance the claim?",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation (no body paragraphs yet)",
+          "coherence between paragraphs (not yet written)",
+          "conclusion function"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Paragraph Purpose (body paragraph job, M7 / M11)",
+        "ic_supporting": [
+          "Reader Construction (reader now needs body development, M12)",
+          "Central Claim (body paragraphs must be accountable to the intro's claim, M6)"
+        ],
+        "ic_calibration_check": "Intro is already strong \u2014 no need to intervene on it. Single forward invitation is proportional.",
+        "ic_consistency_check": "Any student with a strong intro and no body drafted would receive the same paragraph-purpose invitation.",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Paragraph Purpose",
+        "iv_writing_not_content_check": "Teaches the communicative function of a body paragraph (what job it does for the argument) \u2014 supplies no substantive ideas, evidence, or claims of its own.",
+        "reader_applies": true,
+        "reader_next_need": "A body paragraph that develops one of the two critiques with grounding.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "Universities should stop requiring standardized tests, not because the tests measure nothing, but because they measure the wrong thing at the wrong moment. A single Saturday morning cannot capture four years of intellectual growth, yet it disproportionately shapes who gets in. Worse, scores track family income more faithfully than future performance, quietly converting a supposed meritocracy into an inherited one. Critics warn that dropping tests lowers standards, but this confuses a standard with a proxy for it: test-optional policies do not abandon rigor, they relocate it to the fuller record of a student's actual work \u2014 transcripts, projects, and sustained effort over time.",
+        "elapsed_s": 70.0,
+        "ai_invitation": "You've sharpened the argument noticeably \u2014 the counterargument is now absorbed into the intro, and the final sentence lands with more precision ('transcripts, projects, and sustained effort over time' grounds the alternative concretely). That counterargument move sets a real expectation: a reader now knows your two main critiques (snapshot invalidity and income-tracking) and your alternative, and is ready to see one of them developed. Before you draft the first body paragraph, can you say in one sentence what job that paragraph needs to do \u2014 not just its topic, but the specific work it must perform for the argument?",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "analyze \u2014 critique how tests function as a meritocratic mechanism"
+        ],
+        "primary_target": "Paragraph purpose: what specific job must the first body paragraph perform for the argument?",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation (no body yet)",
+          "paragraph-to-paragraph coherence (not yet written)",
+          "conclusion function"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Paragraph Purpose (body paragraph job, M7/M11)",
+        "ic_supporting": [
+          "Reader Construction \u2014 reader now expects body development of two named critiques (M12)",
+          "Revision Development \u2014 consolidate the counterargument gain, then pivot forward (M13)"
+        ],
+        "ic_calibration_check": "Intro is stronger than before; brief consolidation of the revision gain is warranted, then one forward invitation. No over-teaching needed.",
+        "ic_consistency_check": "Any student with a strong intro and no body drafted would receive the same paragraph-purpose invitation.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Paragraph purpose (job vs. topic distinction)",
+        "iv_writing_not_content_check": "Teaches the communicative function of paragraph purpose (job vs. topic) and the rhetorical function of counterargument integration \u2014 supplies no substantive ideas.",
+        "reader_applies": true,
+        "reader_next_need": "A body paragraph that develops one critique with grounding.",
+        "revision_applies": true,
+        "revision_growth": "Stronger reader awareness \u2014 student anticipated and addressed an objection, and grounded the alternative concretely.",
+        "revision_remaining": "Body paragraph purpose \u2014 the intro now sets clearer expectations that the body must fulfill.",
+        "revision_transfer": "Anticipating a counterargument and absorbing it into your opening is a move you can use in body paragraphs too \u2014 acknowledging resistance before developing your point strengthens credibility throughout."
+      },
+      {
+        "turn": 3,
+        "kind": "revise",
+        "student": "Universities should stop requiring standardized tests, not because the tests measure nothing, but because they measure the wrong thing at the wrong moment. One Saturday morning cannot capture four years of growth, yet it disproportionately decides who gets in. Worse, scores track family income more faithfully than future performance, converting a supposed meritocracy into an inherited one. Critics warn that dropping tests lowers standards, but this confuses a standard with a proxy for it. Test-optional policies do not abandon rigor; they relocate it to the fuller record of a student's actual work. That record is harder to read than a number \u2014 and that difficulty is the point, because students are harder to read than numbers too.",
+        "elapsed_s": 75.0,
+        "ai_invitation": "Your revision sharpened the ending into something more rhetorically alive \u2014 'students are harder to read than numbers too' closes the intro with real force. You've now established two critique lines and a compelling reframe. Before you draft the first body paragraph, can you state in one sentence the specific job that paragraph needs to do for your argument \u2014 not just its topic, but the work it has to perform for the reader?",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "analyze \u2014 critique how tests function as a meritocratic mechanism"
+        ],
+        "primary_target": "Paragraph purpose: articulate the specific functional job the first body paragraph must perform for the argument.",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation (no body yet)",
+          "paragraph-to-paragraph coherence (not yet written)",
+          "conclusion function"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Paragraph Purpose (M7/M11) \u2014 articulating body paragraph job before drafting",
+        "ic_supporting": [
+          "Reader Construction \u2014 reader now expects substantive development of elevated stakes (M12)",
+          "Revision Development \u2014 consolidate rhetorical-turn gain, then pivot forward (M13)"
+        ],
+        "ic_calibration_check": "Intro is strong and complete; brief consolidation of revision gain is warranted, then one forward invitation. No over-teaching needed.",
+        "ic_consistency_check": "Any student with a complete, strong intro and no body drafted would receive the same paragraph-purpose invitation.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Rhetorical reframe (turning apparent weakness into argumentative strength)",
+        "iv_writing_not_content_check": "Teaches the rhetorical function of the closing turn (reframe as argumentative move); supplies no substantive ideas of my own.",
+        "reader_applies": true,
+        "reader_next_need": "A body paragraph that develops one critique with evidence and interpretation.",
+        "revision_applies": true,
+        "revision_growth": "Rhetorical intentionality \u2014 the closing sentence performs an argumentative function (making difficulty a feature, not a bug) rather than merely listing examples.",
+        "revision_remaining": "Body paragraph purpose \u2014 the elevated close raises the bar for what the body must deliver.",
+        "revision_transfer": "Ending a section with a rhetorical turn that makes your argument's apparent weakness into a strength is a move you can deploy at other structural moments too \u2014 not just introductions."
+      }
+    ]
+  },
+  {
+    "id": "P6_college_avg_compare_purposeshift",
+    "profile": "College sophomore, average writer, compare/contrast shifting to argument",
+    "special": "communicative purpose CHANGES across turns (compare -> argue); engine must track the shift",
+    "assignment": "Compare two approaches to reducing city traffic; you may argue for one.",
+    "session_id": "79d65f0a-2410-43c1-8cfd-a1b18dbb39f7",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "There are two main ways cities reduce traffic: building more roads and improving public transit. More roads gives cars more space. Public transit gives people another option. Both cost a lot of money. More roads is faster to build but fills up again. Transit takes longer to build but moves more people. They are different approaches with different results.",
+        "elapsed_s": 60.0,
+        "ai_invitation": "You've laid out both approaches clearly and sketched some real differences between them. The assignment lets you argue for one \u2014 so a reader finishing this draft would want to know: which approach do you think cities should choose, and why? What's the one idea this whole comparison is trying to get a reader to accept?",
+        "purpose_primary": "compare",
+        "purpose_secondary": [
+          "persuade \u2014 permitted but not yet enacted"
+        ],
+        "primary_target": "Establish a controlling claim (thesis) \u2014 the student must decide what the draft is trying to establish before any other move is productive.",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation",
+          "paragraph structure",
+          "conclusion function"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 no controlling idea present.",
+        "ic_supporting": [
+          "Paragraph Purpose (no governing sentence)",
+          "Reader Construction (reader left without direction)",
+          "Conclusion Function (ending doesn't complete anything)"
+        ],
+        "ic_calibration_check": "Proportional \u2014 one targeted question about purpose/claim; not overwhelming a first draft.",
+        "ic_consistency_check": "Yes \u2014 a first draft with no controlling claim would always prioritize thesis establishment.",
+        "iv_type": "interpretation_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "",
+        "iv_writing_not_content_check": "Teaches the communicative function of a controlling claim (what the essay is trying to establish for the reader); supplies no substantive ideas about which traffic approach is better.",
+        "reader_applies": true,
+        "reader_next_need": "A controlling idea that tells the reader what the comparison is in service of.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "There are two main ways cities reduce traffic: building more roads and improving public transit. Building roads adds space for cars but tends to fill up again as more people choose to drive, a pattern called induced demand. Public transit is slower and more expensive to build, but once it exists it moves far more people per dollar and does not induce the same driving. Comparing the two on cost, speed, and long-term effect, they are clearly different.",
+        "elapsed_s": 75.0,
+        "ai_invitation": "Your revision does real work \u2014 you've replaced the bare list with a focused contrast that includes a reason (induced demand) and a comparative lens (cost, speed, long-term effect). Those additions show you're already thinking about what the differences mean. Now the draft is ready for a controlling idea: in one sentence, what do you want your reader to accept or understand about these two approaches that they might not already believe?",
+        "purpose_primary": "compare",
+        "purpose_secondary": [
+          "persuade \u2014 still permitted, now more plausible given the asymmetric framing"
+        ],
+        "primary_target": "Establish a controlling claim \u2014 the student must state what they want the reader to accept, which will organize everything else.",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "conclusion function",
+          "paragraph differentiation",
+          "evidence interpretation depth"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 no controlling idea present despite richer body content.",
+        "ic_supporting": [
+          "Reader Construction (reader needs a takeaway)",
+          "Conclusion Function (ending doesn't complete)",
+          "Evidence Function (evidence present but uninterpreted toward a claim)"
+        ],
+        "ic_calibration_check": "Proportional \u2014 one focused developmental question; revision is genuinely strong and deserves acknowledgment before the forward push.",
+        "ic_consistency_check": "Yes \u2014 a draft with rich comparison but no claim would always prioritize thesis next.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Claim / Thesis",
+        "iv_writing_not_content_check": "Invitation teaches the communicative function of a controlling claim (organizing a reader's understanding); supplies no substantive ideas about which approach is better.",
+        "reader_applies": true,
+        "reader_next_need": "A controlling idea that tells the reader what to take away from the comparison.",
+        "revision_applies": true,
+        "revision_growth": "elaboration \u2014 student introduced a causal mechanism (induced demand) and a comparative metric (cost-per-person), showing emerging ability to explain WHY differences matter.",
+        "revision_remaining": "Controlling claim \u2014 all the improved reasoning now needs a governing idea to complete the essay's purpose.",
+        "revision_transfer": "The habit of explaining WHY a difference matters (not just that it exists) is a transferable writing skill \u2014 it's the move that turns comparison into argument or interpretation."
+      },
+      {
+        "turn": 3,
+        "kind": "revise",
+        "student": "Cities have two main options for reducing traffic, but they are not equally good. Building more roads feels intuitive, yet it triggers induced demand: new lanes fill with new drivers within a few years, so the relief is temporary. Public transit costs more up front and takes longer to build, but it moves far more people per dollar and does not generate the same rebound. Once you weigh the long-term effect rather than the short-term convenience, the stronger choice is clear \u2014 cities should invest in transit, even though roads promise faster results.",
+        "elapsed_s": 85.0,
+        "ai_invitation": "Your revision made a real move: it opens with a judgment ('not equally good'), builds through the induced demand reasoning, and lands on an explicit position \u2014 that's the controlling claim the draft needed. The essay now has a spine. One thing to notice: your opening sentence hints at the conclusion but doesn't quite state the claim, while your final sentence does \u2014 so the reader gets the full position only at the end. Now that your claim is on the page, how does your opening sentence need to work differently to prepare the reader for where the essay is going?",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "compare \u2014 retained as the structure through which the argument is made"
+        ],
+        "primary_target": "Coordinate the opening with the now-explicit claim \u2014 help student see how the introduction's job changes when an essay is argumentative.",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "paragraph differentiation",
+          "evidence credibility/citation",
+          "concession development"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis \u2014 claim now present; next developmental edge is its placement and the opening's function.",
+        "ic_supporting": [
+          "Reader Construction (reader gets position late)",
+          "Conclusion Function (ending now complete \u2014 consolidate and move forward)",
+          "Whole Essay Purpose (argumentative purpose now established)"
+        ],
+        "ic_calibration_check": "Proportional \u2014 the revision is a genuine developmental leap and deserves consolidation; one focused question about the opening is the right next move, not a pile-on.",
+        "ic_consistency_check": "Yes \u2014 any draft with a new explicit claim and a misaligned opening would prioritize the opening-claim relationship next.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Thesis / Claim",
+        "iv_writing_not_content_check": "Teaches the communicative function of an opening relative to an argumentative claim \u2014 supplies no substantive ideas about transit or roads.",
+        "reader_applies": true,
+        "reader_next_need": "An opening that tells the reader where the argument is going, not just that there is a judgment to be made.",
+        "revision_applies": true,
+        "revision_growth": "purpose \u2014 student committed to a communicative purpose (persuade) and produced a governing claim; the essay now has a spine.",
+        "revision_remaining": "Coordinate the opening with the claim so the reader's orientation matches the essay's argumentative direction from the start.",
+        "revision_transfer": "Learning to state a claim explicitly \u2014 and then aligning all other parts to it \u2014 is the move that transforms comparison into argument; it transfers to any essay where you take a position."
+      }
+    ]
+  },
+  {
+    "id": "P7_adult_avg_reflective",
+    "profile": "Adult learner, average writer, reflective",
+    "special": "reflection honors uncertainty; meaning over structure; not forced into thesis",
+    "assignment": "Reflect on something a job or experience taught you.",
+    "session_id": "5b39b8db-523b-466c-87e9-af136d2a3501",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Working night shifts at the hospital taught me a lot. It was hard being awake when everyone slept. I saw people at their worst and their best. I learned to stay calm. It changed how I see nurses now. I have a lot of respect for them.",
+        "elapsed_s": 60.0,
+        "ai_invitation": "You've written about a real experience \u2014 night shifts at a hospital \u2014 and you're pointing toward something meaningful: it changed how you see nurses. That's a strong seed. For a reflection, the reader needs to understand not just what happened, but what it taught you specifically. In one sentence, can you say what the night shift experience actually taught you \u2014 the idea you want your reader to walk away understanding?",
+        "purpose_primary": "reflect",
+        "purpose_secondary": [
+          "inform"
+        ],
+        "primary_target": "Articulating a controlling insight (what the experience specifically taught) to give the reflection direction.",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation",
+          "paragraph-level coherence",
+          "elaboration of scenes"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Communicative purpose / controlling insight (thesis function for reflection)",
+        "ic_supporting": [
+          "reader_construction",
+          "paragraph_function"
+        ],
+        "ic_calibration_check": "One focused question about the controlling insight is proportional; draft is early-stage and needs this before anything else.",
+        "ic_consistency_check": "Any early reflective draft with this level of generality would receive the same priority.",
+        "iv_type": "interpretation_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "",
+        "iv_writing_not_content_check": "Teaches the communicative function of a controlling insight in reflection; supplies no substantive idea of my own.",
+        "reader_applies": true,
+        "reader_next_need": "A clear statement of what was actually learned \u2014 the idea the reflection is organized around.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "Working the night shift at the hospital taught me things I did not expect. At 3 a.m. the building feels different, quieter but heavier. I saw families get the worst news and I saw a nurse hold a strangers hand until morning. I learned to stay calm not by not feeling anything, but by feeling it and still doing the next thing. I am not sure I fully understand what those nights did to me, but I know I look at nurses differently now \u2014 not as helpers but as people who carry a lot quietly.",
+        "elapsed_s": 75.0,
+        "ai_invitation": "Your revision added something real \u2014 the image of a nurse holding a stranger's hand until morning and the line about 'feeling it and still doing the next thing' do specific work the first draft couldn't. You've also honestly named your uncertainty: 'I am not sure I fully understand what those nights did to me.' That honesty is worth keeping. Right now, a reader finishes the paragraph and senses two possible controlling ideas: one about what calm actually requires, and one about how you now see nurses. Which one is the reflection really organized around \u2014 or is there a third idea underneath both?",
+        "purpose_primary": "reflect",
+        "purpose_secondary": [
+          "inform"
+        ],
+        "primary_target": "Identifying which of the two (or a third deeper) insight governs \u2014 consolidating the controlling idea.",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation depth",
+          "paragraph-level coherence refinement",
+          "elaboration of scenes"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / controlling insight \u2014 which idea governs the reflection",
+        "ic_supporting": [
+          "reader_construction",
+          "revision_development",
+          "paragraph_function"
+        ],
+        "ic_calibration_check": "One focused developmental question is proportional; draft has made real progress and deserves acknowledgment before asking for the next move.",
+        "ic_consistency_check": "Any draft with two competing candidate insights at this stage would receive the same priority.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Controlling insight / thesis function in reflection",
+        "iv_writing_not_content_check": "Invitation teaches the communicative function of a governing insight in reflection; supplies no substantive ideas of my own.",
+        "reader_applies": true,
+        "reader_next_need": "A signal about which idea the reflection intends to explore, so the reader can orient.",
+        "revision_applies": true,
+        "revision_growth": "elaboration and precision; the student moved from surface impressions to concrete scene and a nuanced formulation of an abstract lesson",
+        "revision_remaining": "Two candidate controlling insights compete; choosing one to govern is the next developmental move.",
+        "revision_transfer": "The capacity shown here \u2014 replacing vague summary with a concrete scene and precise language \u2014 is transferable to any reflective or analytical writing: always ask what specific moment or formulation best carries your idea."
+      }
+    ]
+  },
+  {
+    "id": "P8_hs_weak_informative_ignores",
+    "profile": "High school (grade 9), weak writer, informative; student ignores advice",
+    "special": "STUDENT IGNORES the invitation on turn2 (revises something else); turn3 = abandons and starts a new topic",
+    "assignment": "Write an informative paragraph about a topic you know well.",
+    "session_id": "7ea3ede9-403b-43d3-beae-b392ad8b6bf0",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Basketball is a sport. You dribble and shoot. There are 5 players. My favorite team is the Lakers. LeBron is good. You can dunk if your tall. Basketball is fun to play and watch.",
+        "elapsed_s": 60.0,
+        "ai_invitation": "You've chosen basketball as your topic \u2014 that's a subject you clearly know. Right now the paragraph moves quickly through several different ideas (rules, your favorite team, a player, how it feels to play). For an informative paragraph, a reader needs to know what one idea you're going to help them understand about basketball. What is the single most important thing you want your reader to walk away knowing?",
+        "purpose_primary": "inform",
+        "purpose_secondary": [],
+        "primary_target": "Identifying a single controlling idea (what the paragraph is trying to inform the reader about)",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence and elaboration",
+          "coherence/transitions",
+          "grammar"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Paragraph Purpose (controlling idea / M7) aligned with Central Claim function (M6 communicative purpose)",
+        "ic_supporting": [
+          "Reader Construction (M12): reader cannot follow one idea"
+        ],
+        "ic_calibration_check": "Intervention is proportional \u2014 one foundational concept, not multiple corrections.",
+        "ic_consistency_check": "Any paragraph without a controlling idea would receive the same priority.",
+        "iv_type": "instruct_then_invite",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Controlling idea / paragraph purpose",
+        "iv_writing_not_content_check": "Teaches the communicative function of a controlling idea (writing principle); supplies no substantive ideas, angles, or content of its own.",
+        "reader_applies": true,
+        "reader_next_need": "A sense of what one idea the paragraph will explain or inform about.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "Basketball is a fun sport. You dribble and shoot the ball. There are 5 players on the court. My favorite team is the Lakers and my favorite player is LeBron James who is really good. You can dunk if you are tall enough. I like basketball a lot. It is fun.",
+        "elapsed_s": 65.0,
+        "ai_invitation": "You've added more detail to several sentences this time \u2014 'really good,' 'tall enough,' 'fun to play and watch' became 'a lot.' Your paragraph covers a lot of ground about basketball: rules, a favorite player, and how it feels to play. Here's the question that matters for an informative paragraph: what is the *one* thing you most want your reader to understand about basketball by the end? Try writing that idea in a single sentence \u2014 that will help us see what the whole paragraph is really trying to do.",
+        "purpose_primary": "inform",
+        "purpose_secondary": [],
+        "primary_target": "Identifying a single controlling idea (what the paragraph is trying to inform the reader about)",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence and elaboration",
+          "coherence/transitions",
+          "grammar"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Paragraph Purpose (M7) \u2014 controlling idea still absent",
+        "ic_supporting": [
+          "Reader Construction (M12): reader still cannot follow one idea",
+          "Revision Development (M13): revision shows elaboration but not organizational growth"
+        ],
+        "ic_calibration_check": "Proportional \u2014 same single foundational target as prior turn; revision did not resolve it so readdressing is warranted.",
+        "ic_consistency_check": "Any paragraph without a controlling idea after elaboration-focused revision would receive the same priority.",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Controlling idea / Topic Sentence",
+        "iv_writing_not_content_check": "Invitation teaches the communicative function of a controlling idea (organizing what a reader should understand); supplies no substantive ideas of its own.",
+        "reader_applies": true,
+        "reader_next_need": "A sense of what one idea the paragraph will explain or inform about.",
+        "revision_applies": true,
+        "revision_growth": "elaboration (sentence-level detail added)",
+        "revision_remaining": "Establishing a single controlling idea that organizes the paragraph.",
+        "revision_transfer": "Adding detail to sentences is a useful move \u2014 the next step is directing that detail toward one idea the reader should understand."
+      },
+      {
+        "turn": 3,
+        "kind": "revise",
+        "student": "Actually I want to write about my dog instead. My dog is a husky named Kaia. She is very energetic and runs a lot. Huskies have thick fur for cold weather. She likes the snow. Dogs are loyal animals.",
+        "elapsed_s": 70.0,
+        "ai_invitation": "You've switched topics entirely and started fresh with your dog Kaia \u2014 that's a real decision. You have several things here: her name and breed, her energy, her fur, her love of snow, and a general statement about dogs. Right now a reader can follow the facts, but can't tell what one idea about Kaia (or huskies) you most want them to walk away understanding. What is the single thing you most want your reader to know or understand about her?",
+        "purpose_primary": "inform",
+        "purpose_secondary": [],
+        "primary_target": "Identifying a single controlling idea (what the student most wants the reader to understand about Kaia)",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "elaboration and evidence",
+          "coherence/transitions",
+          "dropping off-topic sentences"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Paragraph Purpose (M7) \u2014 controlling idea still absent",
+        "ic_supporting": [
+          "Reader Construction (M12): reader still cannot follow one idea",
+          "Revision Development (M13): topic switch, not organizational growth"
+        ],
+        "ic_calibration_check": "Proportional \u2014 same single foundational target; topic switch does not alter the priority.",
+        "ic_consistency_check": "Any paragraph without a controlling idea after a topic switch would receive the same priority.",
+        "iv_type": "developmental_question",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "",
+        "iv_writing_not_content_check": "Teaches the function of a controlling idea (what one idea the paragraph organizes around); supplies no substantive ideas of my own.",
+        "reader_applies": true,
+        "reader_next_need": "A sense of what one idea the paragraph will explain or inform about.",
+        "revision_applies": true,
+        "revision_growth": "",
+        "revision_remaining": "Establishing a single controlling idea that organizes the paragraph.",
+        "revision_transfer": ""
+      }
+    ]
+  },
+  {
+    "id": "P9_hs_avg_argument_multiframework",
+    "profile": "High school (grade 11), average writer, argument (many issues at once)",
+    "special": "MULTIPLE frameworks applicable at once (thesis, paragraph, evidence, coherence, conclusion) \u2014 must unify to ONE target",
+    "assignment": "Argue whether homework should be limited in high school.",
+    "session_id": "02e5d271-69d9-4d46-8570-7ec05dd69a43",
+    "cycles": [
+      {
+        "turn": 1,
+        "kind": "writing",
+        "student": "Homework is bad for students. Studies show homework causes stress. Also students have sports and jobs. Teachers give too much. In addition sleep is important for teens. Homework should be limited. Because students need free time. Also it doesnt even help that much some people say. So limit it.",
+        "elapsed_s": 55.0,
+        "ai_invitation": "You've laid out several reasons you believe homework should be limited \u2014 stress, sports, jobs, sleep, and effectiveness. That gives you real material to work with. Right now your essay has a position, but a reader might ask: what exactly are you claiming about homework limits? Try writing one sentence that states your argument as clearly as possible \u2014 something a reasonable person could actually disagree with.",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "inform"
+        ],
+        "primary_target": "Developing a controlling claim that is specific and arguable",
+        "instructional_mode": "explicit_instruction",
+        "postponed": [
+          "paragraph organization",
+          "evidence interpretation",
+          "sentence-level coherence"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis",
+        "ic_supporting": [
+          "Reader Construction"
+        ],
+        "ic_calibration_check": "Proportional \u2014 draft has genuine content but lacks a controlling claim; one focused instructional target is appropriate.",
+        "ic_consistency_check": "Any persuasive draft at this stage without an arguable claim would receive the same priority.",
+        "iv_type": "instruct_then_invite",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Claim",
+        "iv_writing_not_content_check": "Teaches the communicative function of a claim (what makes it arguable and organizing); supplies no substantive ideas about homework policy.",
+        "reader_applies": true,
+        "reader_next_need": "A clear, specific, arguable claim.",
+        "revision_applies": false,
+        "revision_growth": "",
+        "revision_remaining": "",
+        "revision_transfer": ""
+      },
+      {
+        "turn": 2,
+        "kind": "revise",
+        "student": "Homework should be limited in high school because too much of it does more harm than good. Studies have found that heavy homework loads raise stress and cut into sleep, and teenagers need sleep to learn. Many students also work jobs or play sports after school, so there is little time left. Some people argue homework builds discipline, and a reasonable amount can. But past a certain point it stops helping and just wears students down. Schools should cap homework so it supports learning instead of replacing rest.",
+        "elapsed_s": 70.0,
+        "ai_invitation": "You've made a real leap here \u2014 your draft now opens with a focused claim and moves through connected reasons in a way the previous draft didn't. One thing to notice: your claim says homework should be 'limited' and 'capped,' but a reader might ask exactly what that limit is and why it supports learning rather than harming it. Can you look at your opening claim and make it more specific about what kind of limit you're arguing for \u2014 so your reader knows precisely what position you're defending?",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "inform"
+        ],
+        "primary_target": "Sharpening the claim's precision \u2014 'limited' and 'capped' are still vague; reader cannot tell what position is being defended",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation",
+          "conclusion synthesis",
+          "paragraph-level development"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis",
+        "ic_supporting": [
+          "Reader Construction",
+          "Revision Development"
+        ],
+        "ic_calibration_check": "Proportional \u2014 draft is substantially improved; one targeted question about claim precision is right, not a list of new problems",
+        "ic_consistency_check": "Any persuasive draft with a claim present but imprecise would receive the same priority",
+        "iv_type": "consolidate",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Claim (precision/scope)",
+        "iv_writing_not_content_check": "Teaches claim precision as a communicative function (what the reader needs to locate the position); supplies no substantive ideas about what the limit should be",
+        "reader_applies": true,
+        "reader_next_need": "A specific, arguable limit so the reader knows what position to accept or dispute",
+        "revision_applies": true,
+        "revision_growth": "organization / central claim emergence",
+        "revision_remaining": "Claim precision \u2014 'limited' and 'capped' still vague; reader cannot identify the specific position",
+        "revision_transfer": "When you revise an argument, the first test is whether a reader could disagree with something specific \u2014 you've cleared that bar, and now precision in the claim will sharpen every persuasive essay you write"
+      },
+      {
+        "turn": 3,
+        "kind": "revise",
+        "student": "Homework should be limited in high school because past a certain point it does more harm than good. Moderate practice helps students remember what they learned. But heavy loads raise stress and steal the sleep teenagers need to actually learn, and many students also juggle jobs or sports. So the problem is not homework itself \u2014 it is the amount. A fair cap, like a set number of minutes per class, would keep the benefit of practice while protecting the rest and time that make learning possible in the first place.",
+        "elapsed_s": 70.0,
+        "ai_invitation": "You've made a real revision here \u2014 you built in a specific mechanism ('a set number of minutes per class') that gives your claim something concrete to defend. That phrase is doing important work: it tells the reader exactly what kind of cap you're proposing. Now look at your opening sentence alongside that phrase \u2014 your claim says homework should be 'limited,' but the limit you have in mind is a time-per-class cap. How could you bring that precision into the claim itself, so the reader knows from the very beginning what position they're being asked to accept?",
+        "purpose_primary": "persuade",
+        "purpose_secondary": [
+          "inform"
+        ],
+        "primary_target": "Align the opening claim's precision with the specific cap already articulated in the closing \u2014 the student has the idea, it just needs to move forward",
+        "instructional_mode": "developmental_question",
+        "postponed": [
+          "evidence interpretation",
+          "conclusion synthesis"
+        ],
+        "cycle_status": "continue",
+        "stopping_reason": "",
+        "ic_primary_framework": "Central Claim / Thesis",
+        "ic_supporting": [
+          "Reader Construction",
+          "Revision Development",
+          "Conclusion Function"
+        ],
+        "ic_calibration_check": "Proportional \u2014 draft has genuinely improved; one focused question about aligning claim with the mechanism already in the essay is right",
+        "ic_consistency_check": "Any persuasive draft where the specific position appears only in the body/close would receive the same priority",
+        "iv_type": "invite_only",
+        "iv_focus": "writing",
+        "iv_cultural_resource": "Claim precision \u2014 scoping the claim to what the essay can support",
+        "iv_writing_not_content_check": "Teaches claim-body alignment (a writing function); supplies no substantive ideas \u2014 the mechanism 'minutes per class' is already in the student's draft",
+        "reader_applies": true,
+        "reader_next_need": "A claim specific enough that the reader knows from sentence one what position they're evaluating",
+        "revision_applies": true,
+        "revision_growth": "precision / claim development \u2014 student now has a specific proposal embedded in the draft",
+        "revision_remaining": "The specific limit lives in the closing but not yet in the governing claim \u2014 claim and mechanism are not yet coordinated",
+        "revision_transfer": "When you revise, check whether the most precise version of your position appears in the claim or only later \u2014 moving precision forward is a transferable revision strategy"
+      }
+    ]
+  }
+]
