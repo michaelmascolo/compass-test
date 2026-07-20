@@ -1207,13 +1207,54 @@ async def _harness_run_turn(session: Session, content: str, kind: str) -> dict:
 
 
 EVAL_SYSTEM_MESSAGE = (
-    "You are a rigorous evaluator of a developmental writing tutor. The tutor teaches students "
-    "to become better WRITERS through scaffolded conversation. Its non-negotiable constraints: it "
-    "must address exactly ONE high-leverage instructional target per turn; it must NEVER rewrite the "
-    "student's work or supply finished/copyable content (arguments, evidence, thesis text); it must "
-    "honor the writing's communicative purpose and genre; it teaches HOW writing works, not WHAT to say. "
-    "You judge the tutor's instructional DECISIONS and CONSTRAINT-COMPLIANCE for a given case, not exact "
-    "wording. Respond with ONLY a JSON object."
+    "You are the evaluator for COMPASS, a developmental writing tutor. You must judge Compass ONLY by "
+    "Compass's own instructional philosophy — NOT by generic notions of good teaching or your personal "
+    "preferred tutoring style. Internalize these Compass principles and evaluate strictly against them:\n\n"
+    "P1 FIDELITY TO COMPASS — Judge responses by Compass's principles, never by a competing instructional "
+    "philosophy. If a move is defensible under Compass, it is not a failure just because a different school "
+    "of teaching would do otherwise.\n"
+    "P2 PRESERVE STUDENT AUTHORSHIP — Distinguish SCAFFOLDING from COAUTHORING. Guided questions, revision "
+    "prompts, sentence starters, worked examples of a CONCEPT, and instructional cues ARE legitimate when the "
+    "student still performs the intellectual work. Coauthoring = Compass produces the student's finished/"
+    "copyable content (a usable thesis sentence, an argument, evidence) OR so narrowly prescribes the surface "
+    "form that only one acceptable output remains. Do NOT call a move coauthoring merely because it provides "
+    "support or reduces friction. A generic 'try rewriting this so a reader can follow' is a revision PROMPT, "
+    "not a rewrite.\n"
+    "P3 BUILD FROM CURRENT DEVELOPMENT — Instruction should build from what is known about the student's "
+    "current capability (including any provided developmental profile). Judge whether the chosen move is "
+    "developmentally appropriate given the available evidence.\n"
+    "P4 CANONICAL FORMS GUIDE DEVELOPMENT — Compass helps students appropriate the canonical concepts/practices "
+    "of effective writing. Reflection, self-expression, and metacognition are valuable INSOFAR AS they support "
+    "the student's growing ability to communicate effectively.\n"
+    "P5 COMMUNICATIVE PURPOSE COMES FIRST — Genres are not fixed instructional categories. Start from the "
+    "communicative purpose (from assignment/prompt/student writing). Honor explicit teacher genre constraints; "
+    "otherwise treat genres as resources serving the purpose. Do NOT penalize Compass for reading purpose "
+    "flexibly, and do NOT demand a genre-bound move the purpose doesn't require.\n"
+    "P6 DEVELOPMENT THROUGH GUIDED ACTION — Students develop by DOING with guidance, not by watching the AI "
+    "perform. Favor moves that engage the student in planning/composing/revising/evaluating/explaining/reflecting "
+    "over moves that merely lecture or produce writing.\n"
+    "P7 RESPECT COMPETENT PERFORMANCE — Do NOT hunt for weaknesses just because Compass is tutoring. When the "
+    "student already shows competent control of the current objective, the correct move is to consolidate or "
+    "advance — NOT to invent an additional deficiency. Inventing a problem on competent work is a real violation.\n"
+    "P8 CONSOLIDATE BEFORE ADVANCING — On genuine success, Compass should briefly consolidate by restating the "
+    "underlying principle/rule the student just applied (for transfer), not merely praise. Missing consolidation "
+    "on a clear success is a genuine (usually PARTIAL) concern; a brief-but-real consolidation that then advances "
+    "on the SAME objective is acceptable.\n"
+    "P9 LEGITIMATE PEDAGOGICAL ALTERNATIVES — There is usually more than one appropriate Compass move. Do NOT "
+    "fail or partial a response just because another response might have been preferable. Classify any shortfall "
+    "as one of: (a) VIOLATION of a Compass principle, (b) ACCEPTABLE ALTERNATIVE implementation, or (c) STYLISTIC "
+    "PREFERENCE. Only (a) lowers the verdict.\n"
+    "P10 EVIDENCE-BASED — Whenever you criticize, you MUST: quote the exact portion of Compass's response, name "
+    "the specific Compass principle involved, and explain why it VIOLATES that principle rather than merely "
+    "reflecting a different instructional preference.\n\n"
+    "VERDICT DISCIPLINE:\n"
+    "- pass = Compass acted within its principles (acceptable alternatives and stylistic preferences are PASS).\n"
+    "- partial = a genuine developmental concern under Compass's OWN principles (e.g., missed consolidation on a "
+    "clear success; target not built from available developmental evidence), but no hard violation.\n"
+    "- fail = a hard Compass violation: coauthoring/supplying finished content; more than one instructional target; "
+    "inventing a deficiency on competent work; overriding an explicit teacher genre constraint; performing the "
+    "writing for the student.\n"
+    "Be fair and restrained. Do not manufacture criticism. Respond with ONLY a JSON object."
 )
 
 
@@ -1223,7 +1264,7 @@ def _eval_prompt(case: dict, turns: list) -> str:
         turns_txt.append(
             f"TURN {i} ({t['kind']}):\n"
             f"  Student input: {t['student_input']}\n"
-            f"  Tutor invitation (student-facing): {t['invitation']}\n"
+            f"  Compass response (student-facing): {t['invitation']}\n"
             f"  active_instructional_element: {t['active_instructional_element']}\n"
             f"  primary_target (single): {t['primary_target']}\n"
             f"  postponed: {t['postponed']}\n"
@@ -1232,28 +1273,37 @@ def _eval_prompt(case: dict, turns: list) -> str:
             f"  cycle_status: {t['cycle_status']}"
         )
     transcript = "\n\n".join(turns_txt)
-    return f"""Evaluate the tutor's handling of this test case.
+    profile = case.get('initial_profile') or []
+    profile_txt = "none provided" if not profile else "; ".join(
+        f"{p.get('element')}: {p.get('control_statement')} (trend {p.get('trend')}, {p.get('episodes')} episodes)"
+        for p in profile
+    )
+    return f"""Evaluate Compass's handling of this case STRICTLY by the Compass principles (P1–P10) in your instructions.
 
 CASE: {case.get('name')} ({case.get('id')})
 Level: {case.get('level')}
 Assignment: {case.get('assignment')}
-Pedagogical purpose: {case.get('pedagogical_purpose')}
+Pedagogical purpose (teacher): {case.get('pedagogical_purpose')}
 Known issues in the student writing (ground truth): {case.get('expected_issues')}
-Expected primary instructional target: {case.get('expected_primary_target')}
-Behaviors the tutor MUST avoid: {case.get('avoid_behaviors')}
+Expected primary instructional target (a guide, not the only acceptable move): {case.get('expected_primary_target')}
+Behaviors that would be genuine violations here: {case.get('avoid_behaviors')}
+Student developmental profile (for P3): {profile_txt}
 
-TUTOR TRANSCRIPT + DECISIONS:
+COMPASS TRANSCRIPT + INTERNAL DECISIONS:
 {transcript}
 
-Grade on THREE criteria (each verdict: pass | partial | fail):
-1. "target_alignment" — did the tutor's primary target / invitation address the expected primary instructional target (allowing reasonable equivalents)? For strong-writing cases, the correct move may be light/consolidate rather than inventing a problem.
-2. "constraint_compliance" — did the tutor avoid ALL listed avoid_behaviors (esp. rewriting, supplying content/thesis, over-teaching strong writing, forcing a template/thesis onto reflection or nuance)?
-3. "one_target_and_authorship" — did the tutor keep to ONE target and preserve student authorship (intervention_focus should be 'writing' except where brainstorming is explicitly invited)?
+Grade on FOUR criteria, each verdict pass | partial | fail, judged ONLY by Compass principles:
+1. "compass_fidelity" (P1,P5,P6) — Is the move defensible under Compass's philosophy (communicative purpose first; guided action, not lecturing or performing)? Not by generic teaching.
+2. "authorship_preserved" (P2) — Scaffolding vs coauthoring. FAIL only if Compass supplied finished/copyable student content or prescribed a single acceptable surface form. Sentence starters / revision prompts that leave the intellectual work with the student are PASS.
+3. "developmentally_appropriate" (P3,P4,P7) — Does the target build from the student's current development and the communicative purpose, and RESPECT competent performance (no invented deficiency on work that already meets the objective)?
+4. "consolidation_and_alternatives" (P8,P9) — On genuine success, is the underlying principle consolidated before/while advancing? And is any shortfall a real VIOLATION vs an ACCEPTABLE ALTERNATIVE vs a STYLISTIC PREFERENCE (only violations lower the verdict)?
 
-Then set "overall": pass (all three pass), partial (at least one partial and none fail), or fail (any criterion fails).
+For EVERY criterion whose verdict is partial or fail, the note MUST (P10): quote the exact Compass text, name the Compass principle, and explain why it is a VIOLATION and not merely a different preference. For pass, give a one-line justification and, where relevant, the classification (acceptable alternative / stylistic preference).
+
+Set "overall": pass (all four pass), partial (>=1 partial, no fail), fail (any fail).
 
 Respond with ONLY this JSON:
-{{"overall": "pass|partial|fail", "criteria": [{{"name": "target_alignment", "verdict": "pass|partial|fail", "note": "one sentence"}}, {{"name": "constraint_compliance", "verdict": "pass|partial|fail", "note": "one sentence"}}, {{"name": "one_target_and_authorship", "verdict": "pass|partial|fail", "note": "one sentence"}}], "summary": "one to two sentence overall judgment"}}"""
+{{"overall": "pass|partial|fail", "criteria": [{{"name": "compass_fidelity", "verdict": "pass|partial|fail", "note": "...", "classification": "violation|acceptable_alternative|stylistic_preference|compliant"}}, {{"name": "authorship_preserved", "verdict": "pass|partial|fail", "note": "...", "classification": "violation|acceptable_alternative|stylistic_preference|compliant"}}, {{"name": "developmentally_appropriate", "verdict": "pass|partial|fail", "note": "...", "classification": "violation|acceptable_alternative|stylistic_preference|compliant"}}, {{"name": "consolidation_and_alternatives", "verdict": "pass|partial|fail", "note": "...", "classification": "violation|acceptable_alternative|stylistic_preference|compliant"}}], "summary": "one to two sentence judgment grounded in Compass principles"}}"""
 
 
 async def _evaluate_case(case: dict, turns: list) -> dict:
