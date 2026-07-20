@@ -22,3 +22,29 @@ export const editTelos = async (id, payload) => {
   const { data } = await axios.patch(`${API}/sessions/${id}/telos`, payload);
   return data;
 };
+
+// --- Developer-only Automated Instructional Testing ---
+export const listTestCases = async () => {
+  const { data } = await axios.get(`${API}/tests/cases`);
+  return data.cases || [];
+};
+
+export const startTestRun = async (caseIds) => {
+  const { data } = await axios.post(`${API}/tests/run`, {
+    case_ids: caseIds && caseIds.length ? caseIds : null,
+  });
+  return data;
+};
+
+export const getTestRun = async (runId) => {
+  const { data } = await axios.get(`${API}/tests/runs/${runId}`);
+  return data;
+};
+
+export const listTestRuns = async () => {
+  const { data } = await axios.get(`${API}/tests/runs`);
+  return data.runs || [];
+};
+
+export const exportTestRunUrl = (runId, format) =>
+  `${API}/tests/runs/${runId}/export?format=${format}`;

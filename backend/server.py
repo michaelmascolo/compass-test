@@ -1,5 +1,6 @@
 import os
 import json
+import time
 import asyncio
 import logging
 import uuid
@@ -7,7 +8,7 @@ from pathlib import Path
 from datetime import datetime, timezone
 from typing import List, Optional
 
-from fastapi import FastAPI, APIRouter, HTTPException
+from fastapi import FastAPI, APIRouter, HTTPException, Query, Response
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -1036,6 +1037,11 @@ async def _run_engine(session: Session, req: InteractRequest) -> dict:
     prompt = _build_prompt(session, req, relevant, io_names)
     _sel_log = {s["domain_name"]: len(s["sections"]) for s in relevant}
     logger.info(f"[reason] domains/sections={_sel_log} io={io_names} reasoner_prompt_bytes={len(prompt)}")
+    _meta = {
+        "reasoner_prompt_bytes": len(prompt),
+        "selected_domains": [s["domain_name"] for s in relevant],
+        "selected_instructional_objects": io_names,
+    }
 
     last_err = None
     for attempt in range(2):
@@ -1046,7 +1052,9 @@ async def _run_engine(session: Session, req: InteractRequest) -> dict:
                 system_message=SYSTEM_MESSAGE,
             ).with_model("anthropic", "claude-sonnet-4-6")
             raw = await chat.send_message(UserMessage(text=prompt))
-            return _parse_engine_output(session, raw)
+            _parsed = _parse_engine_output(session, raw)
+            _parsed["_meta"] = _meta
+            return _parsed
         except Exception as e:  # noqa: BLE001
             last_err = e
             logger.warning(f"reasoner attempt {attempt + 1} failed: {e}")
@@ -1127,6 +1135,342 @@ async def interact(session_id: str, req: InteractRequest):
 
     asyncio.create_task(_run_reasoning(session_id, ai_turn.id, req))
     return session
+
+
+# ---------------------------------------------------------------------------
+# Automated Instructional Testing & Export (DEVELOPER ONLY)
+# Runs each test case through the REAL production pipeline (STAGE-A retrieval,
+# instructional networks, one-target selection, governed instruction, anti-
+# coauthoring, developmental memory) and grades the actual decisions with a
+# SEPARATE LLM evaluator call. No fake logic.
+# ---------------------------------------------------------------------------
+TEST_CASES_PATH = ROOT_DIR / "test_cases" / "instructional_test_cases.json"
+
+
+def _load_test_cases() -> list:
+    try:
+        with open(TEST_CASES_PATH) as f:
+            return json.load(f).get("cases", [])
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"[tests] could not load test cases: {e}")
+        return []
+
+
+class TestRunRequest(BaseModel):
+    case_ids: Optional[List[str]] = None  # None / empty => run ALL cases
+
+
+async def _harness_run_turn(session: Session, content: str, kind: str) -> dict:
+    """Mirror the production interact + _run_reasoning flow exactly, but capture
+    the engine's actual instructional decisions + latency/prompt-size metadata."""
+    content = content.strip()
+    session.turns.append(Turn(role="student", kind=kind, content=content, status="complete"))
+    ai_turn = Turn(role="ai", kind="pending", content="", status="processing")
+    session.turns.append(ai_turn)
+    req = InteractRequest(content=content, kind=kind)
+
+    reason_session = session.model_copy(deep=True)
+    reason_session.turns = [t for t in session.turns if t.id != ai_turn.id]
+
+    t0 = time.monotonic()
+    result = await _run_engine(reason_session, req)
+    latency = round(time.monotonic() - t0, 2)
+
+    _finalize_turn(session, ai_turn.id, req, result)
+
+    theory = result["theory"]
+    ir = theory.instructional_reasoning
+    sc = theory.scaffolding_control
+    interv = result["intervention"]
+    meta = result.get("_meta", {})
+    return {
+        "kind": kind,
+        "student_input": content,
+        "invitation": result["invitation"],
+        "latency_s": latency,
+        "reasoner_prompt_bytes": meta.get("reasoner_prompt_bytes"),
+        "selected_instructional_objects": meta.get("selected_instructional_objects", []),
+        "active_instructional_element": ir.active_instructional_element,
+        "primary_developmental_tension": ir.primary_developmental_tension,
+        "next_student_act": ir.next_student_act,
+        "degree_of_student_control": ir.degree_of_student_control,
+        "continue_consolidate_release_or_shift": ir.continue_consolidate_release_or_shift,
+        "primary_target": sc.primary_target,
+        "postponed": sc.postponed,
+        "cycle_status": sc.cycle_status,
+        "instructional_mode": sc.instructional_mode,
+        "intervention_focus": interv.focus,
+        "one_target_ok": bool(sc.primary_target) and bool(result["invitation"]),
+        "theory_history_len": len(session.theory_history),
+        "developmental_profile_update": result.get("profile_update", []),
+    }
+
+
+EVAL_SYSTEM_MESSAGE = (
+    "You are a rigorous evaluator of a developmental writing tutor. The tutor teaches students "
+    "to become better WRITERS through scaffolded conversation. Its non-negotiable constraints: it "
+    "must address exactly ONE high-leverage instructional target per turn; it must NEVER rewrite the "
+    "student's work or supply finished/copyable content (arguments, evidence, thesis text); it must "
+    "honor the writing's communicative purpose and genre; it teaches HOW writing works, not WHAT to say. "
+    "You judge the tutor's instructional DECISIONS and CONSTRAINT-COMPLIANCE for a given case, not exact "
+    "wording. Respond with ONLY a JSON object."
+)
+
+
+def _eval_prompt(case: dict, turns: list) -> str:
+    turns_txt = []
+    for i, t in enumerate(turns, 1):
+        turns_txt.append(
+            f"TURN {i} ({t['kind']}):\n"
+            f"  Student input: {t['student_input']}\n"
+            f"  Tutor invitation (student-facing): {t['invitation']}\n"
+            f"  active_instructional_element: {t['active_instructional_element']}\n"
+            f"  primary_target (single): {t['primary_target']}\n"
+            f"  postponed: {t['postponed']}\n"
+            f"  intervention_focus: {t['intervention_focus']}\n"
+            f"  next_student_act: {t['next_student_act']}\n"
+            f"  cycle_status: {t['cycle_status']}"
+        )
+    transcript = "\n\n".join(turns_txt)
+    return f"""Evaluate the tutor's handling of this test case.
+
+CASE: {case.get('name')} ({case.get('id')})
+Level: {case.get('level')}
+Assignment: {case.get('assignment')}
+Pedagogical purpose: {case.get('pedagogical_purpose')}
+Known issues in the student writing (ground truth): {case.get('expected_issues')}
+Expected primary instructional target: {case.get('expected_primary_target')}
+Behaviors the tutor MUST avoid: {case.get('avoid_behaviors')}
+
+TUTOR TRANSCRIPT + DECISIONS:
+{transcript}
+
+Grade on THREE criteria (each verdict: pass | partial | fail):
+1. "target_alignment" — did the tutor's primary target / invitation address the expected primary instructional target (allowing reasonable equivalents)? For strong-writing cases, the correct move may be light/consolidate rather than inventing a problem.
+2. "constraint_compliance" — did the tutor avoid ALL listed avoid_behaviors (esp. rewriting, supplying content/thesis, over-teaching strong writing, forcing a template/thesis onto reflection or nuance)?
+3. "one_target_and_authorship" — did the tutor keep to ONE target and preserve student authorship (intervention_focus should be 'writing' except where brainstorming is explicitly invited)?
+
+Then set "overall": pass (all three pass), partial (at least one partial and none fail), or fail (any criterion fails).
+
+Respond with ONLY this JSON:
+{{"overall": "pass|partial|fail", "criteria": [{{"name": "target_alignment", "verdict": "pass|partial|fail", "note": "one sentence"}}, {{"name": "constraint_compliance", "verdict": "pass|partial|fail", "note": "one sentence"}}, {{"name": "one_target_and_authorship", "verdict": "pass|partial|fail", "note": "one sentence"}}], "summary": "one to two sentence overall judgment"}}"""
+
+
+async def _evaluate_case(case: dict, turns: list) -> dict:
+    prompt = _eval_prompt(case, turns)
+    last_err = None
+    for attempt in range(2):
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"eval-{case.get('id')}-{uuid.uuid4()}",
+                system_message=EVAL_SYSTEM_MESSAGE,
+            ).with_model("anthropic", "claude-sonnet-4-6")
+            raw = await chat.send_message(UserMessage(text=prompt))
+            data = _extract_json(raw)
+            overall = (data.get("overall") or "").strip().lower()
+            if overall not in ("pass", "partial", "fail"):
+                overall = "partial"
+            data["overall"] = overall
+            data.setdefault("criteria", [])
+            data.setdefault("summary", "")
+            return data
+        except Exception as e:  # noqa: BLE001
+            last_err = e
+            logger.warning(f"[tests] evaluator attempt {attempt + 1} failed for {case.get('id')}: {e}")
+            if attempt == 0:
+                await asyncio.sleep(2)
+    return {"overall": "error", "criteria": [], "summary": f"Evaluator failed: {last_err}"}
+
+
+async def _run_test_suite(run_id: str, cases: list) -> None:
+    """Background task: run each case through the real engine, evaluate, persist."""
+    for case in cases:
+        result = {"case_id": case.get("id"), "name": case.get("name"), "level": case.get("level")}
+        try:
+            session = Session(
+                assignment=case.get("assignment", ""),
+                pedagogical_purpose=case.get("pedagogical_purpose", ""),
+                current_writing_task=case.get("current_writing_task", ""),
+                teacher_notes="",
+                assignment_prompt=case.get("assignment", ""),
+                telos=Telos(
+                    governing_pedagogical_purpose=case.get("pedagogical_purpose", ""),
+                    immediate_task_purpose=case.get("current_writing_task", ""),
+                    teacher_intentions="",
+                    assignment_context=case.get("assignment", ""),
+                ),
+            )
+            for p in case.get("initial_profile", []) or []:
+                session.developmental_profile.append(DevelopmentalObservation(
+                    element=p.get("element", ""),
+                    control_statement=p.get("control_statement", ""),
+                    trend=p.get("trend", ""),
+                    evidence=p.get("evidence", ""),
+                    episodes=p.get("episodes", 1),
+                ))
+
+            turn_metas = [await _harness_run_turn(session, case.get("initial_draft", ""), "writing")]
+            for resp in case.get("responses", []) or []:
+                turn_metas.append(await _harness_run_turn(session, resp, "answer"))
+
+            evaluation = await _evaluate_case(case, turn_metas)
+            result.update({
+                "status": evaluation.get("overall", "error"),
+                "turns": turn_metas,
+                "evaluation": evaluation,
+                "session_snapshot": {
+                    "turns": [t.model_dump() for t in session.turns],
+                    "theory": session.theory.model_dump(),
+                    "interactions": [i.model_dump() for i in session.interactions],
+                    "developmental_profile": [o.model_dump() for o in session.developmental_profile],
+                },
+            })
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"[tests] case {case.get('id')} errored: {e}")
+            result.update({"status": "error", "error": str(e), "turns": [], "evaluation": {}})
+
+        await db.test_runs.update_one(
+            {"id": run_id},
+            {"$push": {"results": result}, "$inc": {"completed_count": 1}, "$set": {"updated_at": now_iso()}},
+        )
+
+    doc = await db.test_runs.find_one({"id": run_id}, {"_id": 0})
+    results = (doc or {}).get("results", [])
+    counts = {"pass": 0, "partial": 0, "fail": 0, "error": 0}
+    for r in results:
+        counts[r.get("status", "error")] = counts.get(r.get("status", "error"), 0) + 1
+    pass_rate = round(counts["pass"] / len(results) * 100, 1) if results else 0.0
+    await db.test_runs.update_one(
+        {"id": run_id},
+        {"$set": {"status": "complete", "summary": {**counts, "pass_rate": pass_rate}, "updated_at": now_iso()}},
+    )
+    logger.info(f"[tests] run {run_id} complete: {counts} pass_rate={pass_rate}%")
+
+
+def _run_to_markdown(doc: dict) -> str:
+    lines = [f"# Instructional Test Run {doc.get('id')}", ""]
+    lines.append(f"- Status: {doc.get('status')}")
+    lines.append(f"- Created: {doc.get('created_at')}")
+    s = doc.get("summary") or {}
+    if s:
+        lines.append(f"- Summary: {s.get('pass',0)} pass / {s.get('partial',0)} partial / {s.get('fail',0)} fail / {s.get('error',0)} error — pass rate {s.get('pass_rate',0)}%")
+    lines.append("")
+    for r in doc.get("results", []):
+        lines.append(f"## {r.get('case_id')} — {r.get('name')} — **{str(r.get('status','')).upper()}**")
+        ev = r.get("evaluation") or {}
+        if ev.get("summary"):
+            lines.append(f"_{ev.get('summary')}_")
+        for c in ev.get("criteria", []) or []:
+            lines.append(f"- {c.get('name')}: **{c.get('verdict')}** — {c.get('note')}")
+        for i, t in enumerate(r.get("turns", []) or [], 1):
+            lines.append(f"### Turn {i} ({t.get('kind')})  ·  {t.get('latency_s')}s  ·  prompt {t.get('reasoner_prompt_bytes')}B")
+            lines.append(f"- Student: {t.get('student_input')}")
+            lines.append(f"- Tutor: {t.get('invitation')}")
+            lines.append(f"- Element: {t.get('active_instructional_element')} · Target: {t.get('primary_target')} · Focus: {t.get('intervention_focus')} · Cycle: {t.get('cycle_status')}")
+        if r.get("error"):
+            lines.append(f"- ERROR: {r.get('error')}")
+        lines.append("")
+    return "\n".join(lines)
+
+
+def _session_to_markdown(doc: dict) -> str:
+    lines = [f"# Session Audit — {doc.get('id')}", ""]
+    lines.append(f"- Assignment: {doc.get('assignment')}")
+    lines.append(f"- Pedagogical purpose: {doc.get('pedagogical_purpose')}")
+    lines.append(f"- Current writing task: {doc.get('current_writing_task')}")
+    lines.append(f"- Created: {doc.get('created_at')}  · Updated: {doc.get('updated_at')}")
+    lines.append("")
+    lines.append("## Conversation")
+    for t in doc.get("turns", []):
+        lines.append(f"**{t.get('role','').upper()}** ({t.get('kind')}, {t.get('status')}): {t.get('content')}")
+        lines.append("")
+    prof = doc.get("developmental_profile", []) or []
+    if prof:
+        lines.append("## Developmental Profile")
+        for o in prof:
+            lines.append(f"- {o.get('element')}: {o.get('control_statement')} (trend: {o.get('trend')}, episodes: {o.get('episodes')})")
+        lines.append("")
+    lines.append("## Working Theory (current)")
+    lines.append("```json")
+    lines.append(json.dumps(doc.get("theory", {}), indent=2))
+    lines.append("```")
+    return "\n".join(lines)
+
+
+def _download_headers(name: str) -> dict:
+    return {"Content-Disposition": f'attachment; filename="{name}"'}
+
+
+@api_router.get("/tests/cases")
+async def list_test_cases():
+    return {"cases": _load_test_cases()}
+
+
+@api_router.post("/tests/run")
+async def start_test_run(req: TestRunRequest):
+    all_cases = _load_test_cases()
+    if not all_cases:
+        raise HTTPException(status_code=500, detail="No test cases available")
+    if req.case_ids:
+        wanted = set(req.case_ids)
+        cases = [c for c in all_cases if c.get("id") in wanted]
+    else:
+        cases = all_cases
+    if not cases:
+        raise HTTPException(status_code=400, detail="No matching test cases")
+    run = {
+        "id": str(uuid.uuid4()),
+        "status": "running",
+        "case_ids": [c.get("id") for c in cases],
+        "total": len(cases),
+        "completed_count": 0,
+        "results": [],
+        "summary": {},
+        "created_at": now_iso(),
+        "updated_at": now_iso(),
+    }
+    await db.test_runs.insert_one(dict(run))
+    asyncio.create_task(_run_test_suite(run["id"], cases))
+    return run
+
+
+@api_router.get("/tests/runs")
+async def list_test_runs():
+    docs = await db.test_runs.find({}, {"_id": 0, "results": 0}).sort("created_at", -1).to_list(50)
+    return {"runs": docs}
+
+
+@api_router.get("/tests/runs/{run_id}")
+async def get_test_run(run_id: str):
+    doc = await db.test_runs.find_one({"id": run_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Test run not found")
+    return doc
+
+
+@api_router.get("/tests/runs/{run_id}/export")
+async def export_test_run(run_id: str, format: str = Query("json")):
+    doc = await db.test_runs.find_one({"id": run_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Test run not found")
+    if format == "markdown":
+        return Response(_run_to_markdown(doc), media_type="text/markdown",
+                        headers=_download_headers(f"test_run_{run_id[:8]}.md"))
+    return Response(json.dumps(doc, indent=2, default=str), media_type="application/json",
+                    headers=_download_headers(f"test_run_{run_id[:8]}.json"))
+
+
+@api_router.get("/sessions/{session_id}/export")
+async def export_session(session_id: str, format: str = Query("json")):
+    doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if format == "markdown":
+        return Response(_session_to_markdown(doc), media_type="text/markdown",
+                        headers=_download_headers(f"session_{session_id[:8]}.md"))
+    return Response(json.dumps(doc, indent=2, default=str), media_type="application/json",
+                    headers=_download_headers(f"session_{session_id[:8]}.json"))
 
 
 app.include_router(api_router)

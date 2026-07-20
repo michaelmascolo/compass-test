@@ -1,0 +1,326 @@
+import { useState, useEffect, useRef, useCallback } from "react";
+import {
+  listTestCases,
+  startTestRun,
+  getTestRun,
+  listTestRuns,
+  exportTestRunUrl,
+} from "@/lib/api";
+import {
+  Play,
+  Loader2,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Download,
+  ChevronDown,
+  ChevronRight,
+  FlaskConical,
+  History,
+} from "lucide-react";
+
+const VERDICT = {
+  pass: { icon: CheckCircle2, cls: "text-emerald-400", badge: "bg-emerald-950 text-emerald-300 border-emerald-800" },
+  partial: { icon: AlertTriangle, cls: "text-amber-400", badge: "bg-amber-950 text-amber-300 border-amber-800" },
+  fail: { icon: XCircle, cls: "text-rose-400", badge: "bg-rose-950 text-rose-300 border-rose-800" },
+  error: { icon: XCircle, cls: "text-stone-400", badge: "bg-stone-800 text-stone-400 border-stone-700" },
+};
+
+const StatBadge = ({ label, value, cls }) => (
+  <div className={`px-3 py-2 rounded-md border ${cls}`}>
+    <div className="text-2xl font-semibold leading-none">{value}</div>
+    <div className="text-[10px] uppercase tracking-widest mt-1 opacity-80">{label}</div>
+  </div>
+);
+
+const CaseResultCard = ({ result }) => {
+  const [open, setOpen] = useState(false);
+  const v = VERDICT[result.status] || VERDICT.error;
+  const Icon = v.icon;
+  const ev = result.evaluation || {};
+  return (
+    <div
+      data-testid={`result-card-${result.case_id}`}
+      className="border border-stone-800 rounded-md bg-stone-900/60 overflow-hidden"
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-stone-800/50 transition-colors"
+        data-testid={`result-toggle-${result.case_id}`}
+      >
+        {open ? <ChevronDown className="h-4 w-4 text-stone-500" /> : <ChevronRight className="h-4 w-4 text-stone-500" />}
+        <Icon className={`h-4 w-4 shrink-0 ${v.cls}`} />
+        <span className="text-xs text-stone-500 w-12 shrink-0">{result.case_id}</span>
+        <span className="text-sm text-stone-200 flex-1 truncate">{result.name}</span>
+        <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border ${v.badge}`}>
+          {result.status}
+        </span>
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-1 border-t border-stone-800 space-y-3">
+          {ev.summary && <p className="text-[13px] text-stone-300 italic leading-relaxed">{ev.summary}</p>}
+          {(ev.criteria || []).map((c, i) => {
+            const cv = VERDICT[c.verdict] || VERDICT.error;
+            const CI = cv.icon;
+            return (
+              <div key={i} className="flex items-start gap-2 text-[12px]">
+                <CI className={`h-3.5 w-3.5 mt-0.5 shrink-0 ${cv.cls}`} />
+                <div>
+                  <span className="text-stone-400">{c.name}</span>{" "}
+                  <span className={cv.cls}>[{c.verdict}]</span>
+                  <div className="text-stone-500">{c.note}</div>
+                </div>
+              </div>
+            );
+          })}
+          {result.error && <div className="text-rose-400 text-[12px]">Error: {result.error}</div>}
+          <div className="space-y-3 pt-2">
+            {(result.turns || []).map((t, i) => (
+              <div key={i} className="border border-stone-800 rounded p-3 bg-stone-950/40 text-[12px] space-y-1">
+                <div className="text-[10px] uppercase tracking-widest text-amber-500">
+                  Turn {i + 1} · {t.kind} · {t.latency_s}s · prompt {t.reasoner_prompt_bytes}B
+                </div>
+                <div><span className="text-stone-500">Student:</span> <span className="text-stone-300">{t.student_input}</span></div>
+                <div><span className="text-stone-500">Tutor:</span> <span className="text-stone-200">{t.invitation}</span></div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 pt-1 text-stone-400">
+                  <div><span className="text-stone-600">element:</span> {t.active_instructional_element || "—"}</div>
+                  <div><span className="text-stone-600">focus:</span> {t.intervention_focus}</div>
+                  <div className="col-span-2"><span className="text-stone-600">target:</span> {t.primary_target || "—"}</div>
+                  <div><span className="text-stone-600">cycle:</span> {t.cycle_status || "—"}</div>
+                  <div><span className="text-stone-600">control:</span> {t.degree_of_student_control || "—"}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default function TestHarness() {
+  const [cases, setCases] = useState([]);
+  const [selected, setSelected] = useState(new Set());
+  const [run, setRun] = useState(null);
+  const [runs, setRuns] = useState([]);
+  const [starting, setStarting] = useState(false);
+  const pollRef = useRef(null);
+
+  const refreshRuns = useCallback(() => {
+    listTestRuns().then(setRuns).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    listTestCases().then(setCases).catch(() => {});
+    refreshRuns();
+  }, [refreshRuns]);
+
+  // poll the active run while it's still running
+  useEffect(() => {
+    if (!run?.id || run.status !== "running") {
+      if (pollRef.current) clearInterval(pollRef.current);
+      return;
+    }
+    pollRef.current = setInterval(async () => {
+      try {
+        const r = await getTestRun(run.id);
+        setRun(r);
+        if (r.status !== "running") {
+          clearInterval(pollRef.current);
+          refreshRuns();
+        }
+      } catch (e) {
+        /* keep polling */
+      }
+    }, 3000);
+    return () => pollRef.current && clearInterval(pollRef.current);
+  }, [run?.id, run?.status, refreshRuns]);
+
+  const toggleCase = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const doRun = async (caseIds) => {
+    setStarting(true);
+    try {
+      const r = await startTestRun(caseIds);
+      setRun(await getTestRun(r.id));
+    } catch (e) {
+      /* noop */
+    } finally {
+      setStarting(false);
+    }
+  };
+
+  const loadRun = async (id) => {
+    setRun(await getTestRun(id));
+  };
+
+  const s = run?.summary || {};
+  const isRunning = run?.status === "running";
+  const progress = run ? Math.round(((run.completed_count || 0) / (run.total || 1)) * 100) : 0;
+
+  return (
+    <div className="min-h-screen bg-stone-950 text-stone-200 font-mono-panel" data-testid="tests-page">
+      <header className="border-b border-stone-800 px-6 py-4 flex items-center gap-3 sticky top-0 bg-stone-950/95 backdrop-blur z-10">
+        <FlaskConical className="h-5 w-5 text-amber-500" />
+        <div>
+          <h1 className="text-sm uppercase tracking-[0.2em] text-stone-100">Instructional Test Harness</h1>
+          <p className="text-[11px] text-stone-500">Developer-only · runs the real production engine + LLM evaluator</p>
+        </div>
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            onClick={() => doRun([...selected])}
+            disabled={starting || isRunning || selected.size === 0}
+            data-testid="run-selected-button"
+            className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 rounded border border-stone-700 text-stone-300 hover:border-amber-600 hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            <Play className="h-3.5 w-3.5" /> Run Selected ({selected.size})
+          </button>
+          <button
+            onClick={() => doRun(null)}
+            disabled={starting || isRunning}
+            data-testid="run-all-button"
+            className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 rounded bg-amber-600 text-stone-950 font-semibold hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            {starting || isRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
+            Run All ({cases.length})
+          </button>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-0">
+        {/* left rail: cases + history */}
+        <aside className="border-r border-stone-800 p-4 space-y-6 lg:h-[calc(100vh-73px)] lg:overflow-y-auto">
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-2">Test Cases</div>
+            <div className="space-y-1">
+              {cases.map((c) => (
+                <label
+                  key={c.id}
+                  className="flex items-start gap-2 text-[12px] px-2 py-1.5 rounded hover:bg-stone-900 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.has(c.id)}
+                    onChange={() => toggleCase(c.id)}
+                    data-testid={`case-checkbox-${c.id}`}
+                    className="mt-0.5 accent-amber-600"
+                  />
+                  <span className="text-stone-600 w-9 shrink-0">{c.id}</span>
+                  <span className="text-stone-300 leading-tight">{c.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-2 flex items-center gap-1.5">
+              <History className="h-3 w-3" /> Past Runs
+            </div>
+            <div className="space-y-1">
+              {runs.length === 0 && <div className="text-[11px] text-stone-600">No runs yet.</div>}
+              {runs.map((r) => (
+                <button
+                  key={r.id}
+                  onClick={() => loadRun(r.id)}
+                  data-testid={`past-run-${r.id}`}
+                  className={`w-full text-left text-[11px] px-2 py-1.5 rounded hover:bg-stone-900 ${
+                    run?.id === r.id ? "bg-stone-900 border border-stone-700" : ""
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-stone-400">{new Date(r.created_at).toLocaleString()}</span>
+                    <span className={r.status === "running" ? "text-amber-400" : "text-emerald-400"}>{r.status}</span>
+                  </div>
+                  <div className="text-stone-600">
+                    {r.total} cases {r.summary?.pass_rate != null ? `· ${r.summary.pass_rate}% pass` : ""}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </aside>
+
+        {/* main: run results */}
+        <main className="p-6 space-y-5">
+          {!run && (
+            <div className="text-stone-500 text-sm py-20 text-center">
+              Select cases and press <span className="text-amber-400">Run Selected</span>, or{" "}
+              <span className="text-amber-400">Run All</span> to start a full instructional evaluation.
+            </div>
+          )}
+
+          {run && (
+            <>
+              <div className="flex flex-wrap items-center gap-3" data-testid="test-summary">
+                <StatBadge label="Total" value={run.total} cls="border-stone-700 text-stone-200" />
+                <StatBadge label="Pass" value={s.pass ?? 0} cls="border-emerald-800 text-emerald-300" />
+                <StatBadge label="Partial" value={s.partial ?? 0} cls="border-amber-800 text-amber-300" />
+                <StatBadge label="Fail" value={s.fail ?? 0} cls="border-rose-800 text-rose-300" />
+                <StatBadge label="Error" value={s.error ?? 0} cls="border-stone-700 text-stone-400" />
+                {s.pass_rate != null && (
+                  <StatBadge label="Pass Rate" value={`${s.pass_rate}%`} cls="border-amber-700 text-amber-300" />
+                )}
+                <div className="ml-auto flex items-center gap-2">
+                  <a
+                    href={exportTestRunUrl(run.id, "json")}
+                    data-testid="export-run-json"
+                    className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 rounded border border-stone-700 text-stone-300 hover:border-stone-500 transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" /> JSON
+                  </a>
+                  <a
+                    href={exportTestRunUrl(run.id, "markdown")}
+                    data-testid="export-run-md"
+                    className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 rounded border border-stone-700 text-stone-300 hover:border-stone-500 transition-colors"
+                  >
+                    <Download className="h-3.5 w-3.5" /> Markdown
+                  </a>
+                </div>
+              </div>
+
+              <div data-testid="test-progress">
+                <div className="flex items-center justify-between text-[11px] text-stone-500 mb-1">
+                  <span>
+                    {isRunning ? (
+                      <span className="inline-flex items-center gap-1.5 text-amber-400">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Running…
+                      </span>
+                    ) : (
+                      "Complete"
+                    )}
+                  </span>
+                  <span>
+                    {run.completed_count || 0} / {run.total}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-stone-800 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-amber-500 transition-all duration-500"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {(run.results || []).map((r) => (
+                  <CaseResultCard key={r.case_id} result={r} />
+                ))}
+                {isRunning && (
+                  <div className="text-[12px] text-stone-500 py-3 text-center">
+                    Reasoning through the remaining cases with the live engine…
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}

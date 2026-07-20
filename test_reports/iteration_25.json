@@ -1,0 +1,73 @@
+{
+  "summary": "Iteration 25 verified the DEVELOPER-ONLY Automated Instructional Testing & Export system end-to-end on the public preview URL. Backend harness endpoints (GET /api/tests/cases, POST /api/tests/run, GET /api/tests/runs, GET /api/tests/runs/{id}, GET /api/tests/runs/{id}/export, GET /api/sessions/{id}/export) all respond correctly with proper content types. Frontend at ?tests renders the Instructional Test Harness page (tests-page) with exactly 32 case checkboxes (case-checkbox-TC01..TC32), run-selected-button (disabled at 0 selected), and run-all-button. Live end-to-end run of single case TC18 (Effective introduction) via run-selected-button completed in ~80s with the real production engine + evaluator LLM: test-summary + test-progress appeared immediately, progress bar tracked 0/1 -> 1/1, run reached status='complete', result-card-TC18 rendered with PASS verdict badge, result-toggle-TC18 expands to reveal evaluator summary + 3 criteria (target_alignment/constraint_compliance/one_target_and_authorship all pass with notes) and turn detail line (kind=writing, latency=70.37s, prompt=21723B, element=Thesis, focus=writing, target populated, cycle=continue, control=emerging). export-run-json and export-run-md anchors carry hrefs of the form REACT_APP_BACKEND_URL/api/tests/runs/{id}/export?format={json|markdown}. Past Runs: after reload, Past Runs section listed both the pre-existing TC07 run and the new TC18 run in reverse-chronological order (past-run-<uuid>); clicking a past run loaded its summary + result cards into the main panel WITHOUT starting a new run (isRunning stays false, run-selected-button remains disabled with 0 selected). Development Panel Export: opening the app with ?dev auto-boots a preset student session, the panel toggle button opens the Development Panel, and the panel header now shows Download icon + export-session-json (JSON) and export-session-md (MD) anchor buttons pointing to REACT_APP_BACKEND_URL/api/sessions/{id}/export?format=json|markdown. Both URLs verified via curl: 200 with application/json (4221B) and text/markdown; charset=utf-8 (3302B) respectively. Regression: opening the app with NO query param shows Teacher Setup form (teacher-setup-form, input-assignment, begin-session-button, quick-test-start-button); tests-page is NOT rendered. No console errors observed during any flow. Pre-existing carry-over: POST /api/sessions still returns 200 instead of 201 (unchanged, non-blocking).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions", "issue": "Returns 200 instead of 201 for resource creation (carry-over from prior iterations; unrelated to iter25)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_behaviors": {
+    "backend_harness_endpoints": [
+      "GET /api/tests/cases -> 32 cases TC01..TC32",
+      "POST /api/tests/run with {case_ids:['TC18']} -> creates run doc, kicks off asyncio background task, returns run with status='running', total=1",
+      "GET /api/tests/runs -> reverse-chron list of past runs (2 present after test)",
+      "GET /api/tests/runs/{id} -> full doc with results[] each carrying evaluation{summary, criteria[]} and turns[] with reasoner_prompt_bytes + latency_s + all instructional fields",
+      "GET /api/tests/runs/{id}/export?format=json -> 200 application/json (attachment header)",
+      "GET /api/tests/runs/{id}/export?format=markdown -> 200 text/markdown (attachment header)",
+      "GET /api/sessions/{id}/export?format=json -> 200 application/json (4221B for preset session)",
+      "GET /api/sessions/{id}/export?format=markdown -> 200 text/markdown (3302B)"
+    ],
+    "frontend_test_harness": [
+      "?tests renders tests-page (data-testid) with 32 case-checkbox-TCxx entries",
+      "run-selected-button correctly disabled at 0 selected and enabled after checking a case",
+      "clicking run-selected-button with TC18 selected creates a run and immediately renders test-summary + test-progress",
+      "test-progress shows Running… with X / Y counter while running and switches to Complete on finish",
+      "polling every 3s updates the run object; page auto-transitions to Complete without user action",
+      "result-card-TC18 appears with PASS badge; result-toggle-TC18 expands to show evaluator summary, 3 criteria with per-criterion verdict + note, and Turn 1 detail block (kind, latency, prompt bytes, student/tutor text, element/target/focus/cycle/control)",
+      "export-run-json / export-run-md hrefs point to backend export endpoints with correct format param",
+      "Past Runs list (past-run-<uuid>) shows both runs post-reload; clicking a past run loads its results WITHOUT starting a new run (isRunning false; run-selected still disabled)"
+    ],
+    "frontend_dev_panel_export": [
+      "?dev auto-boots a preset student session (session id observed: 2202847b-...)",
+      "Development Panel opens on toggle; header shows Download icon + JSON + MD anchor buttons",
+      "export-session-json href = REACT_APP_BACKEND_URL/api/sessions/{id}/export?format=json",
+      "export-session-md   href = REACT_APP_BACKEND_URL/api/sessions/{id}/export?format=markdown",
+      "GET on both hrefs returns 200 with correct content types and non-empty payloads"
+    ],
+    "regression": [
+      "Opening / without any query param renders Teacher Setup (teacher-setup-form + inputs + begin-session-button + quick-test-start-button); tests-page is absent",
+      "No console errors observed across ?tests, ?dev, and / flows"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_developmental_memory_iteration24.py"
+  ],
+  "critical_code_review_comments": [
+    "server.py L1410-1435 POST /api/tests/run correctly (a) filters cases by case_ids when provided else runs all, (b) 400s on empty filter and 500s on missing case data, (c) persists a run doc BEFORE spawning the background task (so the client can immediately poll by id), (d) uses asyncio.create_task for the suite — appropriate for the ~60-120s-per-case cost. One consideration: no upper bound on concurrent runs; two clients hitting Run All simultaneously would spin up 2 x 32 LLM calls. Not in scope for this iteration but worth a note.",
+    "server.py L1438-1441 GET /api/tests/runs correctly projects out `results` (to keep list payload small) and sorts by created_at desc with a hard limit of 50 — matches the sidebar UX which only needs a summary preview per run.",
+    "server.py L1452-1473 both export endpoints correctly (a) load with _id projected out (Mongo ObjectId not serialized), (b) set Content-Disposition with a filename derived from the id prefix, (c) use application/json vs text/markdown media types. json.dumps(default=str) safely handles datetime.",
+    "TestHarness.jsx L119-137 polling effect correctly (a) starts an interval ONLY while status==='running', (b) tears down on effect cleanup and again when status transitions away from running, (c) refreshes the sidebar (refreshRuns) exactly once on completion. Clean lifecycle — no leaked intervals observed across multiple mount/unmount cycles.",
+    "TestHarness.jsx L147-157 doRun starts the run then immediately re-fetches full detail with getTestRun(r.id) so the results[] shape is populated before the polling effect binds — good pattern to avoid a flash of empty state.",
+    "TestHarness.jsx L164-165 uses `run.completed_count / run.total || 1` — safe against divide-by-zero even before the server reports completed_count.",
+    "TestHarness.jsx L36-99 CaseResultCard renders (a) evaluator summary italic, (b) per-criterion icon+verdict+note, (c) per-turn instructional-decision grid with reasoner_prompt_bytes — matches the review-request field list exactly. VERDICT map falls back to 'error' styling for unknown statuses.",
+    "DevelopmentPanel.jsx L542-559 export controls are simple <a> anchors (not fetch()) which is correct for triggering a browser download via Content-Disposition; hrefs are constructed from API_BASE so environment change (REACT_APP_BACKEND_URL) is respected.",
+    "MINOR (carry-over from iter24): POST /api/sessions still returns 200 not 201. Not in scope."
+  ],
+  "action_items": [],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (all harness + export endpoints return correct status/content-type/payload; single-case TC18 live engine run pass_rate=100%)",
+    "frontend": "100% (?tests harness page, live single-case run, result-card expand, past-runs load-without-rerun, ?dev + dev-panel export links, and no-query-param regression all pass)"
+  },
+  "test_credentials": "N/A (no auth in this app; developer bypasses ?tests and ?dev).",
+  "seed_data_creation": "Backend live-engine TC18 run created 1 new test_runs document (id=3592362a-1a42-4004-a29d-21aa311d71a5, TC18, PASS). A prior TC07 run from main-agent smoke-test (12db66d3-...) was also present. ?dev preset session id observed: 2202847b-cfcf-4bdc-b813-d2ec6f2bae48. No sessions were created for the ?tests flow beyond what the harness itself provisioned internally.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Iteration 25 verified the Instructional Test Harness (?tests) + Session Export controls (Development Panel) end-to-end. Any future harness change (new fields on result cards, new export formats, new case ids) can be spot-checked by (a) hitting GET /api/tests/cases and asserting the id set, (b) POSTing /api/tests/run with a single fast case id (TC18 or TC07 recommended — ~60-90s single-case cost), (c) polling GET /api/tests/runs/{id} until status='complete' and asserting evaluation.overall + summary.pass_rate. DO NOT click 'Run All' in the UI or POST with empty/null case_ids in a preview environment — that is a ~45 minute + 32-case LLM cost. The dev panel export links are plain <a> anchors constructed from REACT_APP_BACKEND_URL, so a `?dev` boot + GET on the resolved href is sufficient (no download simulation needed).",
+  "rca of the issue": "No defects. All harness endpoints, background task, polling UI, result rendering, export links, past-run loading, and regression isolation from the student/teacher experience are working exactly as specified in the review request."
+}

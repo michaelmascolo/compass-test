@@ -15,7 +15,10 @@ import {
   Loader2,
   GraduationCap,
   Microscope,
+  Download,
 } from "lucide-react";
+
+const API_BASE = `${process.env.REACT_APP_BACKEND_URL}/api`;
 
 const SectionLabel = ({ children }) => (
   <div className="text-[10px] uppercase tracking-[0.2em] text-amber-500 mb-1.5">
@@ -537,6 +540,23 @@ export default function DevelopmentPanel({
                 </span>
               </div>
               <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1" title="Export this session for audit">
+                  <Download className="h-3 w-3 text-stone-500" />
+                  <a
+                    href={`${API_BASE}/sessions/${session.id}/export?format=json`}
+                    data-testid="export-session-json"
+                    className="text-[9px] uppercase tracking-[0.14em] px-1.5 py-1 rounded-sm border border-stone-700 text-stone-400 hover:text-stone-100 hover:border-stone-500 transition-colors"
+                  >
+                    JSON
+                  </a>
+                  <a
+                    href={`${API_BASE}/sessions/${session.id}/export?format=markdown`}
+                    data-testid="export-session-md"
+                    className="text-[9px] uppercase tracking-[0.14em] px-1.5 py-1 rounded-sm border border-stone-700 text-stone-400 hover:text-stone-100 hover:border-stone-500 transition-colors"
+                  >
+                    MD
+                  </a>
+                </div>
                 <button
                   type="button"
                   data-testid="toggle-research-view"
