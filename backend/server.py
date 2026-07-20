@@ -74,6 +74,55 @@ def _build_compact_domain_index() -> list:
 
 COMPACT_DOMAIN_INDEX = _build_compact_domain_index()
 
+
+# ---------------------------------------------------------------------------
+# Instructional Objects (general, extensible knowledge layer; source: Writing
+# Elements Chart). The engine reasons FROM these structured objects, retrieving
+# only the relevant ones per turn. Domain-tagged so other domains can be added.
+# ---------------------------------------------------------------------------
+def load_instructional_objects() -> dict:
+    path = ROOT_DIR / "instructional_objects.json"
+    try:
+        with open(path, "r") as f:
+            return json.load(f)
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Could not load instructional objects: {e}")
+        return {"instructional_objects": [], "shared_developmental_resources": []}
+
+
+INSTRUCTIONAL_KB = load_instructional_objects()
+INSTRUCTIONAL_OBJECTS = INSTRUCTIONAL_KB.get("instructional_objects", [])
+SHARED_DEV_RESOURCES = INSTRUCTIONAL_KB.get("shared_developmental_resources", [])
+_IO_BY_NAME = {o["element"].lower(): o for o in INSTRUCTIONAL_OBJECTS}
+for _o in INSTRUCTIONAL_OBJECTS:
+    for _a in _o.get("aliases", []):
+        _IO_BY_NAME.setdefault(_a.lower(), _o)
+
+# tiny index (name + definition + communicative purpose) for STAGE A selection
+INSTRUCTIONAL_OBJECT_INDEX = [
+    {"element": o["element"], "definition": o["definition"],
+     "communicative_purpose": o.get("communicative_purpose", "")}
+    for o in INSTRUCTIONAL_OBJECTS
+]
+
+
+def get_relevant_instructional_objects(names: list) -> list:
+    """Retrieve full instructional objects by element name/alias (exact-ish match)."""
+    out, seen = [], set()
+    for n in names or []:
+        key = (n or "").strip().lower()
+        obj = _IO_BY_NAME.get(key)
+        if not obj:
+            # loose contains-match fallback
+            for k, v in _IO_BY_NAME.items():
+                if key and (key in k or k in key):
+                    obj = v
+                    break
+        if obj and obj["element"] not in seen:
+            seen.add(obj["element"])
+            out.append(obj)
+    return out
+
 # Sections always kept as safety rails regardless of section selection.
 ALWAYS_KEYS = ("domain_name", "governing_communicative_function", "domain_status", "prohibitions")
 
@@ -236,6 +285,25 @@ class IntegrationCalibration(BaseModel):
     integration_notes: str = ""           # how frameworks were unified into one coherent interpretation; any cross-framework transfer noted for consolidation
 
 
+class InstructionalReasoning(BaseModel):
+    """Governed canonical instruction (Instructional-Object layer). The per-turn
+    reasoning that relates the student's organization to the canonical writing
+    element and the teacher's purpose. Populated every turn (applies=True)."""
+    applies: bool = True
+    current_unit_of_writing: str = ""          # whole essay / introduction / paragraph / sentence / claim / evidence / ...
+    active_instructional_element: str = ""      # the canonical element name from the KB
+    element_communicative_purpose: str = ""     # what communicative work that element performs
+    student_current_organization: str = ""      # what the student is trying to do / understands / is missing
+    canonical_performance_structure: str = ""   # how the element is normally constructed (from the object)
+    primary_developmental_tension: str = ""     # the one gap between student organization and canonical form/purpose
+    next_student_act: str = ""                  # the single act the student can perform with support
+    selected_developmental_resources: List[str] = Field(default_factory=list)  # from the shared resource menu
+    resource_selection_rationale: str = ""      # why these resources best help THIS student now
+    evidence_of_developmental_movement: str = ""  # what changed since last turn (or 'initial')
+    degree_of_student_control: str = ""         # scaffolded / emerging / increasing / largely independent
+    continue_consolidate_release_or_shift: str = ""  # continue | consolidate | release | shift_to_prerequisite
+
+
 class DevelopmentalTheory(BaseModel):
     """C — Working Developmental Theory (one evolving, provisional theory)."""
     current_telos: str = ""
@@ -248,6 +316,7 @@ class DevelopmentalTheory(BaseModel):
     reader_construction: ReaderConstruction = Field(default_factory=ReaderConstruction)
     revision_development: RevisionDevelopment = Field(default_factory=RevisionDevelopment)
     integration_calibration: IntegrationCalibration = Field(default_factory=IntegrationCalibration)
+    instructional_reasoning: InstructionalReasoning = Field(default_factory=InstructionalReasoning)
     current_organization: str = ""
     observed_differentiations: List[str] = Field(default_factory=list)
     observed_integrations: List[str] = Field(default_factory=list)
@@ -451,6 +520,30 @@ DEVELOPMENTAL INTEGRATION & CALIBRATION (Milestone 14 — the final coherence me
 - SELF-CHECK before finalizing: Is the selected target the highest-leverage opportunity? Are other frameworks supporting rather than competing? Is this intervention proportional? Is the invitation developmentally appropriate? If any answer is no, re-unify around the single best target before producing the one student-facing invitation.
 This layer NEVER overrides the M11 one-target rule, the one-invitation rule, or the M5A boundary; it only guarantees the whole system yields ONE coherent, calibrated, consistent developmental interpretation.
 
+GOVERNED CANONICAL INSTRUCTION (Instructional-Object layer — apply EVERY turn; this GOVERNS the instruction while the student's thinking still leads the conversation). Each turn you are given RETRIEVED INSTRUCTIONAL OBJECTS: structured canonical knowledge for the writing element(s) relevant to the student's current task. You MUST reason FROM these objects, not from general impressions. Complete this internal sequence and record it in theory.instructional_reasoning:
+1. Recover the teacher's assignment, pedagogical purpose, current writing task, and the student's current developmental state (from telos + theory).
+2. Identify the UNIT currently being worked on (whole essay / introduction / paragraph / sentence / claim / evidence / other) → current_unit_of_writing.
+3. Identify the relevant canonical writing element(s) and set active_instructional_element (use a retrieved instructional object's element name).
+4. Read that object: its definition, communicative_purpose (→ element_communicative_purpose), performance_structure (→ canonical_performance_structure), recognition_diagnostics, and common_obstacles.
+5. Reconstruct the student's current organization (what they are trying to do, what they already understand, what is present, and what is missing/confused/partial; note motivational/emotional factors) → student_current_organization.
+6. Compare the student's organization with the canonical form AND the teacher's purpose.
+7. Identify ONE primary developmental tension (the single most important gap) → primary_developmental_tension.
+8. Identify the next act the student can plausibly perform WITH SUPPORT → next_student_act.
+9. Select the developmental resource(s) from the SHARED DEVELOPMENTAL RESOURCE MENU that best help THIS student perform that act → selected_developmental_resources + resource_selection_rationale. Do NOT rely on open-ended questioning alone — teach when the student lacks the concept.
+10-12. Generate ONE focused instructional exchange; require the student to perform the act themselves; then evaluate their response for developmental movement → evidence_of_developmental_movement, and estimate degree_of_student_control (scaffolded / emerging / increasing / largely_independent).
+13-14. Decide continue_consolidate_release_or_shift (continue | consolidate | release | shift_to_prerequisite) and keep it consistent with the M11 controller.
+
+CANONICAL-KNOWLEDGE GOVERNANCE (mandatory):
+- The student's THINKING leads the conversation; the CULTURAL ORGANIZATION OF WRITING (the instructional objects + teacher purpose) leads the INSTRUCTION. Recognize and preserve the student's meaning, but do NOT stay inside the student's frame when that frame is incomplete, mistaken, vague, or inconsistent with the writing task.
+- ANSWER-THE-ASSIGNMENT CHECK: verify the student's writing actually answers the visible assignment/prompt precisely. If it drifts (e.g., the assignment is about "teen friendships" but the draft shifts to "kids"/other topics), name the drift plainly and reorient the student to the assignment before developing anything further. Do not accept a response that does not answer the assignment.
+- TEACH, don't only ask: when the student lacks a concept, TEACH it — use the canonical term, define it in accessible language, and connect it immediately to the student's own writing. Questioning is ONE resource among many, never the only method.
+- SUPPORTED PERFORMANCE: the student must PERFORM the target act (answer / distinguish / compare / explain / revise / select / reorganize / write) — you never perform it for them, never rewrite their thesis/paragraph/essay, never supply a polished version to copy (M5A remains in force).
+- DEVELOPMENTAL DIRECTION: scaffolded performance in interaction → increasing student control → increasingly independent mastery. Do not move to a new writing element before the current developmental act is sufficiently completed; canonical forms are resources, never rigid templates or formulas.
+
+STUDENT-FACING RESPONSE SHAPE (vary it — never mechanical): most invitations combine some of (A) Recognition of what the student is doing/emerging; (B) brief Instruction of the relevant concept in clear language; (C) Reorientation to the assignment / reader / unit purpose / larger essay; (D) Supported performance — one specific act to perform now; (E) Consolidation — after success, name what was learned/accomplished, then release to write or name the next act. Remain supportive without becoming vague or permissive; do not praise every response or treat all responses as equally adequate; distinguish the productive discomfort of genuine learning from harmful overload.
+This layer coordinates with (does not override) the M11 one-target rule, the one-invitation rule, and the M5A boundary.
+
+
 
 
 
@@ -510,6 +603,7 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "reader_construction": {"applies": "true whenever there is drafted text to read, else false", "reader_understanding": "what a reasonable naive reader understands at this point given only what the text has said — else empty", "likely_reader_questions": ["questions the reader would naturally have now — else empty"], "assumed_knowledge": "knowledge assumed but not yet communicated; reasonable inference vs unsupported assumption — else empty", "clarification_needed": "where a reader could be confused — else empty", "elaboration_needed": "where the reader cannot yet understand the intended meaning without more support — else empty", "precision_risk": "where a reasonable reader could interpret this differently than intended — else empty", "next_reader_need": "what the reader would naturally need next — else empty"},
     "revision_development": {"applies": "true only when a prior draft exists to compare against (revise/later draft), else false", "development_detected": "yes/partial/no + brief — did a developmental capacity strengthen? (edits != growth) — else empty", "primary_growth": "the single most important capacity that got stronger (purpose/paragraph/evidence-interp/coherence/reader-understanding/precision/elaboration/conclusion/organization) — else empty", "communication_change": "did communication actually improve, and how? — else empty", "reader_change": "did the reader's likely understanding improve? — else empty", "remaining_opportunity": "if limited/regressed: the ONE remaining developmental opportunity (do not re-teach everything) — else empty", "transfer_message": "how the student can transfer this understanding to FUTURE writing — else empty"},
     "integration_calibration": {"applies": "true every turn", "primary_framework": "which framework's opportunity is primary this turn (aligns with scaffolding_control.primary_target)", "supporting_frameworks": ["frameworks that SUPPORT (not compete with) the primary — unify overlapping opportunities into one focus"], "calibration_check": "is the intervention proportional to the actual need? (guards over-/under-teaching, unnecessary intervention, unmotivated target-shifting)", "consistency_check": "would an equivalent writing situation receive the same priority?", "integration_notes": "how frameworks were unified into one coherent interpretation; any cross-framework transfer for consolidation"},
+    "instructional_reasoning": {"applies": "true every turn", "current_unit_of_writing": "whole essay | introduction | paragraph | sentence | claim | evidence | ...", "active_instructional_element": "the canonical element name from the retrieved instructional objects", "element_communicative_purpose": "the communicative work that element performs", "student_current_organization": "what the student is trying to do / understands / is missing or confused about", "canonical_performance_structure": "how the element is normally constructed (from the object)", "primary_developmental_tension": "the ONE gap between the student's organization and the canonical form + teacher purpose", "next_student_act": "the single act the student can perform WITH support (answer/distinguish/compare/explain/revise/select/reorganize/write)", "selected_developmental_resources": ["1-3 resources chosen from the shared resource menu"], "resource_selection_rationale": "why these resources best help THIS student now", "evidence_of_developmental_movement": "what changed since last turn, or 'initial'", "degree_of_student_control": "scaffolded | emerging | increasing | largely_independent", "continue_consolidate_release_or_shift": "continue | consolidate | release | shift_to_prerequisite"},
     "observed_differentiations": [], "observed_integrations": [], "observed_coordinations": [],
     "emerging_intentional_control": "",
     "unresolved_tensions": [], "cultural_resources_in_use": [], "potential_cultural_resources": [],
@@ -571,6 +665,7 @@ def _compact_theory(theory: DevelopmentalTheory) -> dict:
         "reader_construction": theory.reader_construction.model_dump(),
         "revision_development": theory.revision_development.model_dump(),
         "integration_calibration": theory.integration_calibration.model_dump(),
+        "instructional_reasoning": theory.instructional_reasoning.model_dump(),
         "current_organization": theory.current_organization,
         "unresolved_tensions": theory.unresolved_tensions,
         "currently_relevant_domains": theory.currently_relevant_domains,
@@ -626,20 +721,24 @@ DOMAINS PREVIOUSLY RELEVANT: {prior if prior else "(none yet)"}
 COMPACT DOMAIN INDEX (each domain lists its available section keys):
 {json.dumps(COMPACT_DOMAIN_INDEX, indent=2)}
 
+CANONICAL INSTRUCTIONAL OBJECTS INDEX (element + definition + communicative purpose). Also choose the 1-3 instructional objects whose canonical writing element is most relevant to the student's current developmental task/unit:
+{json.dumps(INSTRUCTIONAL_OBJECT_INDEX, indent=2)}
+
 {_latest_block(session, req)}
 
 Respond with ONLY this JSON:
-{{"relevant_domains": [{{"domain_name": "exact name", "relevant_sections": ["exact section key", "..."]}}]}}
-(1 to 3 domains; section keys must be exact strings from that domain's "sections".)"""
+{{"relevant_domains": [{{"domain_name": "exact name", "relevant_sections": ["exact section key", "..."]}}], "relevant_instructional_objects": ["exact element name", "..."]}}
+(1 to 3 domains; section keys must be exact strings from that domain's "sections"; 1 to 3 instructional-object element names copied exactly from the index.)"""
 
 
 def _select_names(selections: list) -> List[str]:
     return [s["domain_name"] if isinstance(s, dict) else s for s in selections]
 
 
-def _build_prompt(session: Session, req: InteractRequest, selections: list) -> str:
+def _build_prompt(session: Session, req: InteractRequest, selections: list, io_names: list = None) -> str:
     full_domain_data = get_relevant_domain_data(selections)
     names = _select_names(selections)
+    io_objects = get_relevant_instructional_objects(io_names or [])
     return f"""CURRENT DEVELOPMENTAL TELOS (component A — provisional, revisable):
 {json.dumps(session.telos.model_dump(), indent=2)}
 
@@ -654,9 +753,15 @@ CURRENTLY RELEVANT CANONICAL DOMAINS (selected for THIS turn): {names}
 RELEVANT SECTIONS OF THE RELEVANT CANONICAL DOMAINS (domain-specific cultural resources loaded as DATA — use these, do not rely on general writing knowledge; you may adjust which domains are relevant and reflect that in currently_relevant_domains):
 {json.dumps(full_domain_data, indent=2)}
 
+RETRIEVED INSTRUCTIONAL OBJECTS FOR THIS TURN (the canonical writing knowledge that GOVERNS your instruction — reason FROM these structured objects, not from general knowledge). Each object carries definition, communicative_purpose, performance_structure, recognition_diagnostics, common_obstacles, next_developmental_moves, indicators_of_control:
+{json.dumps(io_objects, indent=2)}
+
+SHARED DEVELOPMENTAL RESOURCE MENU (choose the resource(s) that best help THIS student perform the next act — do NOT use questioning as your only method):
+{json.dumps(SHARED_DEV_RESOURCES, indent=2)}
+
 {_latest_block(session, req)}
 
-Run the full recursive loop and respond with ONLY the JSON object described in your instructions. Revise the ENTIRE working theory rather than appending a note. Keep every field terse per the BREVITY rule."""
+Run the full recursive loop AND the governed instructional reasoning, then respond with ONLY the JSON object described in your instructions (including the "instructional_reasoning" block). Revise the ENTIRE working theory rather than appending a note. Keep every field terse per the BREVITY rule."""
 
 
 def _parse_engine_output(session: Session, raw: str) -> dict:
@@ -798,21 +903,22 @@ async def edit_telos(session_id: str, edit: TelosEdit):
     return session
 
 
-async def _select_relevant_domains(session: Session, req: InteractRequest) -> list:
-    """STAGE A — pick the 1-3 relevant domains AND, per domain, the relevant
-    section keys, using the compact index only. Retries once on transient
-    failure, then falls back to prior domains (whole records)."""
+async def _select_relevant_domains(session: Session, req: InteractRequest) -> tuple:
+    """STAGE A — pick the 1-3 relevant domains (with section keys) AND the 1-3
+    relevant instructional-object element names, using the compact indexes only.
+    Retries once on transient failure, then falls back to prior domains."""
     prompt = _selector_prompt(session, req)
     for attempt in range(2):
         try:
             chat = LlmChat(
                 api_key=EMERGENT_LLM_KEY,
                 session_id=f"select-{session.id}",
-                system_message="You select relevant canonical writing domains and sections. Respond with ONLY the requested JSON.",
+                system_message="You select relevant canonical writing domains, sections, and instructional objects. Respond with ONLY the requested JSON.",
             ).with_model("anthropic", "claude-sonnet-4-6")
             raw = await chat.send_message(UserMessage(text=prompt))
+            parsed = _extract_json(raw)
             out = []
-            for item in _extract_json(raw).get("relevant_domains", []):
+            for item in parsed.get("relevant_domains", []):
                 if isinstance(item, str):
                     name, sections = item, []
                 else:
@@ -821,25 +927,26 @@ async def _select_relevant_domains(session: Session, req: InteractRequest) -> li
                 if not rec:
                     continue
                 out.append({"domain_name": name, "sections": [s for s in sections if s in rec]})
+            io_names = [n for n in (parsed.get("relevant_instructional_objects") or []) if isinstance(n, str)]
             if out:
-                return out[:3]
+                return out[:3], io_names[:3]
         except Exception as e:  # noqa: BLE001
             logger.warning(f"domain selection attempt {attempt + 1} failed: {e}")
             if attempt == 0:
                 await asyncio.sleep(3)
     prior = [n for n in session.theory.currently_relevant_domains if n in _DOMAINS_BY_NAME]
     fallback = prior[:2] if prior else ["Whole Essay Purpose"]
-    return [{"domain_name": n, "sections": []} for n in fallback]
+    return [{"domain_name": n, "sections": []} for n in fallback], []
 
 
 async def _run_engine(session: Session, req: InteractRequest) -> dict:
     """Run STAGE A (domain selection) + STAGE B (developmental reasoning) with one
     retry on transient/unreadable failure. Pure logic — no client connection.
     Raises on unrecoverable failure."""
-    relevant = await _select_relevant_domains(session, req)
-    prompt = _build_prompt(session, req, relevant)
+    relevant, io_names = await _select_relevant_domains(session, req)
+    prompt = _build_prompt(session, req, relevant, io_names)
     _sel_log = {s["domain_name"]: len(s["sections"]) for s in relevant}
-    logger.info(f"[reason] domains/sections={_sel_log} reasoner_prompt_bytes={len(prompt)}")
+    logger.info(f"[reason] domains/sections={_sel_log} io={io_names} reasoner_prompt_bytes={len(prompt)}")
 
     last_err = None
     for attempt in range(2):

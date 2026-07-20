@@ -51,6 +51,7 @@ export default function StudentWorkspace({
   loading,
   onOpenPanel,
   onNewSession,
+  onNewAssignment,
 }) {
   const [draft, setDraft] = useState("");
   const [reply, setReply] = useState("");
@@ -91,15 +92,28 @@ export default function StudentWorkspace({
           Writing Studio
         </div>
         <div className="flex items-center gap-2">
+          {onNewAssignment && (
+            <button
+              onClick={() => !loading && onNewAssignment()}
+              disabled={loading}
+              data-testid="new-assignment-button"
+              className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-[#8C3A2A] border border-stone-300 hover:border-[#8C3A2A] rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Set up a new teacher assignment (does not restore the sample)"
+            >
+              <BookOpen className="h-3.5 w-3.5" />
+              New Assignment
+            </button>
+          )}
           {onNewSession && (
             <button
               onClick={() => !loading && onNewSession()}
               disabled={loading}
-              data-testid="new-test-session-button"
+              data-testid="reset-to-sample-button"
               className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-[#8C3A2A] border border-stone-300 hover:border-[#8C3A2A] rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              title="Reset to the sample assignment"
             >
               <RotateCcw className="h-3.5 w-3.5" />
-              New Test
+              Reset to Sample
             </button>
           )}
           <button

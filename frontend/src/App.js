@@ -33,9 +33,12 @@ function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const wantsDev = params.has("dev");
+    const manualSetup = sessionStorage.getItem("dws_manual_setup") === "1";
     const id = localStorage.getItem(STORAGE_KEY);
     if (!id) {
-      if (wantsDev) {
+      // Only auto-load the sample via ?dev if the teacher has NOT explicitly
+      // chosen to set up a new assignment (prevents silently restoring the default).
+      if (wantsDev && !manualSetup) {
         handleQuickStart().finally(() => setBooting(false));
         return;
       }
@@ -93,6 +96,7 @@ function App() {
   const handleQuickStart = useCallback(async () => {
     setSubmitting(true);
     try {
+      sessionStorage.removeItem("dws_manual_setup");
       const s = await createSession(TEST_PRESET);
       localStorage.setItem(STORAGE_KEY, s.id);
       setSession(s);
@@ -103,11 +107,28 @@ function App() {
     }
   }, []);
 
+  // Explicit "Reset to sample assignment" — never silent.
   const handleNewSession = useCallback(async () => {
     localStorage.removeItem(STORAGE_KEY);
     setSession(null);
     await handleQuickStart();
   }, [handleQuickStart]);
+
+  // Go to Teacher Setup for a fresh custom assignment WITHOUT restoring the sample.
+  const handleNewAssignment = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    sessionStorage.setItem("dws_manual_setup", "1");
+    setSession(null);
+  }, []);
+
+  const handleBeginWrapped = useCallback(
+    async (form) => {
+      sessionStorage.removeItem("dws_manual_setup");
+      await handleBegin(form);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   const handleSubmit = useCallback(
     async (kind, content) => {
@@ -161,7 +182,7 @@ function App() {
       <Toaster position="top-center" richColors />
       {!session ? (
         <TeacherSetup
-          onBegin={handleBegin}
+          onBegin={handleBeginWrapped}
           submitting={submitting}
           onQuickStart={handleQuickStart}
         />
@@ -173,6 +194,7 @@ function App() {
             loading={submitting || isProcessing}
             onOpenPanel={() => setPanelOpen(true)}
             onNewSession={handleNewSession}
+            onNewAssignment={handleNewAssignment}
           />
           <DevelopmentPanel
             open={panelOpen}

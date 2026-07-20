@@ -380,6 +380,7 @@ function computeDefaults(theory) {
   const map = {
     scaffolding_control: true,
     integration_calibration: true,
+    instructional_reasoning: true,
     intervention: true,
     detail: false,
   };
@@ -579,6 +580,56 @@ export default function DevelopmentPanel({
             </div>
 
             <div className="flex-1 overflow-y-auto custom-scroll px-5 py-5">
+              {/* 0 — Governed Canonical Instruction (Instructional-Object layer) */}
+              {theory.instructional_reasoning?.applies !== false ? (
+                <Accordion
+                  id="instructional_reasoning"
+                  title={t("Instructional Reasoning", "Instructional Reasoning (Instructional Objects)")}
+                  accent="border-l-2 border-l-emerald-500"
+                  open={openMap.instructional_reasoning}
+                  onToggle={() => toggle("instructional_reasoning")}
+                >
+                  <div className="space-y-1.5" data-testid="instructional-reasoning-block">
+                    <KV k="Current unit of writing" accent="text-emerald-300">
+                      <Text value={theory.instructional_reasoning?.current_unit_of_writing} />
+                    </KV>
+                    <KV k="Active writing element" accent="text-amber-300">
+                      <Text value={theory.instructional_reasoning?.active_instructional_element} />
+                    </KV>
+                    <KV k="What that element does">
+                      <Text value={theory.instructional_reasoning?.element_communicative_purpose} />
+                    </KV>
+                    <KV k="Student's current organization">
+                      <Text value={theory.instructional_reasoning?.student_current_organization} />
+                    </KV>
+                    <KV k="How this element is built">
+                      <Text value={theory.instructional_reasoning?.canonical_performance_structure} />
+                    </KV>
+                    <KV k="Primary developmental tension" accent="text-amber-300">
+                      <Text value={theory.instructional_reasoning?.primary_developmental_tension} />
+                    </KV>
+                    <KV k="Next student act" accent="text-sky-300">
+                      <Text value={theory.instructional_reasoning?.next_student_act} />
+                    </KV>
+                    <KV k="Selected teaching resources">
+                      <List items={theory.instructional_reasoning?.selected_developmental_resources} />
+                    </KV>
+                    <KV k="Why these resources">
+                      <Text value={theory.instructional_reasoning?.resource_selection_rationale} />
+                    </KV>
+                    <KV k="Evidence of movement">
+                      <Text value={theory.instructional_reasoning?.evidence_of_developmental_movement} />
+                    </KV>
+                    <KV k="Degree of student control" accent="text-emerald-300">
+                      <Text value={theory.instructional_reasoning?.degree_of_student_control} />
+                    </KV>
+                    <KV k="Continue / consolidate / release / shift" accent="text-sky-300">
+                      <Text value={theory.instructional_reasoning?.continue_consolidate_release_or_shift} />
+                    </KV>
+                  </div>
+                </Accordion>
+              ) : null}
+
               {/* 1 — Scaffolding Controller (the one decision that matters) */}
               <Accordion
                 id="scaffolding_control"
