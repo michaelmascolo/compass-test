@@ -83,3 +83,21 @@ TC28: after the student produced a good thesis, the engine immediately advanced 
 | `baseline_run_2598c428.json` | Complete structured JSON record (full run doc) |
 | `baseline_failures_ambiguous_2598c428.md` | Failed (1) + ambiguous (8) cases only |
 | `baseline_analysis_2598c428.md` | This analysis |
+
+## Meta-review addendum (architect audit of the evaluator)
+
+A second, independent instructional-architect pass audited the evaluator's own judgment on all 9 non-pass cases (see `baseline_enhanced_review_2598c428.md`). Root-cause verdict per case:
+
+| Case | Result | Architect confidence in result | Root cause |
+|---|---|---|---|
+| TC03 | partial | medium | poor calibration (engine) |
+| TC07 | partial | high | poor calibration (engine) |
+| TC18 | partial | medium | poor calibration (engine) |
+| **TC21** | **fail** | **low** | **evaluator problem** |
+| TC28 | partial | medium | poor calibration (engine) |
+| TC29 | partial | medium | poor calibration (engine) |
+| TC30 | partial | medium | poor calibration (engine) |
+| TC31 | partial | medium | poor calibration (engine) |
+| TC32 | partial | medium | poor calibration (engine) |
+
+**Key meta-finding:** the single hard FAIL (TC21) is, in the architect's read, most likely an **evaluator over-reach**, not an engine defect — Compass said "*Try rewriting the sentence so a reader…can follow…*", which is a generic student-directed revision invitation, not tutor-supplied replacement text. If confirmed, the highest-leverage fix may be to **sharpen the evaluator's definition of "directs a rewrite"** (tutor produces substitute text OR prescribes a single acceptable surface form) before touching the engine. The remaining 8 (all "poor calibration") point at genuine engine restraint/consolidation/profile-priority tuning — but should be weighed knowing the grader itself is part of the measurement instrument.
