@@ -1,0 +1,82 @@
+{
+  "summary": "Iteration 24 verified the Compass engine revision — (1) Instructional Networks (related_elements injection) and (2) Developmental Memory (session.developmental_profile) — end-to-end. Backend: 10/10 pytest checks passed on a real 2-turn social-media session. Turn 1 seeded a non-empty developmental_profile (Central Claim: confused/emerging, episodes=1). Turn 2 (revise draft that took a clear position) MERGED the same element in place (Central Claim: emerging, episodes=2) and appended a second observation (Evidence: confused) — no duplicates. theory.instructional_reasoning.evidence_of_developmental_movement was populated with a substantive statement ('draft shifted from hedge to contestable claim with reasons — clear developmental movement'), not the sentinel 'initial'. Profile persists on GET /sessions/{id} (not recomputed). One instructional target per turn (scaffolding_control.primary_target singular string; instructional_reasoning.active_instructional_element singular string). intervention.focus == 'writing' on both turns. Governed instruction intact: POST /interact returns immediately (<15s) with an ai turn of status='processing', polling reaches 'complete' (~65-75s single turn). The invitation names network neighbors (position/purpose/reader/evidence/reasons) rather than treating the target in isolation, and does NOT co-author the student's thesis. No 5xx errors from network injection. Frontend: on the public preview URL, loaded a completed 2-turn TEST_iter24 session via localStorage.dws_session_id; ?dev auto-quickstart bypass respected. Student Workspace unchanged and functional (writing-area, continue-button, assignment-prompt persistently visible showing the full TEST prompt, reset-to-sample-button, new-assignment-button). Dev Panel opens; the NEW 'developmental-memory-block' accordion is present and open by default; renders 2 items (dev-memory-item-0 = 'Central Claim · emerging · 2', dev-memory-item-1 = 'Evidence · confused') each showing element + trend badge + episode count + control_statement + evidence-basis. Existing instructional-reasoning-block, scaffolding-control-block, integration-calibration-block all still render. toggle-research-view still flips Teacher view <-> Research view. No JS errors in console.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions", "issue": "Returns 200 instead of 201 for resource creation (carry-over from prior iterations; not blocking, not related to iter24)"}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_behaviors": {
+    "backend_developmental_memory": [
+      "Turn 1 seeds developmental_profile (>=1 observation) with correct DevelopmentalObservation shape (element, control_statement, trend in {confused|emerging|developing|consolidating|independent}, evidence, episodes>=1)",
+      "Turn 2 does NOT duplicate the shared element — merged in place (no lowercased-element collision in the list)",
+      "Turn 2 shows developmental MOVEMENT on the shared element: episodes bumped to 2 AND/OR trend advanced (observed: Central Claim confused -> emerging with episodes=2)",
+      "theory.instructional_reasoning.evidence_of_developmental_movement populated with substantive content (not 'initial') on the revise turn",
+      "GET /sessions/{id} returns the accumulated developmental_profile after both turns (persisted, not recomputed)"
+    ],
+    "backend_instructional_networks": [
+      "POST /interact succeeds with related_elements injection — no 5xx, no parser errors",
+      "Exactly ONE primary_target per turn (scaffolding_control.primary_target is a non-empty singular string on both turns)",
+      "active_instructional_element is a singular non-empty string on both turns",
+      "Invitation on the revise turn integrates network neighbors (position/purpose/reader/evidence/reasons/argument vocabulary present)",
+      "No co-authoring red flags in the invitation ('here's a thesis:', 'your thesis should be', etc. absent)"
+    ],
+    "backend_regression": [
+      "POST /interact returns in <15s with ai turn status='processing' (durable processing intact)",
+      "Polling GET /sessions reaches status='complete' within poll window (~65s per turn observed)",
+      "intervention.focus == 'writing' on both turns",
+      "integration_calibration.applies == true on turn 2",
+      "instructional_reasoning.applies == true on both turns"
+    ],
+    "frontend_dev_panel": [
+      "developmental-memory-block present in DOM after a completed turn (open by default)",
+      "dev-memory-item-0 and dev-memory-item-1 both render with element + trend badge + episode count + control_statement + evidence-basis",
+      "Observed values: 'Central Claim · emerging · 2' and 'Evidence · confused' — matches backend developmental_profile exactly",
+      "instructional-reasoning-block still renders with all 12 fields populated (incl. 'Evidence of movement: draft shifted from hedge to contestable claim…')",
+      "scaffolding-control-block still renders",
+      "integration-calibration-block still renders",
+      "toggle-research-view still flips Teacher view <-> Research view"
+    ],
+    "frontend_student_workspace": [
+      "writing-area, continue-button, assignment-prompt, reset-to-sample-button, new-assignment-button all present",
+      "Persistent assignment-prompt box shows the full TEST prompt including 'Does social media improve or harm teen friendships? Take a position and defend it.'",
+      "None of the new structures (developmental_profile, instructional networks) are exposed to the student — only Dev Panel",
+      "No console errors on load or during Dev Panel expansion"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_developmental_memory_iteration24.py",
+    "/app/test_reports/pytest/iteration24_results.xml"
+  ],
+  "critical_code_review_comments": [
+    "server.py L127-148 build_instructional_network() correctly (a) computes target names first, (b) walks each target's related_elements in insertion order, (c) skips names that are already targets OR already added neighbors (dedupe), (d) looks up neighbors via alias-aware _IO_BY_NAME with .lower() so aliases resolve, (e) returns compact {element, communicative_purpose, relates_to_targets} — the last field is what lets the LLM reason WITH the network rather than as isolated leaves. Verified against the injected prompt block at L810.",
+    "server.py L312-320 DevelopmentalObservation model uses `episodes: int = 1` and default `updated_at` from now_iso — new observations always start at 1, and the merge path at L872 increments in place. Correct semantics for 'not chat memory, developmental memory'.",
+    "server.py L856-882 _merge_developmental_profile() correctly (a) builds a lowercased element index up front, (b) updates control_statement/trend/evidence ONLY when the LLM supplies a non-empty value ('u.get(x) or existing.x') — no null-clobbering, (c) bumps episodes on merge, (d) refreshes updated_at, (e) appends new observations and re-registers them in by_el so a same-turn dup is also caught. This exactly satisfies the 'match element -> update + episodes++, else append' contract from the review request.",
+    "server.py L694-701 _developmental_profile_summary() provides an explicit 'no prior developmental evidence' seed message for turn 1 — the prompt is well-formed even when the profile is empty. Prevents empty-string / broken-format edge cases.",
+    "server.py L1090 the /$set update INCLUDES developmental_profile — confirms the profile is persisted (not recomputed from turns each request). GET /sessions returns it directly via the Session model.",
+    "server.py L1058-1093 _run_reasoning() re-reads the session AFTER reasoning (doc2) and merges onto the freshly-loaded session2 — this preserves concurrent writes and is the correct pattern for durable processing. The developmental_profile persistence path is safe against overlapping turns (though the 409 guard at L1114 already prevents concurrent turns).",
+    "DevelopmentPanel.jsx L378-393 computeDefaults() correctly includes `developmental_memory: true` so the new accordion is OPEN by default — matches the review-request statement 'open by default'.",
+    "DevelopmentPanel.jsx L643-673 renders the profile list with per-item data-testid `dev-memory-item-${i}` — testable and stable indexing.",
+    "MINOR: DevelopmentPanel.jsx L654 uses `key={i}` for the profile list; if the LLM ever reorders observations across turns this could cause stale DOM. Since _merge_developmental_profile keeps ordering stable (updates in place; appends at the end), this is safe today. If the merge policy ever changes to reorder, keying by o.element would be safer.",
+    "MINOR (carry-over from iter23): LLM sometimes emits internal M-numbers into integration_calibration.supporting_frameworks. Not in scope for iter24."
+  ],
+  "action_items": [],
+  "updated_files": [
+    "/app/backend/tests/test_developmental_memory_iteration24.py (new)"
+  ],
+  "success_rate": {
+    "backend": "100% (10/10 pytest checks pass in 135.9s)",
+    "frontend": "100% (all iter24 workspace / dev-panel / developmental-memory-block / regression-block / research-toggle checks pass on the public preview URL)"
+  },
+  "test_credentials": "N/A (no auth in this app).",
+  "seed_data_creation": "Backend pytest created 1 TEST_iter24 multi-turn session (assignment='TEST_iter24 social-media-friendships', 2 completed AI turns, 2-observation developmental_profile). Two such sessions now exist in the DB from earlier runs (e3ccdf12-..., 1a388bdc-...). Frontend test reused the newest of these via localStorage.dws_session_id — did not create additional sessions.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iteration_24 verified the Compass engine revision (instructional networks + developmental memory) end-to-end. Backend test lives at /app/backend/tests/test_developmental_memory_iteration24.py — it drives a 2-turn social-media session and asserts (a) profile is seeded on turn 1, (b) profile is MERGED (not duplicated) with episodes bumped or trend advanced on turn 2, (c) evidence_of_developmental_movement populated with substantive content, (d) profile persists via GET, (e) exactly one primary_target per turn, (f) invitation integrates with network neighbors and does not co-author. Runtime is ~135s (2 sequential LLM turns ~65s each). If POST /sessions payload shape ever changes, the fixture at L38 needs updating. Frontend flow: to test the Dev Panel WITHOUT paying the LLM cost, query mongo for a completed TEST_iter24 session id, drop it into localStorage['dws_session_id'], remove sessionStorage['dws_manual_setup'], then load ?dev — the app will restore that session and the Dev Panel will render developmental-memory-block with dev-memory-item-N children. Reasoning is LLM-bound and slow — never treat multi-turn latency as a failure.",
+  "rca of the issue": "No defects in the shipped iteration_24 revision. My first test payload used the wrong POST /sessions shape (assignment_context envelope + kind='draft'); corrected to SessionCreate fields (assignment/pedagogical_purpose/current_writing_task/assignment_prompt) and InteractRequest kinds ('writing' first, 'revise' second) per DRAFT_KINDS set in server.py. After that fix all 10 backend tests passed on the first real run. Frontend verification observed the exact backend state in the DOM (Central Claim emerging·2 + Evidence confused), confirming the full backend->frontend integration."
+}

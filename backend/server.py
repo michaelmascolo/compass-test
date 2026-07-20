@@ -123,6 +123,30 @@ def get_relevant_instructional_objects(names: list) -> list:
             out.append(obj)
     return out
 
+
+def build_instructional_network(target_objects: list) -> list:
+    """Given the retrieved TARGET object(s), return compact summaries of their
+    related neighbors (the surrounding instructional network) that are NOT
+    already fully retrieved, so the engine can reason over the network."""
+    target_names = {o["element"] for o in target_objects}
+    neighbor_names, order = set(), []
+    for o in target_objects:
+        for rel in o.get("related_elements", []):
+            if rel not in target_names and rel not in neighbor_names:
+                neighbor_names.add(rel)
+                order.append(rel)
+    network = []
+    for name in order:
+        obj = _IO_BY_NAME.get(name.lower())
+        if not obj:
+            continue
+        network.append({
+            "element": obj["element"],
+            "communicative_purpose": obj.get("communicative_purpose", ""),
+            "relates_to_targets": [t for t in obj.get("related_elements", []) if t in target_names],
+        })
+    return network
+
 # Sections always kept as safety rails regardless of section selection.
 ALWAYS_KEYS = ("domain_name", "governing_communicative_function", "domain_status", "prohibitions")
 
@@ -285,6 +309,17 @@ class IntegrationCalibration(BaseModel):
     integration_notes: str = ""           # how frameworks were unified into one coherent interpretation; any cross-framework transfer noted for consolidation
 
 
+class DevelopmentalObservation(BaseModel):
+    """One accumulated statement about the student's developing CONTROL of a
+    canonical element/capacity. Developmental memory (not chat memory)."""
+    element: str = ""                 # canonical element/capacity (e.g. "Thesis", "Evidence", "Audience Awareness")
+    control_statement: str = ""       # e.g. "beginning to formulate explicit thesis statements"
+    trend: str = ""                   # confused | emerging | developing | consolidating | independent
+    evidence: str = ""                # brief basis for this judgement
+    episodes: int = 1                 # how many episodes have contributed to this observation
+    updated_at: str = Field(default_factory=now_iso)
+
+
 class InstructionalReasoning(BaseModel):
     """Governed canonical instruction (Instructional-Object layer). The per-turn
     reasoning that relates the student's organization to the canonical writing
@@ -424,6 +459,7 @@ class Session(BaseModel):
     theory: DevelopmentalTheory = Field(default_factory=DevelopmentalTheory)
     theory_history: List[TheorySnapshot] = Field(default_factory=list)
     interactions: List[InteractionRecord] = Field(default_factory=list)
+    developmental_profile: List[DevelopmentalObservation] = Field(default_factory=list)
     teacher_edits: List[dict] = Field(default_factory=list)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
@@ -628,9 +664,13 @@ OUTPUT FORMAT — respond with ONLY a valid JSON object, no markdown fences, no 
     "focus": "writing | content — MUST be 'writing' unless brainstorming/content mode is explicitly permitted (see WRITING INSTRUCTION BOUNDARY)",
     "writing_not_content_check": "one line naming the WRITING principle/function this invitation teaches and confirming it supplies NO substantive ideas of your own"
   },
-  "observed_reorganization": "how the student's participation actually reorganized this turn (or 'initial' on first turn)"
+  "observed_reorganization": "how the student's participation actually reorganized this turn (or 'initial' on first turn)",
+  "developmental_profile_update": [
+    {"element": "canonical element/capacity (e.g. Thesis, Evidence, Audience Awareness)", "control_statement": "the student's CURRENT level of control in plain language (e.g. 'beginning to formulate explicit thesis statements')", "trend": "confused | emerging | developing | consolidating | independent", "evidence": "brief basis from THIS episode"}
+  ]
 }
 Provide 2 or 3 candidate_invitations. Do not store numeric scores anywhere.
+developmental_profile_update (DEVELOPMENTAL MEMORY, not chat memory): output 1-3 observations ONLY for elements where THIS episode gave real evidence of the student's level of control (or change in it). Judge control, not the conversation. These merge into the student's evolving profile and seed future scaffolding; omit elements with no new evidence.
 
 BREVITY (critical — the response must complete quickly): Be terse in ALL internal fields. Each string field is a short phrase or one short sentence. Each list holds at most 2-3 brief items. Prefer 2 candidate invitations (add a 3rd only if genuinely distinct); keep each candidate's fields to short phrases and its invitation to one sentence. The student_facing_invitation is 2-4 sentences. Do not repeat content across fields. Do not pad. Output compact JSON."""
 
@@ -649,6 +689,16 @@ def _extract_json(text: str) -> dict:
     if start != -1 and end != -1:
         text = text[start:end + 1]
     return json.loads(text)
+
+
+def _developmental_profile_summary(session: Session) -> str:
+    prof = session.developmental_profile
+    if not prof:
+        return "(no prior developmental evidence — this is an early episode; build the initial profile from what you observe.)"
+    lines = []
+    for o in prof:
+        lines.append(f"- {o.element}: {o.control_statement} [{o.trend}, {o.episodes} episode(s)]")
+    return "\n".join(lines)
 
 
 def _compact_theory(theory: DevelopmentalTheory) -> dict:
@@ -739,6 +789,7 @@ def _build_prompt(session: Session, req: InteractRequest, selections: list, io_n
     full_domain_data = get_relevant_domain_data(selections)
     names = _select_names(selections)
     io_objects = get_relevant_instructional_objects(io_names or [])
+    io_network = build_instructional_network(io_objects)
     return f"""CURRENT DEVELOPMENTAL TELOS (component A — provisional, revisable):
 {json.dumps(session.telos.model_dump(), indent=2)}
 
@@ -753,8 +804,14 @@ CURRENTLY RELEVANT CANONICAL DOMAINS (selected for THIS turn): {names}
 RELEVANT SECTIONS OF THE RELEVANT CANONICAL DOMAINS (domain-specific cultural resources loaded as DATA — use these, do not rely on general writing knowledge; you may adjust which domains are relevant and reflect that in currently_relevant_domains):
 {json.dumps(full_domain_data, indent=2)}
 
-RETRIEVED INSTRUCTIONAL OBJECTS FOR THIS TURN (the canonical writing knowledge that GOVERNS your instruction — reason FROM these structured objects, not from general knowledge). Each object carries definition, communicative_purpose, performance_structure, recognition_diagnostics, common_obstacles, next_developmental_moves, indicators_of_control:
+RETRIEVED INSTRUCTIONAL OBJECTS FOR THIS TURN (the canonical writing knowledge that GOVERNS your instruction — reason FROM these structured objects, not from general knowledge). Each object carries definition, communicative_purpose, performance_structure, recognition_diagnostics, common_obstacles, next_developmental_moves, indicators_of_control, and related_elements:
 {json.dumps(io_objects, indent=2)}
+
+INSTRUCTIONAL NETWORK (the related elements surrounding the target objects — reason WITH this network for coherence, sequencing, and concept integration, but still choose ONE instructional target this turn; use neighbors to connect the target to purpose, the assignment, the reader, and the larger essay, and to decide what is prerequisite vs. postponed):
+{json.dumps(io_network, indent=2)}
+
+DEVELOPMENTAL PROFILE (developmental MEMORY — the student's accumulated levels of control across prior episodes; NOT chat history). BEGIN your reasoning from this profile: scaffold from the student's current developmental organization, not from a blank slate. Reinforce what is becoming independent; target what still needs support:
+{_developmental_profile_summary(session)}
 
 SHARED DEVELOPMENTAL RESOURCE MENU (choose the resource(s) that best help THIS student perform the next act — do NOT use questioning as your only method):
 {json.dumps(SHARED_DEV_RESOURCES, indent=2)}
@@ -774,6 +831,7 @@ def _parse_engine_output(session: Session, raw: str) -> dict:
         intervention = Intervention(**data.get("intervention", {}))
         invitation = (data.get("student_facing_invitation") or selected.invitation or "").strip()
         observed_reorg = data.get("observed_reorganization", "").strip()
+        profile_update = data.get("developmental_profile_update", []) or []
     except Exception as e:  # noqa: BLE001
         logger.error(f"Engine parse error: {e}; raw={raw[:800]}")
         raise ValueError("The developmental engine returned an unreadable response.")
@@ -791,7 +849,37 @@ def _parse_engine_output(session: Session, raw: str) -> dict:
         "selected": selected,
         "intervention": intervention,
         "observed_reorganization": observed_reorg,
+        "profile_update": profile_update,
     }
+
+
+def _merge_developmental_profile(session: Session, updates: list) -> None:
+    """Merge this episode's control observations into the evolving developmental
+    profile: update the matching element (bump episodes, refresh trend/statement)
+    or append a new observation. Developmental memory, not chat memory."""
+    by_el = {o.element.lower(): o for o in session.developmental_profile}
+    for u in updates or []:
+        if not isinstance(u, dict):
+            continue
+        el = (u.get("element") or "").strip()
+        if not el:
+            continue
+        existing = by_el.get(el.lower())
+        if existing:
+            existing.control_statement = u.get("control_statement") or existing.control_statement
+            existing.trend = u.get("trend") or existing.trend
+            existing.evidence = u.get("evidence") or existing.evidence
+            existing.episodes += 1
+            existing.updated_at = now_iso()
+        else:
+            obs = DevelopmentalObservation(
+                element=el,
+                control_statement=u.get("control_statement", ""),
+                trend=u.get("trend", ""),
+                evidence=u.get("evidence", ""),
+            )
+            session.developmental_profile.append(obs)
+            by_el[el.lower()] = obs
 
 
 def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, result: dict) -> None:
@@ -814,6 +902,7 @@ def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, resu
             break
     session.telos = result["telos"]
     session.theory = result["theory"]
+    _merge_developmental_profile(session, result.get("profile_update", []))
     session.interactions.append(
         InteractionRecord(
             student_kind=req.kind,
@@ -998,6 +1087,7 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
                 "theory": session2.theory.model_dump(),
                 "theory_history": [s.model_dump() for s in session2.theory_history],
                 "interactions": [i.model_dump() for i in session2.interactions],
+                "developmental_profile": [o.model_dump() for o in session2.developmental_profile],
                 "updated_at": session2.updated_at,
             }},
         )

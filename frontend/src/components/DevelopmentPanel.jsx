@@ -381,6 +381,7 @@ function computeDefaults(theory) {
     scaffolding_control: true,
     integration_calibration: true,
     instructional_reasoning: true,
+    developmental_memory: true,
     intervention: true,
     detail: false,
   };
@@ -475,6 +476,7 @@ export default function DevelopmentPanel({
   const interactions = session?.interactions || [];
   const last = interactions[interactions.length - 1];
   const processing = (session?.turns || []).some((t) => t.status === "processing");
+  const profile = session?.developmental_profile || [];
 
   // Accordion open-state. Recomputed to defaults ONLY when a new completed turn
   // arrives (interactions.length changes) — never on every poll — so manual
@@ -629,6 +631,47 @@ export default function DevelopmentPanel({
                   </div>
                 </Accordion>
               ) : null}
+
+              {/* Developmental Memory — accumulated student control across episodes */}
+              <Accordion
+                id="developmental_memory"
+                title={t("Developmental Memory", "Developmental Memory (profile)")}
+                accent="border-l-2 border-l-purple-500"
+                open={openMap.developmental_memory}
+                onToggle={() => toggle("developmental_memory")}
+              >
+                <div className="space-y-2" data-testid="developmental-memory-block">
+                  <p className="text-[10px] text-stone-500 leading-relaxed">
+                    What the student can do over time (not chat history). Future turns scaffold from here.
+                  </p>
+                  {profile.length === 0 ? (
+                    <span className="text-stone-600 text-[13px]">
+                      No developmental evidence yet — builds as the student writes.
+                    </span>
+                  ) : (
+                    <ul className="space-y-1.5">
+                      {profile.map((o, i) => (
+                        <li
+                          key={i}
+                          data-testid={`dev-memory-item-${i}`}
+                          className="border border-stone-800 rounded-sm px-2.5 py-2 bg-stone-950/40"
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-amber-300 text-[12px]">{o.element}</span>
+                            <span className="text-[9px] uppercase tracking-[0.12em] text-emerald-300 border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 rounded-sm">
+                              {o.trend}{o.episodes > 1 ? ` · ${o.episodes}` : ""}
+                            </span>
+                          </div>
+                          <div className="text-stone-300 text-[12px] mt-1">{o.control_statement}</div>
+                          {o.evidence ? (
+                            <div className="text-stone-500 text-[11px] mt-0.5">basis: {o.evidence}</div>
+                          ) : null}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              </Accordion>
 
               {/* 1 — Scaffolding Controller (the one decision that matters) */}
               <Accordion
