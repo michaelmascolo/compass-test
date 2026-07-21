@@ -462,6 +462,8 @@ class Session(BaseModel):
     interactions: List[InteractionRecord] = Field(default_factory=list)
     developmental_profile: List[DevelopmentalObservation] = Field(default_factory=list)
     teacher_edits: List[dict] = Field(default_factory=list)
+    is_preview: bool = False
+    preview_analytics: dict = Field(default_factory=dict)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
@@ -925,6 +927,108 @@ def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, resu
 
 
 # ---------------------------------------------------------------------------
+# Public Preview — INVISIBLE instrumentation (learner never sees this).
+# Records only OBSERVABLE, latency-free signals + cheap heuristics computed from
+# data already produced this turn. NO extra model calls. Crucially it distinguishes
+# "transfer question PRESENTED" from "learner RESPONDED" from "response MET the
+# acceptance criterion" — the last is left null (requires deferred judgment; an
+# aha is NEVER inferred merely because the target turn was displayed).
+# ---------------------------------------------------------------------------
+_COAUTHOR_PATTERNS = (
+    "write it for me", "just write", "write the intro", "write my", "write the opening",
+    "give me a", "can you write", "you write", "do it for me", "fix it for me",
+    "write this", "make it for me", "draft it", "rewrite it",
+)
+_OWNERSHIP_RETURN_PATTERNS = (
+    "mine, not yours", "then it would be mine", "yours, not mine", "i could hand you",
+    "i won't write", "i can't write it for you", "that would be my", "keep it yours",
+    "the understanding would be", "you'll have it", "tell me what", "your words",
+)
+_TRANSFER_PATTERNS = (
+    "next time", "next essay", "next introduction", "next opening", "next paper",
+    "haven't met", "unfamiliar reader", "a reader who", "in your own words",
+    "what will your", "what would your opening", "what does an opening",
+    "the next thing you write", "already disagrees",
+)
+
+
+def _kw(text: str, patterns) -> bool:
+    t = (text or "").lower()
+    return any(p in t for p in patterns)
+
+
+def _provisional_archetype(seed: str) -> str:
+    """Best-effort, provisional heuristic for the seed branch (A/B/C). NOT
+    authoritative — the raw seed is stored so it can be reclassified offline."""
+    low = (seed or "").strip().lower()
+    has_position = any(w in low for w in (" should", " must", " ought", "n't ", " need to", " is wrong", " is unfair", " better", " worse", "stop ", "ban ", "allow "))
+    if not has_position:
+        return "A_provisional"  # bare topic / no stake
+    has_motivation = any(w in low for w in (" because", " since", " so that", " which means", " otherwise", " leads to", " causes"))
+    return "C_provisional" if has_motivation else "B_provisional"
+
+
+def _update_preview_analytics(session: Session, req: InteractRequest, result: dict) -> None:
+    """Update session.preview_analytics with this turn's observable signals."""
+    a = dict(session.preview_analytics or {})
+    turns = list(a.get("turns", []))
+    meta = result.get("_meta", {}) or {}
+    intervention = result.get("intervention")
+    interv_type = getattr(intervention, "type", "") if intervention else ""
+    interv_focus = getattr(intervention, "focus", "") if intervention else ""
+    mode = ""
+    primary_target = ""
+    try:
+        mode = result["theory"].scaffolding_control.instructional_mode
+        primary_target = result["theory"].scaffolding_control.primary_target
+    except Exception:
+        pass
+
+    student_text = req.content.strip()
+    coach_text = result.get("invitation", "")
+    is_first = len(turns) == 0
+    anti_req = _kw(student_text, _COAUTHOR_PATTERNS)
+    ownership_returned = _kw(coach_text, _OWNERSHIP_RETURN_PATTERNS) if anti_req else None
+    transfer_presented = _kw(coach_text, _TRANSFER_PATTERNS)
+
+    turns.append({
+        "n": len(turns) + 1,
+        "student_kind": req.kind,
+        "student_chars": len(student_text),
+        "anti_coauthoring_request": anti_req,
+        "anti_coauthoring_ownership_returned": ownership_returned,
+        "transfer_question_presented": transfer_presented,
+        "instructional_mode": mode,
+        "primary_target": primary_target,
+        "intervention_type": interv_type,
+        "focus": interv_focus,
+        "stage_a_selector_s": meta.get("t_stage_a_selector_s"),
+        "stage_b_reasoner_s": meta.get("t_stage_b_reasoner_s"),
+    })
+
+    exchange_count = len(turns)
+    transfer_idx = next((i for i, t in enumerate(turns) if t.get("transfer_question_presented")), None)
+    transfer_presented_ever = transfer_idx is not None
+    learner_responded_after_transfer = transfer_presented_ever and (len(turns) - 1 > transfer_idx)
+
+    a.update({
+        "turns": turns,
+        "seed": a.get("seed") or (student_text if is_first else a.get("seed")),
+        "provisional_archetype": a.get("provisional_archetype") or (_provisional_archetype(student_text) if is_first else a.get("provisional_archetype")),
+        "exchange_count": exchange_count,
+        "anti_coauthoring_requested": any(t.get("anti_coauthoring_request") for t in turns),
+        "anti_coauthoring_ownership_returned": next((t.get("anti_coauthoring_ownership_returned") for t in turns if t.get("anti_coauthoring_request")), None),
+        "transfer_question_presented": transfer_presented_ever,
+        "learner_responded_after_transfer": learner_responded_after_transfer,
+        "projection_meets_criterion": a.get("projection_meets_criterion", None),
+        "soft_cap_reached": exchange_count >= 6,
+        "continued_to_real_work": a.get("continued_to_real_work", False),
+        "updated_at": now_iso(),
+    })
+    session.preview_analytics = a
+
+
+# ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 @api_router.get("/")
@@ -997,7 +1101,7 @@ async def create_preview_session():
         teacher_intentions=payload.teacher_notes or "",
         assignment_context=payload.assignment,
     )
-    session = Session(**payload.model_dump(), telos=telos)
+    session = Session(**payload.model_dump(), telos=telos, is_preview=True)
     await db.sessions.insert_one(session.model_dump())
     return session
 
@@ -1008,6 +1112,31 @@ async def get_session(session_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
     return Session(**doc)
+
+
+# --- Public Preview instrumentation (DEV/analytics only; never shown to learner) ---
+@api_router.get("/sessions/{session_id}/preview-analytics")
+async def get_preview_analytics(session_id: str):
+    doc = await db.sessions.find_one({"id": session_id}, {"_id": 0, "preview_analytics": 1, "is_preview": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return {"is_preview": doc.get("is_preview", False), "analytics": doc.get("preview_analytics", {})}
+
+
+@api_router.post("/sessions/{session_id}/preview-continue")
+async def preview_continue(session_id: str):
+    """Records that the learner chose to continue into real work after the preview.
+    This is the only reliable signal of the 'pull' — set by an explicit user action,
+    never inferred."""
+    doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    a = dict(doc.get("preview_analytics", {}) or {})
+    a["continued_to_real_work"] = True
+    a["updated_at"] = now_iso()
+    await db.sessions.update_one({"id": session_id}, {"$set": {"preview_analytics": a}})
+    return {"ok": True, "continued_to_real_work": True}
+
 
 
 @api_router.patch("/sessions/{session_id}/telos", response_model=Session)
@@ -1097,27 +1226,43 @@ async def _run_engine(session: Session, req: InteractRequest) -> dict:
     """Run STAGE A (domain selection) + STAGE B (developmental reasoning) with one
     retry on transient/unreadable failure. Pure logic — no client connection.
     Raises on unrecoverable failure."""
+    _t_a0 = time.perf_counter()
     relevant, io_names = await _select_relevant_domains(session, req)
+    _t_a = time.perf_counter() - _t_a0
+
+    _t_p0 = time.perf_counter()
     prompt = _build_prompt(session, req, relevant, io_names)
+    _t_p = time.perf_counter() - _t_p0
+
     _sel_log = {s["domain_name"]: len(s["sections"]) for s in relevant}
     logger.info(f"[reason] domains/sections={_sel_log} io={io_names} reasoner_prompt_bytes={len(prompt)}")
     _meta = {
         "reasoner_prompt_bytes": len(prompt),
         "selected_domains": [s["domain_name"] for s in relevant],
         "selected_instructional_objects": io_names,
+        "t_stage_a_selector_s": round(_t_a, 2),
+        "t_prompt_build_s": round(_t_p, 3),
     }
 
     last_err = None
     for attempt in range(2):
         try:
+            _t_b0 = time.perf_counter()
             chat = LlmChat(
                 api_key=EMERGENT_LLM_KEY,
                 session_id=f"dev-{session.id}",
                 system_message=SYSTEM_MESSAGE,
             ).with_model("anthropic", "claude-sonnet-4-6")
             raw = await chat.send_message(UserMessage(text=prompt))
+            _t_b = time.perf_counter() - _t_b0
             _parsed = _parse_engine_output(session, raw)
+            _meta["t_stage_b_reasoner_s"] = round(_t_b, 2)
             _parsed["_meta"] = _meta
+            logger.info(
+                f"[latency] stage_a_selector={_meta['t_stage_a_selector_s']}s "
+                f"prompt_build={_meta['t_prompt_build_s']}s stage_b_reasoner={round(_t_b,2)}s "
+                f"reasoner_prompt_bytes={_meta['reasoner_prompt_bytes']}"
+            )
             return _parsed
         except Exception as e:  # noqa: BLE001
             last_err = e
@@ -1130,11 +1275,14 @@ async def _run_engine(session: Session, req: InteractRequest) -> dict:
 async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest) -> None:
     """Background task: reason independently of the client connection and persist
     the completed turn to the database. Client disconnects never interrupt this."""
+    _t_total0 = time.perf_counter()
     try:
+        _t_r0 = time.perf_counter()
         doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
         if not doc:
             return
         session = Session(**doc)
+        _t_read = time.perf_counter() - _t_r0
         # reason against the session WITHOUT the placeholder AI turn so previous-draft
         # detection and history behave exactly as before.
         reason_session = session.model_copy(deep=True)
@@ -1151,6 +1299,9 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
             logger.info(f"[reason] turn {ai_turn_id} no longer processing; discarding result")
             return
         _finalize_turn(session2, ai_turn_id, req, result)
+        if session2.is_preview:
+            _update_preview_analytics(session2, req, result)
+        _t_w0 = time.perf_counter()
         await db.sessions.update_one(
             {"id": session_id},
             {"$set": {
@@ -1160,8 +1311,16 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
                 "theory_history": [s.model_dump() for s in session2.theory_history],
                 "interactions": [i.model_dump() for i in session2.interactions],
                 "developmental_profile": [o.model_dump() for o in session2.developmental_profile],
+                "preview_analytics": session2.preview_analytics,
                 "updated_at": session2.updated_at,
             }},
+        )
+        _t_write = time.perf_counter() - _t_w0
+        _meta = result.get("_meta", {})
+        logger.info(
+            f"[latency] db_read={round(_t_read,3)}s db_write={round(_t_write,3)}s "
+            f"stage_a={_meta.get('t_stage_a_selector_s')}s stage_b={_meta.get('t_stage_b_reasoner_s')}s "
+            f"TOTAL={round(time.perf_counter()-_t_total0,2)}s session={session_id}"
         )
         logger.info(f"[reason] completed turn {ai_turn_id} for session {session_id}")
     except Exception as e:  # noqa: BLE001
