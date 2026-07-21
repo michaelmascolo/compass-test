@@ -13,6 +13,11 @@ export const startPreview = async () => {
   return data;
 };
 
+export const previewContinue = async (id) => {
+  const { data } = await axios.post(`${API}/sessions/${id}/preview-continue`);
+  return data;
+};
+
 export const getSession = async (id) => {
   const { data } = await axios.get(`${API}/sessions/${id}`);
   return data;

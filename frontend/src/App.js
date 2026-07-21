@@ -6,6 +6,8 @@ import StudentWorkspace from "@/components/StudentWorkspace";
 import DevelopmentPanel from "@/components/DevelopmentPanel";
 import TestHarness from "@/components/TestHarness";
 import PublicPreview from "@/components/PublicPreview";
+import Landing from "@/components/Landing";
+import PreviewBridge from "@/components/PreviewBridge";
 import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
@@ -32,7 +34,15 @@ function App() {
   if (params.has("preview")) {
     return <PublicPreview />;
   }
-  return <StudioApp />;
+  // Preview → Real bridge (?bridge) — reachable standalone (product map S3).
+  if (params.has("bridge")) {
+    return <PreviewBridge sessionId={null} />;
+  }
+  // The studio / teacher app (?app or ?dev). Everything else is the landing page.
+  if (params.has("app") || params.has("dev")) {
+    return <StudioApp />;
+  }
+  return <Landing />;
 }
 
 function StudioApp() {

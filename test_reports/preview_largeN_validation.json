@@ -1,0 +1,80 @@
+{
+  "A_bare_topic": {
+    "full": [
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 52.92
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 55.72
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 49.35
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 55.28
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 54.63
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 57.43
+      }
+    ],
+    "preview": [
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 41.21
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 34.41
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 41.33
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 33.32
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 38.62
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 37.49
+      }
+    ]
+  }
+}

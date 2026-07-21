@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowRight, Loader2, Compass } from "lucide-react";
 import { startPreview, getSession, interact } from "@/lib/api";
+import PreviewBridge from "@/components/PreviewBridge";
 
 const SEED_INVITATION =
   "Before we talk about essays, tell me one thing you think should change \u2014 about anything.";
@@ -16,6 +17,7 @@ export default function PublicPreview() {
   const [reply, setReply] = useState("");
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [showBridge, setShowBridge] = useState(false);
   const threadRef = useRef(null);
 
   const isProcessing = !!session?.turns?.some((t) => t.status === "processing");
@@ -25,6 +27,9 @@ export default function PublicPreview() {
     (t) => !(t.role === "ai" && (t.status === "processing" || t.status === "failed"))
   );
   const started = !!session;
+  const aiTurnCount = turns.filter((t) => t.role === "ai").length;
+  // Offer a gentle exit once the visitor has genuinely experienced the method.
+  const canBridge = aiTurnCount >= 2;
 
   // Poll while the engine is reasoning in the background.
   useEffect(() => {
@@ -78,13 +83,26 @@ export default function PublicPreview() {
     }
   }, [reply, busy, session]);
 
+  if (showBridge) {
+    return <PreviewBridge sessionId={session?.id} onBack={() => setShowBridge(false)} />;
+  }
+
   return (
     <div className="min-h-screen paper-grain flex flex-col items-center">
-      <header className="w-full flex items-center justify-center px-6 py-5">
+      <header className="w-full max-w-2xl flex items-center justify-between px-6 py-5">
         <div className="flex items-center gap-2 font-serif-display text-lg text-stone-800">
           <Compass className="h-5 w-5 text-[#8C3A2A]" />
           Compass
         </div>
+        {canBridge && (
+          <button
+            onClick={() => setShowBridge(true)}
+            data-testid="preview-bring-own-work"
+            className="text-xs font-mono-panel uppercase tracking-[0.16em] text-stone-500 hover:text-[#8C3A2A] transition-colors"
+          >
+            Bring your own writing →
+          </button>
+        )}
       </header>
 
       <main className="w-full max-w-2xl flex-1 flex flex-col px-6 pb-10">
