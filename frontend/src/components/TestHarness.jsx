@@ -75,15 +75,19 @@ const CompareView = ({ runs }) => {
   const [runB, setRunB] = useState(null);
   const [rows, setRows] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const runCompare = async () => {
     if (!aId || !bId) return;
     setLoading(true);
+    setError("");
     try {
       const [a, b] = await Promise.all([getTestRun(aId), getTestRun(bId)]);
       setRunA(a);
       setRunB(b);
       setRows(diffRuns(a, b));
+    } catch (e) {
+      setError("Could not load one or both runs. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -142,6 +146,11 @@ const CompareView = ({ runs }) => {
         </button>
       </div>
 
+      {error && (
+        <div data-testid="compare-error" className="text-[12px] text-rose-300 border border-rose-800 bg-rose-950/40 rounded px-3 py-2">
+          {error}
+        </div>
+      )}
       {rows && (
         <>
           <div className="flex flex-wrap gap-3" data-testid="compare-summary">
