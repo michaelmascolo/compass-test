@@ -17,6 +17,7 @@ import {
   ChevronRight,
   FlaskConical,
   History,
+  GitCompare,
 } from "lucide-react";
 
 const VERDICT = {
@@ -32,6 +33,160 @@ const StatBadge = ({ label, value, cls }) => (
     <div className="text-[10px] uppercase tracking-widest mt-1 opacity-80">{label}</div>
   </div>
 );
+
+const VBadge = ({ v }) => {
+  const m = VERDICT[v] || VERDICT.error;
+  return (
+    <span className={`text-[10px] uppercase tracking-widest px-2 py-0.5 rounded border ${m.badge}`}>
+      {v || "—"}
+    </span>
+  );
+};
+
+function diffRuns(prev, next) {
+  const pById = Object.fromEntries((prev.results || []).map((r) => [r.case_id, r]));
+  const nById = Object.fromEntries((next.results || []).map((r) => [r.case_id, r]));
+  const ids = Array.from(new Set([...Object.keys(pById), ...Object.keys(nById)])).sort(
+    (a, b) => parseInt(a.replace(/\D/g, "")) - parseInt(b.replace(/\D/g, ""))
+  );
+  return ids.map((id) => {
+    const p = pById[id];
+    const n = nById[id];
+    const pc = Object.fromEntries((p?.evaluation?.criteria || []).map((c) => [c.name, c.verdict]));
+    const changed = (n?.evaluation?.criteria || [])
+      .filter((c) => pc[c.name] !== undefined && pc[c.name] !== c.verdict)
+      .map((c) => ({ name: c.name, from: pc[c.name], to: c.verdict, note: c.note }));
+    return {
+      id,
+      name: n?.name || p?.name || id,
+      pv: p?.status,
+      nv: n?.status,
+      moved: (p?.status || "") !== (n?.status || ""),
+      changed,
+      explanation: n?.evaluation?.summary || "",
+    };
+  });
+}
+
+const CompareView = ({ runs }) => {
+  const [aId, setAId] = useState("");
+  const [bId, setBId] = useState("");
+  const [runA, setRunA] = useState(null);
+  const [runB, setRunB] = useState(null);
+  const [rows, setRows] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  const runCompare = async () => {
+    if (!aId || !bId) return;
+    setLoading(true);
+    try {
+      const [a, b] = await Promise.all([getTestRun(aId), getTestRun(bId)]);
+      setRunA(a);
+      setRunB(b);
+      setRows(diffRuns(a, b));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const label = (r) =>
+    `${new Date(r.created_at).toLocaleString()} · ${r.total} cases${
+      r.summary?.pass_rate != null ? ` · ${r.summary.pass_rate}%` : ""
+    }`;
+
+  const moved = (rows || []).filter((r) => r.moved);
+
+  return (
+    <div className="space-y-5" data-testid="compare-view">
+      <div className="flex flex-wrap items-end gap-3">
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-1">Previous run</div>
+          <select
+            data-testid="compare-select-prev"
+            value={aId}
+            onChange={(e) => setAId(e.target.value)}
+            className="bg-stone-900 border border-stone-700 rounded px-3 py-2 text-[12px] text-stone-200 min-w-[280px]"
+          >
+            <option value="">Select…</option>
+            {runs.map((r) => (
+              <option key={r.id} value={r.id}>
+                {label(r)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-1">New run</div>
+          <select
+            data-testid="compare-select-new"
+            value={bId}
+            onChange={(e) => setBId(e.target.value)}
+            className="bg-stone-900 border border-stone-700 rounded px-3 py-2 text-[12px] text-stone-200 min-w-[280px]"
+          >
+            <option value="">Select…</option>
+            {runs.map((r) => (
+              <option key={r.id} value={r.id}>
+                {label(r)}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          onClick={runCompare}
+          disabled={!aId || !bId || loading}
+          data-testid="compare-run-button"
+          className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 rounded bg-amber-600 text-stone-950 font-semibold hover:bg-amber-500 disabled:opacity-40 transition-colors"
+        >
+          {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <GitCompare className="h-3.5 w-3.5" />}
+          Compare
+        </button>
+      </div>
+
+      {rows && (
+        <>
+          <div className="flex flex-wrap gap-3" data-testid="compare-summary">
+            <StatBadge label="Prev pass rate" value={`${runA?.summary?.pass_rate ?? "—"}%`} cls="border-stone-700 text-stone-300" />
+            <StatBadge label="New pass rate" value={`${runB?.summary?.pass_rate ?? "—"}%`} cls="border-amber-700 text-amber-300" />
+            <StatBadge label="Cases moved" value={moved.length} cls="border-sky-800 text-sky-300" />
+          </div>
+
+          <div className="border border-stone-800 rounded-md overflow-hidden">
+            <div className="grid grid-cols-[70px_1fr_90px_90px_1.4fr] gap-2 px-3 py-2 bg-stone-900 text-[10px] uppercase tracking-widest text-stone-500">
+              <div>Case</div><div>Name</div><div>Prev</div><div>New</div><div>Changed criteria / explanation</div>
+            </div>
+            {rows.map((r) => (
+              <div
+                key={r.id}
+                data-testid={`compare-row-${r.id}`}
+                className={`grid grid-cols-[70px_1fr_90px_90px_1.4fr] gap-2 px-3 py-2.5 border-t border-stone-800 text-[12px] ${
+                  r.moved ? "bg-stone-900/60" : ""
+                }`}
+              >
+                <div className="text-stone-500">{r.id}</div>
+                <div className="text-stone-300 truncate">{r.name}</div>
+                <div><VBadge v={r.pv} /></div>
+                <div><VBadge v={r.nv} /></div>
+                <div className="text-stone-400">
+                  {r.changed.length > 0 && (
+                    <ul className="mb-1 space-y-0.5">
+                      {r.changed.map((c, i) => (
+                        <li key={i}>
+                          <span className="text-stone-500">{c.name}:</span>{" "}
+                          <span className="text-rose-300">{c.from}</span>→<span className="text-emerald-300">{c.to}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  <span className="text-stone-500">{r.explanation}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
 
 const CaseResultCard = ({ result }) => {
   const [open, setOpen] = useState(false);
@@ -104,6 +259,7 @@ export default function TestHarness() {
   const [run, setRun] = useState(null);
   const [runs, setRuns] = useState([]);
   const [starting, setStarting] = useState(false);
+  const [mode, setMode] = useState("run");
   const pollRef = useRef(null);
 
   const refreshRuns = useCallback(() => {
@@ -173,9 +329,29 @@ export default function TestHarness() {
           <p className="text-[11px] text-stone-500">Developer-only · runs the real production engine + LLM evaluator</p>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <div className="flex items-center rounded border border-stone-700 overflow-hidden mr-1">
+            <button
+              onClick={() => setMode("run")}
+              data-testid="mode-run-button"
+              className={`text-[11px] uppercase tracking-widest px-3 py-2 transition-colors ${
+                mode === "run" ? "bg-stone-800 text-amber-300" : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              Run
+            </button>
+            <button
+              onClick={() => setMode("compare")}
+              data-testid="mode-compare-button"
+              className={`inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 transition-colors ${
+                mode === "compare" ? "bg-stone-800 text-amber-300" : "text-stone-400 hover:text-stone-200"
+              }`}
+            >
+              <GitCompare className="h-3.5 w-3.5" /> Compare
+            </button>
+          </div>
           <button
             onClick={() => doRun([...selected])}
-            disabled={starting || isRunning || selected.size === 0}
+            disabled={starting || isRunning || selected.size === 0 || mode === "compare"}
             data-testid="run-selected-button"
             className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 rounded border border-stone-700 text-stone-300 hover:border-amber-600 hover:text-amber-300 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
@@ -183,7 +359,7 @@ export default function TestHarness() {
           </button>
           <button
             onClick={() => doRun(null)}
-            disabled={starting || isRunning}
+            disabled={starting || isRunning || mode === "compare"}
             data-testid="run-all-button"
             className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-widest px-3 py-2 rounded bg-amber-600 text-stone-950 font-semibold hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
@@ -248,6 +424,10 @@ export default function TestHarness() {
 
         {/* main: run results */}
         <main className="p-6 space-y-5">
+          {mode === "compare" ? (
+            <CompareView runs={runs} />
+          ) : (
+          <>
           {!run && (
             <div className="text-stone-500 text-sm py-20 text-center">
               Select cases and press <span className="text-amber-400">Run Selected</span>, or{" "}
@@ -318,6 +498,8 @@ export default function TestHarness() {
                 )}
               </div>
             </>
+          )}
+          </>
           )}
         </main>
       </div>
