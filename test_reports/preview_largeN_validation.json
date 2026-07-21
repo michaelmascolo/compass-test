@@ -76,5 +76,209 @@
         "stage_b": 37.49
       }
     ]
+  },
+  "B_unmotivated_claim": {
+    "full": [
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 66.33
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 73.35
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 65.98
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 56.68
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 59.19
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 57.24
+      }
+    ],
+    "preview": [
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 46.07
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 37.54
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 45.2
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 37.65
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 41.79
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 44.67
+      }
+    ]
+  },
+  "C_strong_motivated_claim": {
+    "full": [
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 68.56
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 65.72
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 67.13
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 66.26
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 65.66
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 67.82
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 68.67
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 62.84
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 72.96
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 68.35
+      }
+    ],
+    "preview": [
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 57.97
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 45.35
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 42.62
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 45.57
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 43.0
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 43.58
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 47.26
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 51.99
+      },
+      {
+        "intervention_type": "instruct_then_invite",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 45.46
+      },
+      {
+        "intervention_type": "invite_only",
+        "mode": "developmental_question",
+        "focus": "writing",
+        "stage_b": 44.58
+      }
+    ]
   }
 }

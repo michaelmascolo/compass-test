@@ -469,6 +469,157 @@ class Session(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Teacher Configuration — nested structured object (spec Part VIII).
+# Teacher-controlled parameters ONLY. constitutionalRules are SYSTEM-inserted
+# and never come from teacher-editable fields. Grade calibration is a separate
+# resource (GradeProfile) so grade expectations are not hard-coded everywhere.
+# ---------------------------------------------------------------------------
+class ClassContext(BaseModel):
+    course: str = "English Language Arts"
+    gradeLevel: int = 9
+    ageRange: str = "14-15"
+    classSection: str = ""
+
+
+class AssignmentCfg(BaseModel):
+    title: str = ""
+    directions: str = ""
+    purpose: str = ""
+    audience: str = ""
+    genre: str = ""
+    requiredLength: str = ""
+    dueDate: str = ""
+    stages: List[str] = Field(default_factory=lambda: ["Plan", "Draft", "Revise", "Submit"])
+    revisionCycles: int = 2
+
+
+class LearningCfg(BaseModel):
+    objectives: List[str] = Field(default_factory=list)
+    requiredContentKnowledge: List[str] = Field(default_factory=list)
+    requiredReadings: List[str] = Field(default_factory=list)
+    standards: List[str] = Field(default_factory=list)
+    teacherRubric: Optional[str] = None
+
+
+class GuidanceCfg(BaseModel):
+    scaffoldingLevel: str = "adaptive-moderate"   # low | moderate | high | adaptive-moderate | adaptive
+    questionExplanationBalance: str = "balanced"
+    feedbackPriorities: List[str] = Field(default_factory=list)
+    instructionalEmphases: List[str] = Field(default_factory=list)
+    grammarEmphasis: str = "moderate"             # low | moderate | high
+    mechanicsEmphasis: str = "moderate"
+    modelsEnabled: bool = True
+
+
+class ClassroomCfg(BaseModel):
+    workMode: str = "individual"
+    norms: str = ""
+    approvedAccommodations: List[str] = Field(default_factory=list)
+    teacherPrompts: List[str] = Field(default_factory=list)
+    teacherExemplars: List[str] = Field(default_factory=list)
+    teacherNotes: str = ""
+
+
+# System-inserted; NEVER from teacher fields.
+SYSTEM_CONSTITUTIONAL_RULES = {
+    "studentAuthorship": True,
+    "studentPerformsRevision": True,
+    "automaticWriting": False,
+    "automaticRewriting": False,
+    "automaticEditing": False,
+    "automaticGrammarCorrection": False,
+    "developmentalGuidanceRequired": True,
+    "supportFadingRequired": True,
+}
+
+
+class TeacherConfiguration(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    configurationVersion: str = "1.0"
+    status: str = "draft"  # draft | active
+    classContext: ClassContext = Field(default_factory=ClassContext)
+    assignment: AssignmentCfg = Field(default_factory=AssignmentCfg)
+    learning: LearningCfg = Field(default_factory=LearningCfg)
+    guidance: GuidanceCfg = Field(default_factory=GuidanceCfg)
+    classroom: ClassroomCfg = Field(default_factory=ClassroomCfg)
+    gradeCalibration: dict = Field(default_factory=lambda: {"profile": "grade-9", "profileVersion": "1.0"})
+    constitutionalRules: dict = Field(default_factory=lambda: dict(SYSTEM_CONSTITUTIONAL_RULES))
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class TeacherConfigInput(BaseModel):
+    """Editable parts only. constitutionalRules can never be set by the teacher."""
+    classContext: Optional[ClassContext] = None
+    assignment: Optional[AssignmentCfg] = None
+    learning: Optional[LearningCfg] = None
+    guidance: Optional[GuidanceCfg] = None
+    classroom: Optional[ClassroomCfg] = None
+    gradeCalibration: Optional[dict] = None
+
+
+class GradeProfile(BaseModel):
+    gradeProfileId: str
+    version: str = "1.0"
+    ageGuidance: str = ""
+    defaultScaffolding: str = "adaptive-moderate"
+    languageGuidance: dict = Field(default_factory=dict)
+    expectedIndependence: dict = Field(default_factory=dict)
+    taskComplexity: dict = Field(default_factory=dict)
+    genreExpectations: dict = Field(default_factory=dict)
+    feedbackPriorities: List[str] = Field(default_factory=list)
+    grammarGuidance: dict = Field(default_factory=dict)
+    modelGuidance: dict = Field(default_factory=dict)
+    revisionExpectations: dict = Field(default_factory=dict)
+    assessmentIndicators: dict = Field(default_factory=dict)
+
+
+class FeatureRequest(BaseModel):
+    request: str
+
+
+# Compass constitutional commitments — LOCKED. Never editable, never shown as settings.
+COMPASS_CONSTITUTION = {
+    "distinction": {
+        "teacher_decides": [
+            "WHAT students learn",
+            "WHY they learn it",
+            "WHEN they learn it",
+            "HOW Compass is used in class",
+        ],
+        "compass_decides": [
+            "HOW developmental guidance occurs",
+            "HOW student authorship is protected",
+            "HOW scaffolding operates",
+            "HOW developmental principles are preserved",
+        ],
+    },
+    "locked_principles": [
+        "Student authorship",
+        "Student intellectual responsibility",
+        "Teacher educational authority",
+        "Active developmental guidance",
+        "Developmental scaffolding",
+        "Fading of support",
+        "Return to purpose",
+        "Structure and function taught together",
+        "Development takes priority over immediate product",
+    ],
+    "never_provides": [
+        "write student papers",
+        "rewrite paragraphs automatically",
+        "generate essays",
+        "generate thesis statements for submission",
+        "automatically revise papers",
+        "automatically edit papers",
+        "automatically correct grammar",
+        "complete assignments",
+    ],
+}
+
+
+
+# ---------------------------------------------------------------------------
 # Developmental Guide Engine
 # ---------------------------------------------------------------------------
 SYSTEM_MESSAGE = """You are a developmental pedagogical guide. Interpret the student's participation as an unfolding process organized relative to a provisional developmental telos.
@@ -1089,58 +1240,67 @@ async def create_session(payload: SessionCreate):
 
 
 # ---------------------------------------------------------------------------
-# Public Preview — a fixed-Telos ENTRY PATH over the existing (frozen) engine.
-# This is an experience wrapper, not new engine behavior: the preview is just a
-# normal session created with a canonical Telos + teacher_intentions that encode
-# the approved entry-path decision logic. See memory/PUBLIC_PREVIEW_Decision_Table.md.
+# Public Preview — a Telos-driven ENTRY PATH over the existing (frozen) engine.
+# The user (a teacher/evaluator) enters a short passage written as though by a
+# Grade 9 student; Compass responds developmentally. Experience wrapper only.
 # ---------------------------------------------------------------------------
+PREVIEW_TEACHER_NOTES = (
+    "PUBLIC PREVIEW / DEMONSTRATION MODE. The user is a teacher or evaluator testing Compass "
+    "by entering a short passage written as though by a GRADE 9 student — an introduction, body "
+    "paragraph, transition, conclusion, or other essay component. Treat the passage as that "
+    "student's developing writing and respond exactly as you would to a Grade 9 writer. Stay in "
+    "character; never explain Compass, its method, or that this is a demo; never grade, score, or "
+    "produce a long diagnostic report; do not correct every error. Do NOT assume the passage "
+    "argues any particular viewpoint you are trying to elicit. Your process: (1) infer, or briefly "
+    "confirm, what the passage is trying to accomplish for its reader; (2) identify ONE "
+    "high-leverage developmental issue (not everything); (3) ask one meaningful question or offer a "
+    "brief developmental invitation tied to that issue; (4) NEVER rewrite, fix, edit, or supply the "
+    "passage — anti-coauthoring is absolute; if asked, warmly decline and return exactly one "
+    "decision to the writer; (5) invite the writer to revise the passage themselves; (6) respond to "
+    "their revision, noting what changed for the reader; (7) increase support if they cannot proceed "
+    "and fade it as they show control. MEANING BEFORE CONVENTION: do not introduce writing "
+    "terminology until it names a function the writer has already experienced; NEVER auto-correct "
+    "grammar (you may briefly model a construction as a teaching device, then have the student apply "
+    "it). ONE target and ONE question per turn. Keep every turn anchored to the words on the page."
+)
 PREVIEW_BOOTSTRAP = SessionCreate(
-    assignment="Write the opening of a short essay for a real reader.",
+    assignment="Develop a short passage from a Grade 9 essay (of the writer's own choosing).",
     pedagogical_purpose=(
-        "Help the writer make an opening that makes a reader need the point before it is stated."
+        "Help the writer see what their passage is doing for a reader and develop it themselves."
     ),
-    current_writing_task="Draft and refine the first line(s) of the opening.",
-    teacher_notes=(
-        "PUBLIC PREVIEW MODE. The learner is a teacher trying Compass for the first time; "
-        "treat them exactly as a writer. Stay fully in character throughout — never explain "
-        "Compass, its method, AI, or that this is a preview, and never grade, score, praise, or "
-        "show a rubric. Guardrails: MEANING BEFORE CONVENTION — do not introduce conventional "
-        "writing terminology (thesis, hook, claim, context) until it names a communicative "
-        "function the learner has ALREADY experienced, and even then only as a name for what they "
-        "just did, never as an upfront rule. ANTI-COAUTHORING IS ABSOLUTE — never write, fix, or "
-        "supply their sentence, opening, or thesis; if asked, warmly decline and return exactly one "
-        "decision to them. ONE target and ONE question per turn. Read their first sentence as the "
-        "opening line a real reader will actually read, and take the single step that advances "
-        "THEIR thinking toward one owned realization: an opening has to make a reader need the "
-        "point before it is made. If they give a bare topic (no position), help them supply a "
-        "stake; if a real but unmotivated claim, surface the resistant reader; if the claim is "
-        "already strong and motivated, consolidate and name the move they made — NEVER invent a "
-        "flaw. Priority when handling their message: (1) if they ask you to write it, decline and "
-        "return one decision; (2) if off-topic/one-word, re-anchor to a real belief; (3) if "
-        "hostile or comparing you to other AI, do not defend or compare — just advance their "
-        "thinking; (4) if they STALL, shrink the step (narrow to one concrete skeptical reader, "
-        "then ask for a reaction, not an answer) — never supply content; (5) if their answer is "
-        "true but drifts into generic life-advice, re-anchor it to what their opening lines do. "
-        "Within about 4-6 exchanges, reach a closing beat where THEY state, in their own words, "
-        "what an opening must do — by asking them to project it onto the next introduction they'll "
-        "write for an unfamiliar reader. Never state that principle for them; let their sentence "
-        "stand. Close by extending what THEY just discovered into their real work — grounded only "
-        "in what actually happened this session, never a claim you cannot know. Keep every turn "
-        "anchored to the words on the page."
-    ),
+    current_writing_task="Clarify, develop, organize, and express the writer's own meaning in the passage.",
+    teacher_notes=PREVIEW_TEACHER_NOTES,
 )
 
 
+class PreviewStart(BaseModel):
+    essay_about: Optional[str] = ""
+    passage_type: Optional[str] = ""  # Introduction | Body paragraph | Transition | Conclusion | Other | ""
+
+
 @api_router.post("/sessions/preview", response_model=Session)
-async def create_preview_session():
-    payload = PREVIEW_BOOTSTRAP
+async def create_preview_session(payload: Optional[PreviewStart] = None):
+    payload = payload or PreviewStart()
+    notes = PREVIEW_TEACHER_NOTES
+    if payload.essay_about and payload.essay_about.strip():
+        notes += f" ESSAY CONTEXT (provided by the user, to help you interpret the passage's purpose): {payload.essay_about.strip()}"
+    if payload.passage_type and payload.passage_type.strip() and payload.passage_type != "Let Compass infer it":
+        notes += (f" PASSAGE TYPE HINT: the user says this is a '{payload.passage_type.strip()}'. Treat this as a hint, "
+                  "not a constraint; if the writing is clearly a different component, gently note the mismatch.")
     telos = Telos(
-        governing_pedagogical_purpose=payload.pedagogical_purpose,
-        immediate_task_purpose=payload.current_writing_task,
-        teacher_intentions=payload.teacher_notes or "",
-        assignment_context=payload.assignment,
+        governing_pedagogical_purpose=PREVIEW_BOOTSTRAP.pedagogical_purpose,
+        immediate_task_purpose=PREVIEW_BOOTSTRAP.current_writing_task,
+        teacher_intentions=notes,
+        assignment_context=PREVIEW_BOOTSTRAP.assignment,
     )
-    session = Session(**payload.model_dump(), telos=telos, is_preview=True)
+    session = Session(
+        assignment=PREVIEW_BOOTSTRAP.assignment,
+        pedagogical_purpose=PREVIEW_BOOTSTRAP.pedagogical_purpose,
+        current_writing_task=PREVIEW_BOOTSTRAP.current_writing_task,
+        teacher_notes=notes,
+        telos=telos,
+        is_preview=True,
+    )
     await db.sessions.insert_one(session.model_dump())
     return session
 
@@ -1175,6 +1335,283 @@ async def preview_continue(session_id: str):
     a["updated_at"] = now_iso()
     await db.sessions.update_one({"id": session_id}, {"$set": {"preview_analytics": a}})
     return {"ok": True, "continued_to_real_work": True}
+
+
+# ---------------------------------------------------------------------------
+# Teacher Configuration + Constitutional guardrails
+# ---------------------------------------------------------------------------
+@api_router.get("/compass/constitution")
+async def get_constitution():
+    """The LOCKED constitutional commitments. Read-only; never editable."""
+    return COMPASS_CONSTITUTION
+
+
+@api_router.post("/teacher-configs", response_model=TeacherConfiguration)
+async def create_teacher_config(payload: TeacherConfigInput):
+    cfg = TeacherConfiguration()
+    _apply_config_input(cfg, payload)
+    cfg.constitutionalRules = dict(SYSTEM_CONSTITUTIONAL_RULES)  # system-inserted, always
+    await db.teacher_configs.insert_one(cfg.model_dump())
+    return cfg
+
+
+@api_router.get("/teacher-configs/{config_id}", response_model=TeacherConfiguration)
+async def get_teacher_config(config_id: str):
+    doc = await db.teacher_configs.find_one({"id": config_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return TeacherConfiguration(**doc)
+
+
+@api_router.patch("/teacher-configs/{config_id}", response_model=TeacherConfiguration)
+async def update_teacher_config(config_id: str, payload: TeacherConfigInput):
+    doc = await db.teacher_configs.find_one({"id": config_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    cfg = TeacherConfiguration(**doc)
+    _apply_config_input(cfg, payload)
+    cfg.constitutionalRules = dict(SYSTEM_CONSTITUTIONAL_RULES)  # never teacher-editable
+    cfg.updated_at = now_iso()
+    await db.teacher_configs.update_one({"id": config_id}, {"$set": cfg.model_dump()})
+    return cfg
+
+
+def _apply_config_input(cfg: TeacherConfiguration, payload: TeacherConfigInput) -> None:
+    if payload.classContext is not None:
+        cfg.classContext = payload.classContext
+    if payload.assignment is not None:
+        cfg.assignment = payload.assignment
+    if payload.learning is not None:
+        cfg.learning = payload.learning
+    if payload.guidance is not None:
+        cfg.guidance = payload.guidance
+    if payload.classroom is not None:
+        cfg.classroom = payload.classroom
+    if payload.gradeCalibration is not None:
+        cfg.gradeCalibration = payload.gradeCalibration
+
+
+_FORBIDDEN_NOTE_PATTERNS = (
+    "rewrite", "write it for", "write the", "generate the essay", "generate an essay",
+    "auto-correct", "automatically correct", "correct all grammar", "fix all grammar",
+    "revise it for", "edit it for", "do the assignment", "complete the assignment",
+    "write their", "write the thesis",
+)
+
+
+def _validate_configuration(cfg: TeacherConfiguration) -> dict:
+    """Spec Part V: required-field, constitutional, developmental-minimum, conflict checks."""
+    errors, conflicts, warnings = [], [], []
+
+    # A. Required fields
+    if not cfg.classContext.gradeLevel:
+        errors.append({"field": "classContext.gradeLevel", "message": "Grade level is required."})
+    if not cfg.assignment.directions.strip():
+        errors.append({"field": "assignment.directions", "message": "Assignment directions are required."})
+    if not cfg.assignment.purpose.strip():
+        errors.append({"field": "assignment.purpose", "message": "An assignment purpose is required."})
+    if len([o for o in cfg.learning.objectives if o.strip()]) < 1:
+        errors.append({"field": "learning.objectives", "message": "At least one learning objective is required."})
+    if len(cfg.guidance.feedbackPriorities) < 1:
+        errors.append({"field": "guidance.feedbackPriorities", "message": "Select at least one feedback priority."})
+    if not cfg.assignment.genre.strip():
+        warnings.append({"field": "assignment.genre", "message": "No genre/form specified — Compass will not force a generic essay form."})
+
+    # C. Developmental minimum
+    if cfg.assignment.revisionCycles < 1:
+        errors.append({"field": "assignment.revisionCycles",
+                       "message": "Compass requires at least one substantive revision because revision is part of the developmental process. Please select one or more revision cycles."})
+    if cfg.guidance.scaffoldingLevel == "none":
+        errors.append({"field": "guidance.scaffoldingLevel",
+                       "message": "Scaffolding cannot be set to 'none' for all students. Low scaffolding begins with less visible support but increases when a student cannot proceed."})
+
+    # B. Constitutional (light scan of free-text teacher notes/prompts)
+    blob = " ".join([cfg.classroom.teacherNotes] + list(cfg.classroom.teacherPrompts)).lower()
+    hit = next((p for p in _FORBIDDEN_NOTE_PATTERNS if p in blob), None)
+    if hit:
+        warnings.append({"field": "classroom.teacherNotes",
+                         "message": f"A note may ask Compass to do the student's work ('{hit}'). Compass will preserve student authorship and instead coach the student. Use 'Ask Compass' to see compatible alternatives."})
+
+    # D. Conflict resolution
+    has_revise_stage = any("revis" in s.lower() for s in cfg.assignment.stages)
+    if cfg.assignment.revisionCycles >= 1 and not has_revise_stage:
+        conflicts.append({"fields": ["assignment.stages", "assignment.revisionCycles"],
+                          "message": "You require revision cycles but the assignment stages have no revision stage. Add a 'Revise' stage or set revision cycles to match your stages."})
+    if has_revise_stage and cfg.assignment.revisionCycles == 0:
+        conflicts.append({"fields": ["assignment.stages", "assignment.revisionCycles"],
+                          "message": "Your stages include revision but revision cycles is 0. Set at least one revision cycle."})
+
+    return {"valid": len(errors) == 0 and len(conflicts) == 0,
+            "errors": errors, "conflicts": conflicts, "warnings": warnings}
+
+
+@api_router.post("/teacher-configs/{config_id}/validate")
+async def validate_configuration(config_id: str):
+    doc = await db.teacher_configs.find_one({"id": config_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    return _validate_configuration(TeacherConfiguration(**doc))
+
+
+@api_router.post("/teacher-configs/{config_id}/activate", response_model=TeacherConfiguration)
+async def activate_configuration(config_id: str):
+    doc = await db.teacher_configs.find_one({"id": config_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    cfg = TeacherConfiguration(**doc)
+    result = _validate_configuration(cfg)
+    if not result["valid"]:
+        raise HTTPException(status_code=422, detail=result)
+    cfg.status = "active"
+    cfg.constitutionalRules = dict(SYSTEM_CONSTITUTIONAL_RULES)
+    cfg.updated_at = now_iso()
+    await db.teacher_configs.update_one({"id": config_id}, {"$set": cfg.model_dump()})
+    return cfg
+
+
+# --- Grade Calibration Profiles (separate, editable system resources) ---
+@api_router.get("/grade-profiles")
+async def list_grade_profiles():
+    docs = await db.grade_profiles.find({}, {"_id": 0}).to_list(100)
+    return docs
+
+
+@api_router.get("/grade-profiles/{profile_id}", response_model=GradeProfile)
+async def get_grade_profile(profile_id: str):
+    doc = await db.grade_profiles.find_one({"gradeProfileId": profile_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Grade profile not found")
+    return GradeProfile(**doc)
+
+
+def _compile_teacher_notes(cfg: TeacherConfiguration, profile: Optional[dict]) -> str:
+    """Fold instructional parameters + grade calibration into engine-facing teacher_notes.
+    Shapes instruction; NEVER weakens the constitutional method."""
+    a, l, g, c, cc = cfg.assignment, cfg.learning, cfg.guidance, cfg.classroom, cfg.classContext
+    parts = [f"Learners: Grade {cc.gradeLevel} {c.workMode} writers (age {cc.ageRange}); {cc.course}."]
+    if profile:
+        parts.append(f"GRADE CALIBRATION ({profile.get('gradeProfileId')}): default scaffolding {profile.get('defaultScaffolding')}. "
+                     "Grade sets INITIAL expectations only — adjust to the student's actual performance; never infer competence from grade/age alone.")
+    if a.purpose:
+        parts.append(f"Assignment purpose (return to this repeatedly): {a.purpose}")
+    if a.audience:
+        parts.append(f"Intended audience: {a.audience}.")
+    if a.genre:
+        parts.append(f"Genre/form: {a.genre} (teach forms in relation to what they accomplish; do not force a generic template).")
+    if l.objectives:
+        parts.append(f"Learning objectives (prioritize): {'; '.join(l.objectives)}.")
+    if l.standards:
+        parts.append(f"Writing standards governing evaluation: {'; '.join(l.standards)}.")
+    if l.teacherRubric:
+        parts.append(f"Teacher rubric context (orientation, NOT for scoring the student): {l.teacherRubric}")
+    parts.append(f"Scaffolding: {g.scaffoldingLevel}; question/explanation balance: {g.questionExplanationBalance}; fade support as the student gains control.")
+    if g.feedbackPriorities:
+        parts.append(f"Feedback priorities: {', '.join(g.feedbackPriorities)}.")
+    if g.instructionalEmphases:
+        parts.append(f"Instructional emphases: {', '.join(g.instructionalEmphases)}.")
+    parts.append(f"Grammar EMPHASIS {g.grammarEmphasis}; mechanics EMPHASIS {g.mechanicsEmphasis} — teach, model, and scaffold grammar in relation to meaning; NEVER auto-correct the student's paper.")
+    parts.append(f"Revision: {a.revisionCycles} cycle(s); stages {a.stages}; the student performs all revision.")
+    if g.modelsEnabled and c.teacherExemplars:
+        parts.append(f"Teacher exemplars (analyze as models; never copy into the student's work): {'; '.join(c.teacherExemplars)}.")
+    if c.teacherPrompts:
+        parts.append(f"Teacher prompts to draw on: {'; '.join(c.teacherPrompts)}.")
+    if c.approvedAccommodations:
+        parts.append(f"Approved accommodations (support access, NOT lower expectations): {', '.join(c.approvedAccommodations)}.")
+    if c.norms:
+        parts.append(f"Classroom norms: {c.norms}")
+    if c.teacherNotes:
+        parts.append(f"Teacher notes (interpret within constitutional constraints): {c.teacherNotes}")
+    parts.append("Constitutional guardrails are absolute: preserve student authorship; never write, rewrite, generate, auto-revise, auto-edit, auto-correct, or complete the student's work.")
+    return " ".join(parts)
+
+
+@api_router.post("/teacher-configs/{config_id}/create-session", response_model=Session)
+async def create_session_from_config(config_id: str):
+    doc = await db.teacher_configs.find_one({"id": config_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Configuration not found")
+    cfg = TeacherConfiguration(**doc)
+    profile = await db.grade_profiles.find_one(
+        {"gradeProfileId": cfg.gradeCalibration.get("profile", "grade-9")}, {"_id": 0})
+    assignment = cfg.assignment.title or cfg.assignment.directions or "Writing assignment"
+    pedagogical_purpose = cfg.assignment.purpose or (
+        "; ".join(cfg.learning.objectives) if cfg.learning.objectives else
+        "Develop the student's understanding of what their writing does for a reader.")
+    current_writing_task = cfg.assignment.directions or "Draft your writing."
+    notes = _compile_teacher_notes(cfg, profile)
+    telos = Telos(
+        governing_pedagogical_purpose=pedagogical_purpose,
+        immediate_task_purpose=current_writing_task,
+        teacher_intentions=notes,
+        assignment_context=assignment,
+    )
+    session = Session(
+        assignment=assignment,
+        pedagogical_purpose=pedagogical_purpose,
+        current_writing_task=current_writing_task,
+        teacher_notes=notes,
+        assignment_prompt=cfg.assignment.directions or "",
+        telos=telos,
+    )
+    await db.sessions.insert_one(session.model_dump())
+    return session
+
+
+_CONSTITUTION_VALIDATOR_SYSTEM = """You are the constitutional guardrail for Compass, a developmental writing tutor. A teacher is requesting a feature or configuration. Your job is to classify the request and respond in the spirit of Compass — never a blunt refusal.
+
+COMPASS CONSTITUTION (LOCKED — never configurable, never weakened):
+Locked principles: student authorship; teacher educational authority; active developmental guidance; developmental scaffolding; fading of support; intellectual responsibility remains with the student; development takes priority over product.
+Compass NEVER: writes student papers; rewrites paragraphs automatically; generates essays; generates thesis statements; automatically revises papers; automatically edits papers; automatically corrects grammar; completes assignments.
+
+CRITICAL DISTINCTION:
+- Teachers legitimately control INSTRUCTIONAL DESIGN: what/why/when students learn and how Compass is used (subject, grade, genre, objectives, curriculum, readings, pacing, due dates, rubrics, classroom norms, amount of scaffolding, feedback emphasis, revision requirements, grammar/spelling EMPHASIS, exemplars, prompts). These are ALLOWED.
+- Compass owns the DEVELOPMENTAL METHOD (how guidance occurs, how authorship is protected). Requests that would have Compass DO THE STUDENT'S THINKING/WRITING for them VIOLATE the constitution.
+- Nuance: setting grammar/spelling EMPHASIS is allowed; AUTO-CORRECTING grammar/spelling is forbidden. Wanting strong introductions is allowed; having Compass REWRITE the introduction is forbidden.
+
+For a VIOLATION, do NOT simply reject. (1) Identify the teacher's underlying instructional need. (2) Briefly explain why the requested feature conflicts with Compass's developmental philosophy. (3) Offer the closest constitutional alternatives (e.g., annotated examples, guided revision questions, identifying weaknesses, modeling revision strategies, coaching the student through the improvement).
+
+Respond with ONLY this JSON (no prose, no fences):
+{
+  "classification": "instructional_design" | "developmental_method_violation",
+  "allowed": true | false,
+  "underlying_need": "the teacher's real instructional goal, one sentence",
+  "explanation": "if violation: one or two sentences on the conflict; if allowed: one sentence confirming this is a legitimate teacher setting",
+  "closest_alternatives": ["constitutional alternatives that meet the same need — 3 to 5 items for a violation; empty or minimal if allowed"],
+  "compass_response": "a warm, teacher-facing message. For a violation follow this shape: 'This feature is unavailable because Compass preserves <principle>. Instead I can: ...' For an allowed request, confirm it can be set and how it will shape instruction."
+}"""
+
+
+async def _validate_teacher_request(request_text: str) -> dict:
+    prompt = f'Teacher request:\n"""{request_text.strip()}"""\n\nClassify and respond with ONLY the JSON object.'
+    for attempt in range(2):
+        try:
+            chat = LlmChat(
+                api_key=EMERGENT_LLM_KEY,
+                session_id=f"constitution-{uuid.uuid4()}",
+                system_message=_CONSTITUTION_VALIDATOR_SYSTEM,
+            ).with_model("anthropic", "claude-sonnet-4-6")
+            raw = await chat.send_message(UserMessage(text=prompt))
+            data = _extract_json(raw)
+            data.setdefault("classification", "developmental_method_violation")
+            data.setdefault("allowed", data.get("classification") == "instructional_design")
+            data.setdefault("underlying_need", "")
+            data.setdefault("explanation", "")
+            data.setdefault("closest_alternatives", [])
+            data.setdefault("compass_response", "")
+            return data
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"constitution validator attempt {attempt + 1} failed: {e}")
+            if attempt == 0:
+                await asyncio.sleep(2)
+    raise ValueError("Could not evaluate the request.")
+
+
+@api_router.post("/compass/validate-request")
+async def validate_request(payload: FeatureRequest):
+    if not payload.request.strip():
+        raise HTTPException(status_code=400, detail="Empty request")
+    return await _validate_teacher_request(payload.request)
+
 
 
 
@@ -1276,10 +1713,7 @@ async def _run_engine(session: Session, req: InteractRequest, preview_output: Op
     po = is_preview if preview_output is None else preview_output
 
     _t_a0 = time.perf_counter()
-    if is_preview:
-        relevant, io_names = PREVIEW_FIXED_SELECTIONS, PREVIEW_FIXED_IO  # R1: no selector call
-    else:
-        relevant, io_names = await _select_relevant_domains(session, req)
+    relevant, io_names = await _select_relevant_domains(session, req)
     _t_a = time.perf_counter() - _t_a0
 
     _t_p0 = time.perf_counter()
@@ -1841,6 +2275,67 @@ async def recover_orphaned_turns():
             logger.info(f"[startup] recovered {res.modified_count} session(s) with orphaned processing turns")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[startup] orphan recovery skipped: {e}")
+
+
+GRADE9_PROFILE = {
+    "gradeProfileId": "grade-9",
+    "version": "1.0",
+    "ageGuidance": "14-15",
+    "defaultScaffolding": "adaptive-moderate",
+    "languageGuidance": {
+        "register": "respectful, direct, appropriate for adolescents; not childish; not needlessly academic",
+        "instructions": ["be concise", "address one task at a time", "explain why the task matters",
+                          "invite student action", "avoid treating the student as deficient"],
+    },
+    "expectedIndependence": {
+        "can_generally": ["understand a clearly stated assignment with some clarification",
+                          "articulate a provisional purpose", "generate initial ideas",
+                          "produce an independent first attempt", "respond to focused questions",
+                          "compare their writing with criteria or models", "make guided revisions",
+                          "explain at least some revision choices"],
+        "not_yet_assumed": "consistently coordinating all of these processes at once",
+    },
+    "taskComplexity": {
+        "expectations": ["sustained attention to a complex task", "explicit awareness of purpose and audience",
+                         "organization across multiple paragraphs or sections", "use and explanation of evidence",
+                         "distinguishing claim, evidence, interpretation, assumption",
+                         "sentence structures expressing more complex relations",
+                         "substantive revision, not correction alone", "growing capacity to explain writing decisions"],
+        "note": "starting expectations, not assumptions about every student",
+    },
+    "genreExpectations": {"note": "connect forms to purpose and audience; do not force a single essay template"},
+    "feedbackPriorities": ["understanding of the task", "purpose", "reader comprehension", "organization of ideas",
+                           "explanation and use of evidence", "paragraph coherence", "sentence clarity",
+                           "grammar and mechanics that materially affect meaning"],
+    "grammarGuidance": {
+        "approach": "integrate grammar with meaning and purpose",
+        "moves": ["identify a pattern", "explain what the sentence currently communicates",
+                  "show why the structure may confuse a reader", "model relevant constructions",
+                  "heavily scaffold a correction", "ask the student to apply the principle", "revisit later"],
+        "never": "automatically correct the student's text",
+    },
+    "modelGuidance": {"traits": ["age-appropriate", "connected to current genre and purpose", "brief enough to analyze",
+                                 "annotated to show function", "varied, not the single correct form"],
+                      "never": "give models that can be copied into the assignment"},
+    "revisionExpectations": {"default_cycles": 2, "minimum": 1, "note": "substantive revision, not only correction"},
+    "assessmentIndicators": {"evidence": ["original attempt", "responses to questions", "ability to explain intended meaning",
+                                          "use of feedback", "quality of revision", "ability to apply a principle elsewhere",
+                                          "degree of prompting required", "consistency across tasks"],
+                             "do_not": ["infer capability from the polished paper alone", "infer capability from grade level alone"]},
+}
+
+
+@app.on_event("startup")
+async def seed_grade_profiles():
+    """Idempotently ensure the Grade 9 calibration profile exists. Grade profiles
+    are separate, editable resources so grade expectations are never hard-coded."""
+    try:
+        await db.grade_profiles.update_one(
+            {"gradeProfileId": "grade-9"}, {"$setOnInsert": GRADE9_PROFILE}, upsert=True)
+        logger.info("[startup] grade-9 calibration profile ensured")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[startup] grade profile seed skipped: {e}")
+
 
 
 @app.on_event("shutdown")

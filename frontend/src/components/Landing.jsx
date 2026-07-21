@@ -84,30 +84,6 @@ export default function Landing() {
             </motion.div>
           </div>
         </div>
-
-        {/* Quiet contrast band — deepens the idea without a feature list */}
-        <motion.div
-          {...rise(0.34)}
-          className="border-t border-stone-200 py-14 md:py-20 grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-20 max-w-5xl"
-          data-testid="landing-contrast"
-        >
-          <div>
-            <p className="font-mono-panel text-[11px] uppercase tracking-[0.2em] text-stone-400 mb-3">
-              What it won’t do
-            </p>
-            <p className="font-serif-display text-2xl md:text-3xl text-stone-400 leading-snug line-through decoration-stone-300 decoration-1">
-              Hand them the sentences.
-            </p>
-          </div>
-          <div>
-            <p className="font-mono-panel text-[11px] uppercase tracking-[0.2em] text-[#8C3A2A] mb-3">
-              What it does
-            </p>
-            <p className="font-serif-display text-2xl md:text-3xl text-stone-900 leading-snug">
-              Leads them until they say it themselves.
-            </p>
-          </div>
-        </motion.div>
       </main>
 
       <footer className="px-8 md:px-16 lg:px-24 py-8 border-t border-stone-200">

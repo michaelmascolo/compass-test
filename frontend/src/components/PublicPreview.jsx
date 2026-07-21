@@ -4,9 +4,7 @@ import { ArrowRight, Loader2, Compass } from "lucide-react";
 import { startPreview, getSession, interact } from "@/lib/api";
 import PreviewBridge from "@/components/PreviewBridge";
 
-const SEED_INVITATION =
-  "Before we talk about essays, tell me one thing you think should change \u2014 about anything.";
-const SEED_HINT = "One sentence, in plain words. Don\u2019t make it sound like an essay.";
+const PASSAGE_TYPES = ["Let Compass infer it", "Introduction", "Body paragraph", "Transition", "Conclusion", "Other"];
 
 // A single conversational surface. Fully in character: no assignment header,
 // no scoring, no jargon, no developer panel. The whole experience is the
@@ -18,6 +16,8 @@ export default function PublicPreview() {
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState(false);
   const [showBridge, setShowBridge] = useState(false);
+  const [passageType, setPassageType] = useState("Let Compass infer it");
+  const [essayAbout, setEssayAbout] = useState("");
   const threadRef = useRef(null);
 
   const isProcessing = !!session?.turns?.some((t) => t.status === "processing");
@@ -58,7 +58,7 @@ export default function PublicPreview() {
     if (!seed.trim() || starting) return;
     setStarting(true);
     try {
-      const s = await startPreview();
+      const s = await startPreview({ essay_about: essayAbout.trim(), passage_type: passageType });
       const updated = await interact(s.id, { kind: "writing", content: seed.trim() });
       setSession(updated);
     } catch (e) {
@@ -66,7 +66,7 @@ export default function PublicPreview() {
     } finally {
       setStarting(false);
     }
-  }, [seed, starting]);
+  }, [seed, starting, essayAbout, passageType]);
 
   const sendReply = useCallback(async () => {
     if (!reply.trim() || busy || !session) return;
@@ -112,6 +112,10 @@ export default function PublicPreview() {
             setSeed={setSeed}
             onBegin={beginPreview}
             starting={starting}
+            passageType={passageType}
+            setPassageType={setPassageType}
+            essayAbout={essayAbout}
+            setEssayAbout={setEssayAbout}
           />
         ) : (
           <>
@@ -163,38 +167,71 @@ export default function PublicPreview() {
   );
 }
 
-function SeedScreen({ seed, setSeed, onBegin, starting }) {
+function SeedScreen({ seed, setSeed, onBegin, starting, passageType, setPassageType, essayAbout, setEssayAbout }) {
+  const empty = !seed.trim();
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full"
+      className="flex-1 flex flex-col justify-center max-w-xl mx-auto w-full py-10"
       data-testid="preview-seed-screen"
     >
       <h1 className="font-serif-display text-3xl sm:text-4xl leading-snug text-stone-900">
-        {SEED_INVITATION}
+        Try Compass with a short piece of Grade 9 writing.
       </h1>
-      <p className="text-stone-500 mt-3 text-[15px]">{SEED_HINT}</p>
+      <p className="text-stone-600 mt-4 text-[15px] leading-relaxed">
+        Choose any essay topic. Write or paste a short passage as though it were part of a Grade 9
+        student’s essay. You might enter an introduction, a body paragraph, a transition, or a
+        conclusion.
+      </p>
+      <p className="text-stone-500 mt-2 text-[14px] leading-relaxed">
+        The writing can be imperfect. The purpose is to experience how Compass helps a student
+        develop it.
+      </p>
+
+      {/* Optional essay context */}
+      <div className="mt-7">
+        <label className="block font-mono-panel text-[11px] uppercase tracking-[0.14em] text-stone-500 mb-1.5">
+          What is the essay about? <span className="text-stone-400 normal-case tracking-normal">Optional</span>
+        </label>
+        <input
+          data-testid="preview-essay-about"
+          value={essayAbout}
+          onChange={(e) => setEssayAbout(e.target.value)}
+          placeholder="Briefly describe the topic or assignment."
+          className="w-full bg-white border border-stone-300 rounded-sm px-3.5 py-2.5 text-[15px] text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-[#8C3A2A] focus:border-[#8C3A2A] transition-colors"
+        />
+      </div>
+
+      {/* Optional passage type */}
+      <div className="mt-4">
+        <label className="block font-mono-panel text-[11px] uppercase tracking-[0.14em] text-stone-500 mb-1.5">
+          What kind of passage are you entering? <span className="text-stone-400 normal-case tracking-normal">Optional</span>
+        </label>
+        <select
+          data-testid="preview-passage-type"
+          value={passageType}
+          onChange={(e) => setPassageType(e.target.value)}
+          className="w-full bg-white border border-stone-300 rounded-sm px-3.5 py-2.5 text-[15px] text-stone-900 outline-none focus:ring-1 focus:ring-[#8C3A2A] focus:border-[#8C3A2A] transition-colors"
+        >
+          {PASSAGE_TYPES.map((t) => <option key={t} value={t}>{t}</option>)}
+        </select>
+      </div>
+
       <textarea
         data-testid="preview-seed-input"
         value={seed}
         onChange={(e) => setSeed(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey) {
-            e.preventDefault();
-            onBegin();
-          }
-        }}
-        rows={3}
+        rows={7}
         autoFocus
-        placeholder="I think…"
-        className="mt-6 w-full bg-white border border-stone-300 rounded-sm p-5 text-[17px] leading-8 text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors resize-none font-serif-display"
+        placeholder="Enter a short passage here…"
+        className="mt-5 w-full bg-white border border-stone-300 rounded-sm p-5 text-[16px] leading-8 text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors resize-none"
       />
       <button
         onClick={onBegin}
         data-testid="preview-begin-button"
-        disabled={!seed.trim() || starting}
+        disabled={empty || starting}
         className="mt-5 self-start group inline-flex items-center gap-2 bg-[#8C3A2A] text-white px-7 py-3 rounded-sm font-medium tracking-wide hover:bg-[#6B2C20] enabled:hover:-translate-y-px transition-[background-color,transform] disabled:opacity-40 disabled:cursor-not-allowed"
       >
         {starting ? (
@@ -204,11 +241,16 @@ function SeedScreen({ seed, setSeed, onBegin, starting }) {
           </>
         ) : (
           <>
-            Begin
+            Try Compass
             <ArrowRight className="h-4 w-4 transition-transform group-enabled:group-hover:translate-x-0.5" />
           </>
         )}
       </button>
+      {empty && (
+        <span className="text-stone-400 text-[13px] mt-2" data-testid="preview-empty-hint">
+          Enter a short passage to continue.
+        </span>
+      )}
     </motion.div>
   );
 }

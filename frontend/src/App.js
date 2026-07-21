@@ -8,6 +8,7 @@ import TestHarness from "@/components/TestHarness";
 import PublicPreview from "@/components/PublicPreview";
 import Landing from "@/components/Landing";
 import PreviewBridge from "@/components/PreviewBridge";
+import TeacherConfig from "@/components/TeacherConfig";
 import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
@@ -37,6 +38,10 @@ function App() {
   // Preview → Real bridge (?bridge) — reachable standalone (product map S3).
   if (params.has("bridge")) {
     return <PreviewBridge sessionId={null} />;
+  }
+  // Teacher Configuration (?config) — set up an assignment before using Compass.
+  if (params.has("config")) {
+    return <TeacherConfig />;
   }
   // The studio / teacher app (?app or ?dev). Everything else is the landing page.
   if (params.has("app") || params.has("dev")) {

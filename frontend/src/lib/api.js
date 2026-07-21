@@ -8,13 +8,54 @@ export const createSession = async (payload) => {
   return data;
 };
 
-export const startPreview = async () => {
-  const { data } = await axios.post(`${API}/sessions/preview`);
+export const startPreview = async (opts) => {
+  const { data } = await axios.post(`${API}/sessions/preview`, opts || {});
   return data;
 };
 
 export const previewContinue = async (id) => {
   const { data } = await axios.post(`${API}/sessions/${id}/preview-continue`);
+  return data;
+};
+
+// --- Teacher Configuration + Constitution ---
+export const getConstitution = async () => {
+  const { data } = await axios.get(`${API}/compass/constitution`);
+  return data;
+};
+
+export const createTeacherConfig = async (payload) => {
+  const { data } = await axios.post(`${API}/teacher-configs`, payload);
+  return data;
+};
+
+export const updateTeacherConfig = async (id, payload) => {
+  const { data } = await axios.patch(`${API}/teacher-configs/${id}`, payload);
+  return data;
+};
+
+export const validateConfiguration = async (id) => {
+  const { data } = await axios.post(`${API}/teacher-configs/${id}/validate`);
+  return data;
+};
+
+export const activateConfiguration = async (id) => {
+  const { data } = await axios.post(`${API}/teacher-configs/${id}/activate`);
+  return data;
+};
+
+export const getGradeProfile = async (id) => {
+  const { data } = await axios.get(`${API}/grade-profiles/${id}`);
+  return data;
+};
+
+export const createSessionFromConfig = async (id) => {
+  const { data } = await axios.post(`${API}/teacher-configs/${id}/create-session`);
+  return data;
+};
+
+export const validateRequest = async (request) => {
+  const { data } = await axios.post(`${API}/compass/validate-request`, { request });
   return data;
 };
 
