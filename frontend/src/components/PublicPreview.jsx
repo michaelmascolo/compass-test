@@ -38,7 +38,7 @@ export default function PublicPreview() {
       } catch (e) {
         /* transient — keep polling */
       }
-    }, 2500);
+    }, 1500);
     return () => {
       cancelled = true;
       clearInterval(timer);
@@ -219,11 +219,33 @@ function Message({ turn }) {
 }
 
 function Thinking() {
+  const lines = [
+    "Reading your opening as a reader would…",
+    "Sitting with what you actually said…",
+    "Thinking about what a reader needs here…",
+  ];
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % lines.length), 4000);
+    return () => clearInterval(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   return (
-    <div className="flex items-center gap-1.5 pl-1" data-testid="preview-thinking">
-      <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" />
-      <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" style={{ animationDelay: "0.2s" }} />
-      <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" style={{ animationDelay: "0.4s" }} />
+    <div className="flex items-center gap-3 pl-1" data-testid="preview-thinking">
+      <div className="flex items-center gap-1.5">
+        <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" />
+        <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" style={{ animationDelay: "0.2s" }} />
+        <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" style={{ animationDelay: "0.4s" }} />
+      </div>
+      <motion.span
+        key={i}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 0.7 }}
+        transition={{ duration: 0.6 }}
+        className="text-stone-500 text-sm italic font-serif-display"
+      >
+        {lines[i]}
+      </motion.span>
     </div>
   );
 }

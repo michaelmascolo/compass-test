@@ -1,0 +1,42 @@
+{
+  "full": [
+    {
+      "intervention_type": "invite_only",
+      "mode": "developmental_question",
+      "target": "surfacing the resistant reader to motivate the claim before it is stated",
+      "stage_b": 66.21
+    },
+    {
+      "intervention_type": "invite_only",
+      "mode": "developmental_question",
+      "target": "surfacing the resistant reader to reveal that the opening needs to create need before the claim",
+      "stage_b": 67.27
+    },
+    {
+      "intervention_type": "invite_only",
+      "mode": "developmental_question",
+      "target": "surfacing the resistant reader to reveal that the claim arrives before the reader is made to need it",
+      "stage_b": 64.87
+    }
+  ],
+  "preview": [
+    {
+      "intervention_type": "instruct_then_invite",
+      "mode": "developmental_question",
+      "target": "opening move: establish stakes so reader feels the problem before the claim lands",
+      "stage_b": 44.93
+    },
+    {
+      "intervention_type": "invite_only",
+      "mode": "developmental_question",
+      "target": "Making the reader need the point before it is stated \u2014 surfacing the problem or moment that motivates the claim",
+      "stage_b": 44.0
+    },
+    {
+      "intervention_type": "invite_only",
+      "mode": "developmental_question",
+      "target": "Making the reader need the point before it is stated \u2014 surfacing the resistant/naive reader who needs a foothold",
+      "stage_b": 46.25
+    }
+  ]
+}

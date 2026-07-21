@@ -795,7 +795,45 @@ def _select_names(selections: list) -> List[str]:
     return [s["domain_name"] if isinstance(s, dict) else s for s in selections]
 
 
-def _build_prompt(session: Session, req: InteractRequest, selections: list, io_names: list = None) -> str:
+# --- R1: Public Preview fixed retrieval (skip the STAGE-A selector model call).
+# The preview's unit is ALWAYS the opening of an essay, so the relevant domains and
+# instructional objects are constant — no need to discover them with a model call.
+PREVIEW_FIXED_SELECTIONS = [
+    {"domain_name": "Opening / Introduction", "sections": []},
+    {"domain_name": "Central Claim / Thesis", "sections": []},
+    {"domain_name": "Audience Awareness", "sections": []},
+]
+PREVIEW_FIXED_IO = ["Introduction", "Thesis", "Hook / Opening Move"]
+
+# --- R3: Public Preview OUTPUT-SCHEMA trim (payload only; reasoning UNCHANGED).
+# Appended to the reasoner prompt for preview sessions. It does NOT alter, shorten,
+# or simplify the instructional reasoning or the decision — it only reduces which
+# fields are serialized, dropping the downstream/bookkeeping fields the preview
+# never consumes (telos echo, non-applicable framework blocks, trailing theory
+# state lists, observed_reorganization, developmental_profile_update).
+PREVIEW_OUTPUT_OVERRIDE = """
+
+=== PREVIEW OUTPUT PAYLOAD OVERRIDE (this session only) ===
+Perform the COMPLETE recursive loop and governed instructional reasoning EXACTLY as specified above — do NOT shorten, skip, or simplify any analysis. Your branch read, primary target, developmental tension, chosen intervention, next student act, and the student_facing_invitation MUST be identical to what you would produce under the full schema. This directive changes ONLY which fields you serialize, to shrink the payload.
+In your final JSON, include ONLY these top-level keys (omit ALL others — they are not consumed this session and omitting them changes nothing about your reasoning or decision):
+{
+  "student_facing_invitation": "...",
+  "theory": {
+    "communicative_purpose": {...},
+    "reader_construction": {...},
+    "scaffolding_control": {...},
+    "integration_calibration": {...},
+    "instructional_reasoning": {...}
+  },
+  "candidate_invitations": [...],
+  "selected_invitation": {...},
+  "intervention": {...}
+}
+Specifically OMIT: telos, theory.paragraph_function, theory.evidence_function, theory.coherence_function, theory.conclusion_function, theory.revision_development, all trailing theory state lists (observed_differentiations, observed_integrations, observed_coordinations, emerging_intentional_control, unresolved_tensions, cultural_resources_in_use, potential_cultural_resources, possible_reorganizations, current_uncertainty, supporting_evidence, complicating_evidence, alternative_interpretations, current_organization, current_telos, changes_since_previous, currently_relevant_domains), observed_reorganization, and developmental_profile_update. Output compact JSON."""
+
+
+
+def _build_prompt(session: Session, req: InteractRequest, selections: list, io_names: list = None, preview_output: bool = False) -> str:
     full_domain_data = get_relevant_domain_data(selections)
     names = _select_names(selections)
     io_objects = get_relevant_instructional_objects(io_names or [])
@@ -828,7 +866,7 @@ SHARED DEVELOPMENTAL RESOURCE MENU (choose the resource(s) that best help THIS s
 
 {_latest_block(session, req)}
 
-Run the full recursive loop AND the governed instructional reasoning, then respond with ONLY the JSON object described in your instructions (including the "instructional_reasoning" block). Revise the ENTIRE working theory rather than appending a note. Keep every field terse per the BREVITY rule."""
+Run the full recursive loop AND the governed instructional reasoning, then respond with ONLY the JSON object described in your instructions (including the "instructional_reasoning" block). Revise the ENTIRE working theory rather than appending a note. Keep every field terse per the BREVITY rule.{PREVIEW_OUTPUT_OVERRIDE if preview_output else ""}"""
 
 
 def _parse_engine_output(session: Session, raw: str) -> dict:
@@ -946,9 +984,10 @@ _OWNERSHIP_RETURN_PATTERNS = (
 )
 _TRANSFER_PATTERNS = (
     "next time", "next essay", "next introduction", "next opening", "next paper",
-    "haven't met", "unfamiliar reader", "a reader who", "in your own words",
-    "what will your", "what would your opening", "what does an opening",
-    "the next thing you write", "already disagrees",
+    "next piece", "the next thing you write", "the next opening you write",
+    "unfamiliar reader", "haven't met", "reader you haven't", "reader you don't",
+    "in your own words, what", "what does an opening", "what will your opening",
+    "what will your first", "what would your opening", "when you write your next",
 )
 
 
@@ -1222,26 +1261,40 @@ async def _select_relevant_domains(session: Session, req: InteractRequest) -> tu
     return [{"domain_name": n, "sections": []} for n in fallback], []
 
 
-async def _run_engine(session: Session, req: InteractRequest) -> dict:
+async def _run_engine(session: Session, req: InteractRequest, preview_output: Optional[bool] = None) -> dict:
     """Run STAGE A (domain selection) + STAGE B (developmental reasoning) with one
     retry on transient/unreadable failure. Pure logic — no client connection.
-    Raises on unrecoverable failure."""
+    Raises on unrecoverable failure.
+
+    Preview optimizations (do NOT touch the frozen engine reasoning):
+      R1 — for preview sessions, skip the STAGE-A selector model call and use the
+           fixed intro/thesis/audience retrieval (the preview unit is always an opening).
+      R3 — for preview sessions, emit the trimmed OUTPUT payload (reasoning unchanged).
+    `preview_output` overrides the R3 toggle for validation harnesses; when None it
+    follows session.is_preview."""
+    is_preview = bool(session.is_preview)
+    po = is_preview if preview_output is None else preview_output
+
     _t_a0 = time.perf_counter()
-    relevant, io_names = await _select_relevant_domains(session, req)
+    if is_preview:
+        relevant, io_names = PREVIEW_FIXED_SELECTIONS, PREVIEW_FIXED_IO  # R1: no selector call
+    else:
+        relevant, io_names = await _select_relevant_domains(session, req)
     _t_a = time.perf_counter() - _t_a0
 
     _t_p0 = time.perf_counter()
-    prompt = _build_prompt(session, req, relevant, io_names)
+    prompt = _build_prompt(session, req, relevant, io_names, preview_output=po)
     _t_p = time.perf_counter() - _t_p0
 
     _sel_log = {s["domain_name"]: len(s["sections"]) for s in relevant}
-    logger.info(f"[reason] domains/sections={_sel_log} io={io_names} reasoner_prompt_bytes={len(prompt)}")
+    logger.info(f"[reason] domains/sections={_sel_log} io={io_names} reasoner_prompt_bytes={len(prompt)} preview_output={po}")
     _meta = {
         "reasoner_prompt_bytes": len(prompt),
         "selected_domains": [s["domain_name"] for s in relevant],
         "selected_instructional_objects": io_names,
         "t_stage_a_selector_s": round(_t_a, 2),
         "t_prompt_build_s": round(_t_p, 3),
+        "preview_output": po,
     }
 
     last_err = None
@@ -1257,6 +1310,7 @@ async def _run_engine(session: Session, req: InteractRequest) -> dict:
             _t_b = time.perf_counter() - _t_b0
             _parsed = _parse_engine_output(session, raw)
             _meta["t_stage_b_reasoner_s"] = round(_t_b, 2)
+            _meta["reasoner_output_bytes"] = len(raw)
             _parsed["_meta"] = _meta
             logger.info(
                 f"[latency] stage_a_selector={_meta['t_stage_a_selector_s']}s "

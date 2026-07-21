@@ -45,3 +45,32 @@ Seed: **"Phones should be banned in classrooms."** (a second turn, "School lunch
 
 ## Bottom line
 The dominant cost (~93%) is the reasoner **generating a large structured JSON, most of which the preview never uses**. The safe wrapper changes (R1 + R2) trim only ~5 s. A meaningful reduction requires approving **R3** (preview-only slimmed output) — which may change the instructional output and therefore needs explicit sign-off and re-validation. No instructional reasoning was simplified in this audit.
+
+---
+
+## IMPLEMENTED (2026-07) — R1 + R2 + R3, with validation
+
+**R1 (done):** preview sessions skip the STAGE-A selector model call and use a fixed intro/thesis/audience retrieval (`PREVIEW_FIXED_SELECTIONS` / `PREVIEW_FIXED_IO`). Removes ~3.7 s/turn.
+
+**R2 (done):** preview poll interval 2.5 s → 1.5 s; added a rotating in-character "reading your opening…" waiting state.
+
+**R3 (done, as a pure OUTPUT-schema trim):** for preview sessions the reasoner is told to perform the COMPLETE reasoning unchanged but serialize only the fields the preview consumes (`student_facing_invitation`, `theory.{communicative_purpose, reader_construction, scaffolding_control, integration_calibration, instructional_reasoning}`, `candidate_invitations`, `selected_invitation`, `intervention`), omitting the downstream/bookkeeping fields (telos echo, non-applicable framework blocks, trailing theory state lists, `observed_reorganization`, `developmental_profile_update`). Implemented via a prompt-appended override (`PREVIEW_OUTPUT_OVERRIDE`); the frozen SYSTEM_MESSAGE and reasoning are untouched. Toggleable via `_run_engine(..., preview_output=)` for validation.
+
+### Validation (decision-object comparison, identical inputs; R1 held constant on both sides)
+5 seeds (A bare topic, B unmotivated claim, C strong motivated claim, anti-coauthoring request, stall). Report: `test_reports/preview_schema_validation.json`; C variance probe: `test_reports/preview_variance_C.json`.
+
+| Case | stage_b full → preview | output bytes | mode | intervention_type | focus | target/tension (semantic) |
+|---|---|---|---|---|---|---|
+| A bare topic | 53.7 → 39.5 s (−26%) | −30% | match | match (invite_only) | match | identical (surface a stake) |
+| B unmotivated | 65.8 → 43.4 s (−34%) | −35% | match | match (instruct_then_invite) | match | identical (motivate before claim) |
+| C strong claim | 72.4 → 47.2 s (−35%) | −30% | match | **wobble** | match | identical (create felt need; no invented flaw) |
+| anti-coauthoring | 50.6 → 38.0 s (−25%) | −22% | match | match (invite_only) | match | identical (refuse + return authorship) ✓ |
+| stall | 45.1 → 30.9 s (−32%) | −31% | match | match (invite_only) | match | identical (elicit a defensible belief) ✓ |
+
+- **Latency: −25% to −35% on the reasoner stage** (same input both sides), plus R1's ~3.7 s. Live end-to-end preview turn measured at **~48 s** (was ~58–60 s).
+- **Anti-coauthoring and stall behaviors preserved exactly** — the preview never wrote the opening.
+- **Decision equivalence: 4/5 cases identical on every categorical field; free-text targets/tensions semantically identical in all 5** (they never match byte-for-byte even between two full-schema runs).
+- **One flag — case C `intervention_type`:** full schema = `invite_only` 3/3 runs; preview schema = `invite_only` 2/3, `instruct_then_invite` 1/3. The branch/target/mode were identical every run (correct restraint — no invented flaw). At n=3 this is within ordinary stochastic range and cannot be attributed to the schema, but it is the one place worth a **larger-n confirmation (≈10 runs/case) before public launch** if the strict "identical" guarantee must be certified.
+
+### Follow-up (noted, not blocking)
+R1 currently loads whole domain records (input ~59 KB vs ~22 KB for dynamic section-filtered selection). Latency impact is negligible (output generation dominates) but it is token-wasteful; trimming R1 to representative section keys is a cheap future optimization.

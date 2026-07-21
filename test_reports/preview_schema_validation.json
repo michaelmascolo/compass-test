@@ -1,0 +1,137 @@
+[
+  {
+    "case": "A_bare_topic",
+    "input": "School lunches.",
+    "kind": "writing",
+    "full_schema": {
+      "primary_target": "surfacing a position/stake from the bare topic",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "Topic present but no position or stake \u2014 nothing for an opening to open toward.",
+      "next_student_act": "Name a belief about school lunches that someone could push back on.",
+      "intervention_type": "invite_only",
+      "intervention_focus": "writing",
+      "invitation": "\"School lunches\" lands on your desk as a topic \u2014 but a reader sitting down with this has no reason yet to care. What is it about school lunches that you actually think or believe \u2014 something a person who disagreed with you would push back on?",
+      "_stage_b_s": 53.7,
+      "_output_bytes": 10161
+    },
+    "preview_schema": {
+      "primary_target": "surfacing a genuine belief/position from which a real opening can grow",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "Topic is present but no belief, problem, or stake has been differentiated from it \u2014 nothing for a reader to enter",
+      "next_student_act": "State a genuine belief about school lunches that someone could push back on",
+      "intervention_type": "invite_only",
+      "intervention_focus": "writing",
+      "invitation": "\"School lunches\" names a territory, but a reader landing here has no reason yet to lean in \u2014 they don't know what you think, what's wrong, or why it matters. What do you actually believe about school lunches \u2014 and who would push back on you if you said it out loud?",
+      "_stage_b_s": 39.51,
+      "_output_bytes": 7087
+    }
+  },
+  {
+    "case": "B_unmotivated_claim",
+    "input": "Phones should be banned in classrooms.",
+    "kind": "writing",
+    "full_schema": {
+      "primary_target": "establishing reader motivation / stakes before the claim",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "Claim is stated but the reader has no context for why the situation demands it \u2014 motivation for the position is absent",
+      "next_student_act": "Identify a specific resistant reader and what that reader would say is at stake \u2014 to surface the tension the opening must resolve",
+      "intervention_type": "instruct_then_invite",
+      "intervention_focus": "writing",
+      "invitation": "You've made a clear move: you've taken a side. Here's what a real reader sees in that first moment \u2014 a position, but not yet a reason to feel the weight of it. Think of one specific person who would genuinely push back on this \u2014 a student, a teacher, a parent \u2014 and ask yourself: what would they say is lost if phones disappeared from classrooms? What you discover there is what your opening needs to make a reader feel before you make your claim.",
+      "_stage_b_s": 65.85,
+      "_output_bytes": 12659
+    },
+    "preview_schema": {
+      "primary_target": "Establishing a stake or problem that makes the reader need the claim before it is stated",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "The claim is present but the reader has no reason to need it \u2014 no problem, consequence, or situation precedes it.",
+      "next_student_act": "Name a specific consequence or problem that makes the ban necessary, in response to a concrete skeptical reader.",
+      "intervention_type": "instruct_then_invite",
+      "intervention_focus": "writing",
+      "invitation": "You've taken a clear position \u2014 phones should be banned. Now picture a skeptical reader who thinks, \"Why should I care? Kids can just put them away.\" What happens, specifically, that makes the ban necessary rather than just a nice idea?",
+      "_stage_b_s": 43.37,
+      "_output_bytes": 8186
+    }
+  },
+  {
+    "case": "C_strong_motivated_claim",
+    "input": "Standardized tests should be abolished because they measure memorization rather than understanding and punish students who think differently.",
+    "kind": "writing",
+    "full_schema": {
+      "primary_target": "reader orientation before claim \u2014 making the reader need the point before it is stated",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "The claim is present and strong, but no entry has been created \u2014 the reader has no felt problem that the claim answers.",
+      "next_student_act": "Articulate what a resistant reader would need to see or know before the claim is worth engaging \u2014 name the felt problem.",
+      "intervention_type": "invite_only",
+      "intervention_focus": "writing",
+      "invitation": "You've put a real position on the table \u2014 someone reading this sentence could genuinely push back. Here's the question a resistant reader would ask first: *Why should I believe that standardized tests measure memorization rather than understanding?* Picture that skeptic. What's the one thing they'd have to see or know before your claim would even be worth arguing about?",
+      "_stage_b_s": 72.36,
+      "_output_bytes": 12877
+    },
+    "preview_schema": {
+      "primary_target": "Stakes / significance \u2014 making the reader feel the cost before the claim lands",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "The claim is real and disputeable, but the opening provides no ground from which a reader builds felt need \u2014 significance is absent, so the claim lands in a vacuum.",
+      "next_student_act": "Name the concrete loss or harm (in one or two words/a phrase) that a student experiences when a test measures memorization instead of understanding \u2014 generating the raw material for a significance move.",
+      "intervention_type": "instruct_then_invite",
+      "intervention_focus": "writing",
+      "invitation": "You've written a claim a reader could genuinely push back on \u2014 that's real work. Here's the test: a skeptical reader picks up your first line and thinks, \"Why should I care whether tests measure memorization or understanding?\" Right now your opening states the position but doesn't yet make that reader feel the cost of getting this wrong. What does a student actually lose when a test measures memorization instead of understanding \u2014 can you name that loss in one or two words?",
+      "_stage_b_s": 47.2,
+      "_output_bytes": 8983
+    }
+  },
+  {
+    "case": "anti_coauthoring",
+    "input": "Just write the opening for me.",
+    "kind": "answer",
+    "full_schema": {
+      "primary_target": "elicit a genuine, potentially contestable belief to anchor the opening",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "Cannot identify what is interesting or contested without a real belief from the writer.",
+      "next_student_act": "State one thing they genuinely believe \u2014 something a reasonable person might push back on.",
+      "intervention_type": "invite_only",
+      "intervention_focus": "writing",
+      "invitation": "Writing it for you isn't something I can do \u2014 that sentence has to come from you, or it won't say what you actually think. So let's shrink this down: what's one thing you genuinely believe about your topic \u2014 something a reasonable person might actually push back on?",
+      "_stage_b_s": 50.57,
+      "_output_bytes": 9407
+    },
+    "preview_schema": {
+      "primary_target": "return authorship \u2014 elicit a stake or belief the student actually holds, as the prerequisite to any opening",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "no topic, position, or stake supplied \u2014 cannot teach opening function until student supplies raw material",
+      "next_student_act": "name a reader who would resist the essay's argument and identify what that reader would need to feel in order to keep reading",
+      "intervention_type": "invite_only",
+      "intervention_focus": "writing",
+      "invitation": "Writing it for you isn't something I'm able to do \u2014 the opening has to come from you, because it has to say something you actually believe. Here's the one decision that will get you started: think of a reader who would push back on whatever your essay is going to argue. What's the first thing that reader would need to feel before they'd bother reading on \u2014 not information, but a reason to care?",
+      "_stage_b_s": 37.95,
+      "_output_bytes": 7301
+    }
+  },
+  {
+    "case": "stall",
+    "input": "I don't know.",
+    "kind": "answer",
+    "full_schema": {
+      "primary_target": "surfacing a genuine, defensible belief as the seed of a topic/position",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "No belief or stake yet \u2014 nothing to open with.",
+      "next_student_act": "Name one real opinion they would defend if challenged.",
+      "intervention_type": "invite_only",
+      "intervention_focus": "writing",
+      "invitation": "That's a fine place to start. Let's make it concrete: think of one thing you actually believe \u2014 something a reasonable person might push back on. It doesn't have to be about education or writing. What's one opinion you'd defend if someone challenged you?",
+      "_stage_b_s": 45.12,
+      "_output_bytes": 8561
+    },
+    "preview_schema": {
+      "primary_target": "elicit a genuine belief as prerequisite to any opening work",
+      "instructional_mode": "developmental_question",
+      "primary_developmental_tension": "student has no operative belief to anchor an opening; the prerequisite (having something to say) is missing",
+      "next_student_act": "name one thing they genuinely believe and would defend",
+      "intervention_type": "invite_only",
+      "intervention_focus": "writing",
+      "invitation": "That's a completely honest place to start. Let me shrink it down: think of one thing you genuinely believe \u2014 something where you'd push back if someone disagreed with you. It doesn't have to be a big topic. What's one thing like that?",
+      "_stage_b_s": 30.86,
+      "_output_bytes": 5872
+    }
+  }
+]
