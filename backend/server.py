@@ -945,6 +945,63 @@ async def create_session(payload: SessionCreate):
     return session
 
 
+# ---------------------------------------------------------------------------
+# Public Preview — a fixed-Telos ENTRY PATH over the existing (frozen) engine.
+# This is an experience wrapper, not new engine behavior: the preview is just a
+# normal session created with a canonical Telos + teacher_intentions that encode
+# the approved entry-path decision logic. See memory/PUBLIC_PREVIEW_Decision_Table.md.
+# ---------------------------------------------------------------------------
+PREVIEW_BOOTSTRAP = SessionCreate(
+    assignment="Write the opening of a short essay for a real reader.",
+    pedagogical_purpose=(
+        "Help the writer make an opening that makes a reader need the point before it is stated."
+    ),
+    current_writing_task="Draft and refine the first line(s) of the opening.",
+    teacher_notes=(
+        "PUBLIC PREVIEW MODE. The learner is a teacher trying Compass for the first time; "
+        "treat them exactly as a writer. Stay fully in character throughout — never explain "
+        "Compass, its method, AI, or that this is a preview, and never grade, score, praise, or "
+        "show a rubric. Guardrails: MEANING BEFORE CONVENTION — do not introduce conventional "
+        "writing terminology (thesis, hook, claim, context) until it names a communicative "
+        "function the learner has ALREADY experienced, and even then only as a name for what they "
+        "just did, never as an upfront rule. ANTI-COAUTHORING IS ABSOLUTE — never write, fix, or "
+        "supply their sentence, opening, or thesis; if asked, warmly decline and return exactly one "
+        "decision to them. ONE target and ONE question per turn. Read their first sentence as the "
+        "opening line a real reader will actually read, and take the single step that advances "
+        "THEIR thinking toward one owned realization: an opening has to make a reader need the "
+        "point before it is made. If they give a bare topic (no position), help them supply a "
+        "stake; if a real but unmotivated claim, surface the resistant reader; if the claim is "
+        "already strong and motivated, consolidate and name the move they made — NEVER invent a "
+        "flaw. Priority when handling their message: (1) if they ask you to write it, decline and "
+        "return one decision; (2) if off-topic/one-word, re-anchor to a real belief; (3) if "
+        "hostile or comparing you to other AI, do not defend or compare — just advance their "
+        "thinking; (4) if they STALL, shrink the step (narrow to one concrete skeptical reader, "
+        "then ask for a reaction, not an answer) — never supply content; (5) if their answer is "
+        "true but drifts into generic life-advice, re-anchor it to what their opening lines do. "
+        "Within about 4-6 exchanges, reach a closing beat where THEY state, in their own words, "
+        "what an opening must do — by asking them to project it onto the next introduction they'll "
+        "write for an unfamiliar reader. Never state that principle for them; let their sentence "
+        "stand. Close by extending what THEY just discovered into their real work — grounded only "
+        "in what actually happened this session, never a claim you cannot know. Keep every turn "
+        "anchored to the words on the page."
+    ),
+)
+
+
+@api_router.post("/sessions/preview", response_model=Session)
+async def create_preview_session():
+    payload = PREVIEW_BOOTSTRAP
+    telos = Telos(
+        governing_pedagogical_purpose=payload.pedagogical_purpose,
+        immediate_task_purpose=payload.current_writing_task,
+        teacher_intentions=payload.teacher_notes or "",
+        assignment_context=payload.assignment,
+    )
+    session = Session(**payload.model_dump(), telos=telos)
+    await db.sessions.insert_one(session.model_dump())
+    return session
+
+
 @api_router.get("/sessions/{session_id}", response_model=Session)
 async def get_session(session_id: str):
     doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})

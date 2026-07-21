@@ -5,6 +5,7 @@ import TeacherSetup from "@/components/TeacherSetup";
 import StudentWorkspace from "@/components/StudentWorkspace";
 import DevelopmentPanel from "@/components/DevelopmentPanel";
 import TestHarness from "@/components/TestHarness";
+import PublicPreview from "@/components/PublicPreview";
 import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
@@ -23,8 +24,13 @@ const TEST_PRESET = {
 function App() {
   // Developer-only automated instructional testing harness (?tests). Decided at
   // the top-level wrapper so hook order in the studio app is never affected.
-  if (new URLSearchParams(window.location.search).has("tests")) {
+  const params = new URLSearchParams(window.location.search);
+  if (params.has("tests")) {
     return <TestHarness />;
+  }
+  // Public Preview (?preview) — the 3-5 min in-character entry experience.
+  if (params.has("preview")) {
+    return <PublicPreview />;
   }
   return <StudioApp />;
 }

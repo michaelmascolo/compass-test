@@ -8,6 +8,11 @@ export const createSession = async (payload) => {
   return data;
 };
 
+export const startPreview = async () => {
+  const { data } = await axios.post(`${API}/sessions/preview`);
+  return data;
+};
+
 export const getSession = async (id) => {
   const { data } = await axios.get(`${API}/sessions/${id}`);
   return data;
