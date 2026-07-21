@@ -4,6 +4,7 @@ import {
   startTestRun,
   getTestRun,
   listTestRuns,
+  renameTestRun,
   exportTestRunUrl,
 } from "@/lib/api";
 import {
@@ -18,6 +19,7 @@ import {
   FlaskConical,
   History,
   GitCompare,
+  Pencil,
 } from "lucide-react";
 
 const VERDICT = {
@@ -94,7 +96,7 @@ const CompareView = ({ runs }) => {
   };
 
   const label = (r) =>
-    `${new Date(r.created_at).toLocaleString()} · ${r.total} cases${
+    `${r.label ? r.label + " · " : ""}${new Date(r.created_at).toLocaleString()} · ${r.total} cases${
       r.summary?.pass_rate != null ? ` · ${r.summary.pass_rate}%` : ""
     }`;
 
@@ -269,6 +271,7 @@ export default function TestHarness() {
   const [runs, setRuns] = useState([]);
   const [starting, setStarting] = useState(false);
   const [mode, setMode] = useState("run");
+  const [runLabel, setRunLabel] = useState("");
   const pollRef = useRef(null);
 
   const refreshRuns = useCallback(() => {
@@ -312,7 +315,8 @@ export default function TestHarness() {
   const doRun = async (caseIds) => {
     setStarting(true);
     try {
-      const r = await startTestRun(caseIds);
+      const r = await startTestRun(caseIds, runLabel);
+      setRunLabel("");
       setRun(await getTestRun(r.id));
     } catch (e) {
       /* noop */
@@ -323,6 +327,14 @@ export default function TestHarness() {
 
   const loadRun = async (id) => {
     setRun(await getTestRun(id));
+  };
+
+  const doRename = async (r) => {
+    const next = window.prompt("Label for this run:", r.label || "");
+    if (next === null) return;
+    await renameTestRun(r.id, next);
+    refreshRuns();
+    if (run?.id === r.id) setRun({ ...run, label: next });
   };
 
   const s = run?.summary || {};
@@ -358,6 +370,15 @@ export default function TestHarness() {
               <GitCompare className="h-3.5 w-3.5" /> Compare
             </button>
           </div>
+          <input
+            type="text"
+            value={runLabel}
+            onChange={(e) => setRunLabel(e.target.value)}
+            placeholder="Run label (optional)"
+            data-testid="run-label-input"
+            disabled={mode === "compare"}
+            className="bg-stone-900 border border-stone-700 rounded px-3 py-2 text-[12px] text-stone-200 placeholder:text-stone-600 w-44 disabled:opacity-40"
+          />
           <button
             onClick={() => doRun([...selected])}
             disabled={starting || isRunning || selected.size === 0 || mode === "compare"}
@@ -410,22 +431,39 @@ export default function TestHarness() {
             <div className="space-y-1">
               {runs.length === 0 && <div className="text-[11px] text-stone-600">No runs yet.</div>}
               {runs.map((r) => (
-                <button
+                <div
                   key={r.id}
-                  onClick={() => loadRun(r.id)}
                   data-testid={`past-run-${r.id}`}
-                  className={`w-full text-left text-[11px] px-2 py-1.5 rounded hover:bg-stone-900 ${
+                  onClick={() => loadRun(r.id)}
+                  className={`w-full text-left text-[11px] px-2 py-1.5 rounded hover:bg-stone-900 cursor-pointer ${
                     run?.id === r.id ? "bg-stone-900 border border-stone-700" : ""
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="text-stone-400">{new Date(r.created_at).toLocaleString()}</span>
-                    <span className={r.status === "running" ? "text-amber-400" : "text-emerald-400"}>{r.status}</span>
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-stone-300 font-medium truncate">
+                      {r.label ? r.label : new Date(r.created_at).toLocaleString()}
+                    </span>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        data-testid={`rename-run-${r.id}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          doRename(r);
+                        }}
+                        className="text-stone-500 hover:text-amber-300"
+                        title="Rename run"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <span className={r.status === "running" ? "text-amber-400" : "text-emerald-400"}>{r.status}</span>
+                    </div>
                   </div>
                   <div className="text-stone-600">
+                    {r.label ? `${new Date(r.created_at).toLocaleDateString()} · ` : ""}
                     {r.total} cases {r.summary?.pass_rate != null ? `· ${r.summary.pass_rate}% pass` : ""}
                   </div>
-                </button>
+                </div>
               ))}
             </div>
           </div>

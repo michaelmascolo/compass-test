@@ -1165,6 +1165,11 @@ def _load_test_cases() -> list:
 
 class TestRunRequest(BaseModel):
     case_ids: Optional[List[str]] = None  # None / empty => run ALL cases
+    label: Optional[str] = None
+
+
+class TestRunLabelRequest(BaseModel):
+    label: str = ""
 
 
 async def _harness_run_turn(session: Session, content: str, kind: str) -> dict:
@@ -1479,6 +1484,7 @@ async def start_test_run(req: TestRunRequest):
     run = {
         "id": str(uuid.uuid4()),
         "status": "running",
+        "label": (req.label or "").strip(),
         "case_ids": [c.get("id") for c in cases],
         "total": len(cases),
         "completed_count": 0,
@@ -1490,6 +1496,16 @@ async def start_test_run(req: TestRunRequest):
     await db.test_runs.insert_one(dict(run))
     asyncio.create_task(_run_test_suite(run["id"], cases))
     return run
+
+
+@api_router.patch("/tests/runs/{run_id}/label")
+async def set_test_run_label(run_id: str, req: TestRunLabelRequest):
+    res = await db.test_runs.update_one(
+        {"id": run_id}, {"$set": {"label": req.label.strip(), "updated_at": now_iso()}}
+    )
+    if res.matched_count == 0:
+        raise HTTPException(status_code=404, detail="Test run not found")
+    return {"id": run_id, "label": req.label.strip()}
 
 
 @api_router.get("/tests/runs")

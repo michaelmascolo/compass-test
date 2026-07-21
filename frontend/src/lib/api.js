@@ -29,10 +29,16 @@ export const listTestCases = async () => {
   return data.cases || [];
 };
 
-export const startTestRun = async (caseIds) => {
+export const startTestRun = async (caseIds, label) => {
   const { data } = await axios.post(`${API}/tests/run`, {
     case_ids: caseIds && caseIds.length ? caseIds : null,
+    label: label || null,
   });
+  return data;
+};
+
+export const renameTestRun = async (runId, label) => {
+  const { data } = await axios.patch(`${API}/tests/runs/${runId}/label`, { label });
   return data;
 };
 
