@@ -1,123 +1,161 @@
 {
-  "theme": "The Scholarly Canvas (Light Theme)",
   "typography": {
-    "headings": {
-      "font": "Cormorant Garamond, serif",
-      "style": "Elegant, academic, high-contrast. Use tracking-tight for larger sizes.",
-      "sizes": {
-        "h1": "text-4xl sm:text-5xl lg:text-6xl tracking-tight",
-        "h2": "text-2xl sm:text-3xl lg:text-4xl tracking-tight",
-        "h3": "text-xl sm:text-2xl"
-      }
+    "fonts": {
+      "serifDisplay": "Playfair Display, Cormorant Garamond, or similar high-contrast serif",
+      "monoPanel": "IBM Plex Mono, JetBrains Mono, or similar",
+      "body": "Inter, Work Sans, or a clean legible geometric/humanist sans"
     },
-    "body": {
-      "font": "IBM Plex Sans, sans-serif",
-      "style": "Highly legible, crisp, minimal.",
-      "sizes": {
-        "default": "text-base leading-relaxed",
-        "small": "text-sm text-stone-500"
-      }
-    },
-    "mono": {
-      "font": "IBM Plex Mono, monospace",
-      "style": "Used for the Hidden Development Panel and structural labels."
-    },
-    "instruction": "Avoid 'Inter'. Do not use default bolding for all headings; consider font-medium or font-semibold with Serif."
+    "scale": {
+      "h1": "text-5xl sm:text-6xl md:text-7xl font-serif-display tracking-tight leading-none text-stone-900",
+      "h2": "text-3xl sm:text-4xl font-serif-display tracking-tight text-stone-800",
+      "body": "text-lg md:text-xl text-stone-700 leading-relaxed max-w-prose",
+      "eyebrow": "text-xs md:text-sm font-mono-panel tracking-[0.2em] uppercase text-stone-500"
+    }
   },
   "colors": {
     "background": {
-      "primary": "bg-[#FAF9F6]",
-      "secondary": "bg-white",
-      "panel": "bg-stone-900" 
+      "primary": "#faf9f6",
+      "secondary": "#f0ede6"
     },
     "text": {
       "primary": "text-stone-900",
-      "secondary": "text-stone-500",
-      "panel_primary": "text-stone-300",
-      "panel_accent": "text-amber-500"
+      "secondary": "text-stone-700",
+      "tertiary": "text-stone-500",
+      "accent": "#8C3A2A"
     },
-    "accent": {
-      "primary": "bg-[#8C3A2A]", 
-      "hover": "hover:bg-[#6B2C20]",
-      "border": "border-[#8C3A2A]"
-    },
-    "borders": {
-      "subtle": "border-stone-200",
-      "panel": "border-stone-800"
-    },
-    "strategy": "Warm, creamy off-white background with dark charcoal/ink text. Accent color is a rich terracotta/rust to evoke academic elegance. The hidden panel uses a stark dark 'terminal' theme for extreme contrast."
-  },
-  "layouts": {
-    "general": "Generous spacing. p-8 to p-16 for main containers. Bento grid principles for split views.",
-    "Teacher_Setup": "Split screen. Left col-span-5 with an elegant image overlay and large serif greeting. Right col-span-7 with a clean, airy form.",
-    "Student_Workspace": "Asymmetrical split. col-span-8 for the main writing area (distraction-free, centered column of text max-w-2xl within the pane). col-span-4 for the AI conversation thread (sticky, scrollable).",
-    "Hidden_Panel": "Collapsible sidebar or bottom drawer. Technical grid borders, dense data presentation (col-span-1 summary widgets)."
-  },
-  "component_guidelines": {
-    "buttons": "Sharp rectangular or very slight radius (rounded-sm). Rich terracotta background, white text. Elegant hover state: slight translate-y-px and darker bg.",
-    "inputs": "Editorial style: pure white background, subtle stone-200 border, focus:ring-1 focus:ring-stone-900 focus:border-stone-900. Large padding (p-4).",
-    "cards": "For AI invitations: flat, bg-white or bg-stone-50, 1px border-stone-200, no drop-shadow, just crisp edges.",
-    "hidden_panel_widgets": "Use terminal-like retro-futurism. bg-stone-900, 1px border-stone-800, monospace fonts, amber or green accents for data."
+    "interactive": {
+      "primary": "#8C3A2A",
+      "primaryHover": "#6B2C20",
+      "border": "border-stone-200"
+    }
   },
   "visual_enhancers": {
-    "textures": "Subtle grain texture on the main background to feel like paper (opacity 2-3%).",
-    "borders": "Exposed structural grid lines (1px solid stone-200) between panes.",
-    "glassmorphism": "Avoid in the academic workspace. Use solid colors. NEVER use completely transparent backgrounds over images or other content."
+    "texture": "Include a class `paper-grain` applied globally using a very subtle CSS radial-gradient noise or SVG texture overlay (opacity 2-4%, mix-blend-mode: multiply).",
+    "borders": "1px solid borders using stone-200 or stone-300. Sharp edges (rounded-sm or rounded-none) to evoke print/paper.",
+    "shadows": "Minimal to zero shadows. Rely on border and background color contrast. No soft/large shadows."
   },
-  "screens": [
-    {
-      "name": "Teacher Setup",
-      "elements": ["Assignment Input", "Pedagogical Purpose Textarea", "Current Writing Task Input", "Optional Teacher Notes Textarea", "Begin Session Button"],
-      "layout": "Grid split layout. Clean editorial form on right. Vintage academic image or minimal typographic hero on left."
+  "layouts": {
+    "Screen1_Landing": {
+      "psychological_question": "Should I care?",
+      "structure": "Editorial grid, heavily relying on negative space. Mobile-first stacking.",
+      "sections": [
+        {
+          "name": "Header",
+          "composition": "Minimalist. Logo (Serif) on left, 'Open Compass' (secondary action, subtle stone-600 hover:stone-900) on right.",
+          "alignment": "flex justify-between items-center py-6 px-8 md:px-12 border-b border-stone-200"
+        },
+        {
+          "name": "Hero Story",
+          "composition": "Massive left padding or off-center alignment (e.g., col-span-8 in a 12-col grid). Avoid centered text. Large spacing (py-32).",
+          "elements": [
+            {
+              "type": "Eyebrow",
+              "content": "THE PROBLEM WITH 'HELP'",
+              "style": "font-mono-panel text-[#8C3A2A] mb-6 block"
+            },
+            {
+              "type": "Headline",
+              "content": "Writing is thinking. Don't let a machine do it for them.",
+              "style": "font-serif-display text-5xl md:text-7xl text-stone-900 max-w-4xl mb-8"
+            },
+            {
+              "type": "Subcopy",
+              "content": "Most tools write for your students. Compass asks the right questions, forcing them to construct understanding themselves. It's not a co-author. It's a developmental studio.",
+              "style": "text-xl text-stone-700 mb-12 max-w-2xl"
+            }
+          ]
+        },
+        {
+          "name": "Primary Action Area",
+          "composition": "A distinct interactive zone positioned as a natural next step below the subcopy.",
+          "elements": [
+            {
+              "type": "Call to Action",
+              "content": "Try the Preview",
+              "style": "bg-[#8C3A2A] text-white px-8 py-4 rounded-sm font-medium hover:bg-[#6B2C20] transition-colors inline-block"
+            },
+            {
+              "type": "Microcopy",
+              "content": "A 3-minute, in-character experience. No signup required.",
+              "style": "font-mono-panel text-xs text-stone-500 mt-4 block"
+            }
+          ]
+        }
+      ]
     },
-    {
-      "name": "Student Workspace",
-      "elements": ["Assignment/Task Header", "Large Writing Area (textarea or contenteditable)", "Continuous AI Conversation Thread (Right pane)", "Inputs for student to revise/answer"],
-      "layout": "Left pane (col-span-8) acts as the 'Canvas'. Right pane (col-span-4) acts as the 'Scaffold'. No page transitions."
-    },
-    {
-      "name": "Hidden Development Panel",
-      "elements": ["Pedagogical Purpose", "Developmental Theory", "Primary Tension", "Alternative Interpretations", "Selected Scaffold", "Rationale", "Movement Detected", "Uncertainties"],
-      "layout": "Dark mode collapsible panel. Densely packed technical grid using mono font."
-    }
-  ],
-  "image_urls": {
-    "teacher_setup_bg": {
-      "url": "https://images.unsplash.com/photo-1765652583547-122f44c53d2f?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMzJ8MHwxfHNlYXJjaHwzfHxhY2FkZW1pYyUyMGxpYnJhcnklMjBkZXNrJTIwdmludGFnZXxlbnwwfHx8fDE3ODQzMDgyMTB8MA&ixlib=rb-4.1.0&q=85",
-      "description": "Vintage typewriter on a shelf with books",
-      "placement": "Left side of the Teacher Setup screen."
+    "Screen2_Bridge": {
+      "psychological_question": "Could I use this with my own students?",
+      "structure": "A narrow, focused column centered in the viewport. It should feel like a quiet room after a profound realization.",
+      "sections": [
+        {
+          "name": "Reflection Zone",
+          "composition": "Centered layout (the only centered part of the app) to create a 'pause' moment. Padded heavily (py-32).",
+          "elements": [
+            {
+              "type": "Eyebrow",
+              "content": "AHA MOMENT",
+              "style": "font-mono-panel text-stone-500 mb-6 block"
+            },
+            {
+              "type": "Headline",
+              "content": "You just taught yourself.",
+              "style": "font-serif-display text-4xl text-stone-900 mb-6"
+            },
+            {
+              "type": "Subcopy",
+              "content": "Notice what just happened. You didn't read a guide, and the machine didn't write it for you. You were led to the insight. Imagine your students experiencing that exact shift in perspective.",
+              "style": "text-lg text-stone-700 mb-12 max-w-xl mx-auto"
+            }
+          ]
+        },
+        {
+          "name": "Action Zone",
+          "composition": "Flex column or row, centered. Clear primary vs secondary hierarchy.",
+          "elements": [
+            {
+              "type": "Primary Action",
+              "content": "Continue with a real assignment",
+              "style": "bg-[#8C3A2A] text-white px-6 py-3 rounded-sm font-medium hover:bg-[#6B2C20] transition-colors mb-4 md:mb-0 md:mr-4"
+            },
+            {
+              "type": "Secondary Action",
+              "content": "Not now / back home",
+              "style": "text-stone-500 hover:text-stone-900 underline underline-offset-4 decoration-stone-300 transition-colors px-6 py-3"
+            }
+          ]
+        }
+      ]
     }
   },
   "motion": {
-    "interactions": "Smooth opacity and transform transitions. Transition specific properties, DO NOT use 'transition: all'.",
-    "ai_messages": "Subtle fade-in and slide-up for new AI developmental invitations.",
-    "hidden_panel": "Crisp slide-in from right or bottom with a 0.3s ease-in-out."
+    "philosophy": "Restrained, organic, breathing. No bouncy spring animations. Everything feels like ink settling into paper.",
+    "page_load": "Framer Motion: initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}",
+    "button_hover": "Framer Motion: whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}"
   },
   "accessibility": {
-    "contrast": "Ensure all text meets WCAG AA (4.5:1). Dark charcoal on cream background ensures excellent readability.",
-    "focus": "Clear focus rings on inputs and textareas (ring-stone-900).",
-    "testing": "Add data-testid attributes to all interactive elements."
+    "contrast": "Strict adherence to WCAG AA. Ensure #8C3A2A on #faf9f6 passes.",
+    "focus": "Focus rings should be sharp, using stone-400 or the accent #8C3A2A. e.g., focus:ring-2 focus:ring-[#8C3A2A] focus:outline-none.",
+    "aria": "Use proper aria-labels on links and buttons."
+  },
+  "media": {
+    "strategy": "No photography. The 'studio' aesthetic relies purely on typography, spatial rhythm, and the paper grain texture. Empty space IS the primary visual asset.",
+    "image_urls": []
   },
   "instructions_to_main_agent": [
-    "Install and use 'lucide-react' for icons.",
-    "Setup Google Fonts: 'Cormorant Garamond' (serif), 'IBM Plex Sans' (sans), 'IBM Plex Mono' (mono) in index.html or global css.",
-    "Ensure the Hidden Panel is strictly hidden until toggled (e.g., via a small fixed button in corner or keyboard shortcut).",
-    "Do not add any features not requested (no grading, no analytics, no auth)."
+    "Implement the `paper-grain` class using a subtle SVG noise background or CSS radial-gradient. Apply it to the body or main wrapper.",
+    "Configure custom colors in Tailwind config: `brand: { paper: '#faf9f6', accent: '#8C3A2A', accentHover: '#6B2C20' }`.",
+    "Configure custom font families: `font-serif-display` and `font-mono-panel`.",
+    "Avoid Shadcn/UI for these specific pages if it forces a generic 'card' look. Build raw Tailwind divs for the editorial, sharp-edged flat look.",
+    "Ensure all buttons and links have `data-testid` attributes (e.g., `data-testid='landing-try-preview'`).",
+    "DO NOT use a transparent background for the nav header. Give it the paper color `#faf9f6` or a very subtle border/opacity to separate from content."
   ],
   "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
-    "You tend to converge toward generic, 'on distribution' outputs. In frontend design, this creates what users call the 'AI slop' aesthetic. Avoid this: make creative, distinctive frontends that surprise and delight.",
-    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
-    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
-    "Create depth through layered design elements with z-index hierarchy.",
-    "You MUST NOT apply universal transition. Eg: 'transition: all'. This results in breaking transforms. Always add transitions for specific interactive elements like button, input excluding transforms.",
-    "You MUST NOT center align the app container, ie do not add '.App { text-align: center; }' in the css file. This disrupts the human natural reading flow of text.",
-    "Always use modern button styles with interaction animations & color relevant to the app style.",
-    "NEVER: use AI assistant Emoji characters like 🤖🧠💭💡🔮🎯 etc for icons.",
-    "Every interaction needs micro-animations - hover states, transitions, entrance animations. Static = dead.",
+    "You tend to converge toward generic, 'on distribution' outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Do not use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling. Use asymmetrical or editorial alignments.",
     "Use 2-3x more spacing than feels comfortable. Cramped designs look cheap.",
-    "Subtle grain textures, custom selection states, and loading animations: separates good from extraordinary.",
-    "All interactive and key informational elements MUST include a data-testid attribute to facilitate robust automated testing.",
-    "Use sonner for toasts, located in /app/src/components/ui/sonner.js (or frontend folder equivalent)",
-    "CRITICAL: DO NOT use complete transparent background in header, overlays, any surface that has content under it."
+    "Subtle grain textures, custom cursors, and restrained motion separate good from extraordinary.",
+    "All interactive and key informational elements MUST include a `data-testid` attribute.",
+    "For this specific 'Compass' project, avoid glassmorphism, bright neons, or SaaS purple. Stick to the literary, paper-like studio aesthetic requested."
   ]
 }
