@@ -77,32 +77,19 @@ Each screen: **Purpose · User's question · Information displayed · Primary ac
 - **Transition:** Create Assignment (S7).
 - **Must not appear:** heavy roster management (deferred); engine settings.
 
-## 7. Create Assignment  *(the Teacher Configuration form)*
-- **Purpose:** Capture the teacher-controlled instructional parameters for one assignment.
-- **User's question:** "How do I tell Compass what this assignment is for?"
-- **Information:** Sectioned form — Class & Learners, Assignment & Purpose, Learning Goals, Standards & Evaluation, Guidance & Feedback, Revision. Grade-9 calibration applied by default.
-- **Primary action:** Continue to the Instructional Contract.
-- **Secondary actions:** Save draft; "Ask Compass" (test a request against the constitution).
-- **Transition:** Instructional Contract (S8).
-- **Must not appear:** engine reasoning fields; evaluator/test harness; anything editable that would weaken the method.
-
-## 8. Instructional Contract
-- **Purpose:** Make explicit and mutual the division of authority — what the teacher governs vs. what Compass constitutionally guarantees — for *this* assignment.
-- **User's question:** "What exactly will Compass do, and what will it refuse to do, with my students?"
-- **Information:** Two columns — **Teacher decides** (what/why/when learned, standards, evaluation) and **Compass always protects** (student authorship, active guidance, scaffolding + fading, never writes/revises/auto-corrects/completes). Any of the teacher's own settings that brushed a boundary are shown with the compatible alternative Compass will use instead.
-- **Primary action:** Agree & continue.
-- **Secondary actions:** Edit configuration (back to S7); expand any commitment to read why it is locked.
-- **Transition:** Assignment Review (S9).
-- **Must not appear:** the commitments as toggles; any implication they can be disabled.
-
-## 9. Assignment Review
-- **Purpose:** Final, concise preview of the whole configuration before activation (Part VII), with validation resolved.
-- **User's question:** "Is this right, and is it internally consistent?"
-- **Information:** Compact summary (class, assignment, purpose, audience, objectives, scaffolding, feedback priorities, grammar emphasis, revision cycles, models); validation results — required-field errors, conflicts (e.g., pacing vs. revision cycles), and warnings — each with a clear resolution.
+## 7. Create an Assignment  *(one coherent authoring workflow)*
+- **Purpose:** In a single task, the teacher defines the instructional context for an assignment; Compass internally constructs the instructional contract and confirms consistency before activation. The teacher experiences ONE process, not separate phases.
+- **User's question:** "How do I set up this assignment — and what will Compass do with it?"
+- **Information (progressive within one flow):**
+  1. **Configure** — sectioned form: Class & Learners, Assignment & Purpose, Learning Goals, Standards & Evaluation, Guidance & Feedback, Revision (Grade-9 calibration applied by default).
+  2. **Contract (surfaced inline, constructed by the system)** — a compact, always-visible affirmation of the teacher-decides / Compass-always-protects distinction; any setting that brushed a constitutional boundary is shown with the compatible alternative Compass will use. Not a separate gate; part of the same page.
+  3. **Review & activate** — concise summary + validation (required-field errors, conflicts, warnings) each with a clear resolution.
 - **Primary action:** Activate assignment.
-- **Secondary actions:** Edit configuration; Save draft.
-- **Transition:** Activation → students can join (S10); teacher lands on the Dashboard (S11).
-- **Must not appear:** activation while errors/conflicts remain unresolved; silent discarding of teacher choices.
+- **Secondary actions:** Save draft; "Ask Compass" (test a request against the constitution); edit any section.
+- **Transition:** Activation → students can join (S8 Student Workspace); teacher lands on the Dashboard (S9).
+- **Must not appear:** the commitments as toggles; engine reasoning fields/test harness; activation while errors/conflicts remain unresolved; silent discarding of teacher choices.
+
+> Note: former S8 (Instructional Contract) and S9 (Assignment Review) are now merged into this single S7 workflow. Subsequent screens shift accordingly: Student Workspace, Teacher Dashboard, Revision Analytics, Assignment Complete.
 
 ## 10. Student Experience  *(the canonical Student Workspace — Phase 3, highest priority)*
 - **Purpose:** The student develops their own writing through continuous Write → coach → revise cycles, with the document always the primary object.
