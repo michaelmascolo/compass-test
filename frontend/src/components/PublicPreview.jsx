@@ -197,7 +197,7 @@ export default function PublicPreview() {
                     exit={{ opacity: 0, scale: 0.6 }}
                     onClick={() => setOpenCoachingId(activeCoaching.id)}
                     data-testid="preview-coaching-marker"
-                    className="absolute right-[-12px] bottom-8 group flex items-center gap-2"
+                    className="absolute right-[-12px] bottom-8 group flex items-center gap-2 p-2 -m-2"
                     title="Your coach has a note on this passage"
                   >
                     <span className="coach-pulse h-3.5 w-3.5 rounded-full bg-[#8C3A2A] ring-4 ring-[#8C3A2A]/15" />

@@ -119,7 +119,7 @@ export default function StudentWorkspace({
             data-testid="revision-progress"
             className="hidden sm:inline-flex items-center text-[10px] font-mono-panel uppercase tracking-[0.18em] text-stone-500 border border-stone-300 rounded-sm px-2.5 py-1"
           >
-            {started ? `Revision ${reviseCount}` : "First draft"}
+            {reviseCount > 0 ? `Revision ${reviseCount}` : "First draft"}
           </span>
           {onNewAssignment && (
             <button
@@ -195,7 +195,7 @@ export default function StudentWorkspace({
                     exit={{ opacity: 0, scale: 0.6 }}
                     onClick={() => setOpenCoachingId(activeCoaching.id)}
                     data-testid="coaching-marker"
-                    className="absolute right-[-14px] bottom-10 group flex items-center gap-2"
+                    className="absolute right-[-14px] bottom-10 group flex items-center gap-2 p-2 -m-2"
                     title="Your coach has a note on this draft"
                   >
                     <span className="coach-pulse h-3.5 w-3.5 rounded-full bg-[#8C3A2A] ring-4 ring-[#8C3A2A]/15" />
