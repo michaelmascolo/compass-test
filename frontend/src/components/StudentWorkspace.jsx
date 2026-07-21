@@ -1,49 +1,20 @@
-import { useState, useRef, useEffect } from "react";
-import { motion } from "framer-motion";
+import { useState, useRef, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   Loader2,
-  MessageSquareQuote,
-  Send,
-  FlaskConical,
+  Sparkles,
   BookOpen,
   RotateCcw,
-  HelpCircle,
+  FlaskConical,
+  MessageSquareQuote,
+  X,
+  History,
+  ChevronRight,
+  CornerDownRight,
 } from "lucide-react";
 
-function ThreadBubble({ turn }) {
-  const isAI = turn.role === "ai";
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className={isAI ? "" : "flex justify-end"}
-      data-testid={isAI ? "ai-invitation" : "student-turn"}
-    >
-      {isAI ? (
-        <div className="bg-white border border-stone-200 rounded-sm p-4">
-          <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[#8C3A2A] font-mono-panel mb-2">
-            <MessageSquareQuote className="h-3.5 w-3.5" />
-            Developmental invitation
-          </div>
-          <p className="text-stone-800 leading-relaxed text-[15px] whitespace-pre-wrap">
-            {turn.content}
-          </p>
-        </div>
-      ) : (
-        <div className="max-w-[88%] bg-stone-900 text-stone-100 rounded-sm p-3.5">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-stone-400 font-mono-panel mb-1">
-            You · {turn.kind}
-          </div>
-          <p className="leading-relaxed text-sm whitespace-pre-wrap">
-            {turn.content}
-          </p>
-        </div>
-      )}
-    </motion.div>
-  );
-}
+const draftKey = (id) => `dws_draft_${id}`;
 
 export default function StudentWorkspace({
   session,
@@ -53,55 +24,112 @@ export default function StudentWorkspace({
   onNewSession,
   onNewAssignment,
 }) {
-  const [draft, setDraft] = useState("");
-  const [reply, setReply] = useState("");
-  const [replyMode, setReplyMode] = useState("answer");
-  const threadRef = useRef(null);
-
   const allTurns = session.turns || [];
-  // Only render completed exchanges; the in-flight placeholder and failed turns
-  // are represented by the thinking indicator / a toast instead.
-  const turns = allTurns.filter(
-    (t) => !(t.role === "ai" && (t.status === "processing" || t.status === "failed"))
+  const studentTurns = allTurns.filter((t) => t.role === "student");
+  const completedAi = allTurns.filter(
+    (t) => t.role === "ai" && t.status === "complete" && t.content
   );
-  const started = allTurns.some((t) => t.role === "student");
+  const started = studentTurns.length > 0;
+  const reviseCount = studentTurns.filter((t) => t.kind === "revise").length;
+
+  // The single active coaching target = the most recent completed AI turn.
+  const activeCoaching = completedAi.length
+    ? completedAi[completedAi.length - 1]
+    : null;
+  // Everything earlier is resolved coaching (right-rail history), newest first.
+  const resolvedCoaching = useMemo(
+    () => completedAi.slice(0, Math.max(0, completedAi.length - 1)).reverse(),
+    [completedAi]
+  );
+
+  const [draft, setDraft] = useState("");
+  const [markerOpen, setMarkerOpen] = useState(true);
+  const [openCoachingId, setOpenCoachingId] = useState(null);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [reply, setReply] = useState("");
+  const [railOpen, setRailOpen] = useState(true);
+  const canvasRef = useRef(null);
+
+  // Initialise / restore the living draft once per session. Autosave keeps the
+  // document alive across reloads; it evolves in place, never re-created.
+  useEffect(() => {
+    if (!session?.id) return;
+    const saved = localStorage.getItem(draftKey(session.id));
+    if (saved !== null && saved !== undefined) {
+      setDraft(saved);
+    } else {
+      const lastStudent = studentTurns[studentTurns.length - 1];
+      setDraft(lastStudent?.content || "");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id]);
 
   useEffect(() => {
-    if (threadRef.current) {
-      threadRef.current.scrollTop = threadRef.current.scrollHeight;
+    if (session?.id) localStorage.setItem(draftKey(session.id), draft);
+  }, [draft, session?.id]);
+
+  // A new coaching target auto-surfaces its marker (single-focus rule).
+  useEffect(() => {
+    if (activeCoaching) {
+      setMarkerOpen(true);
+      setOpenCoachingId(null);
     }
-  }, [turns.length, loading]);
+  }, [activeCoaching?.id]);
+
+  const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
+  const dirty = started
+    ? draft.trim() !== (studentTurns[studentTurns.length - 1]?.content || "").trim()
+    : draft.trim().length > 0;
 
   const submitDraft = () => {
-    if (!draft.trim() || loading) return;
+    if (!draft.trim() || loading || !dirty) return;
     onSubmit(started ? "revise" : "writing", draft.trim());
+    setMarkerOpen(false);
+  };
+
+  const submitExplain = () => {
+    if (loading) return;
+    onSubmit("explain", "Can you say a little more about what you mean here?");
   };
 
   const submitReply = () => {
     if (!reply.trim() || loading) return;
-    onSubmit(replyMode, reply.trim());
+    onSubmit("answer", reply.trim());
     setReply("");
+    setReplyOpen(false);
   };
 
   return (
     <div className="min-h-screen paper-grain flex flex-col">
-      {/* top bar */}
-      <header className="flex items-center justify-between px-6 sm:px-10 py-4 border-b border-stone-200 bg-[#faf9f6]/90 backdrop-blur-sm sticky top-0 z-20">
-        <div className="flex items-center gap-2 font-serif-display text-xl text-stone-900">
-          <BookOpen className="h-5 w-5 text-[#8C3A2A]" />
-          Writing Studio
+      {/* Slim top bar — assignment + task + revision progress. Quiet, no chrome. */}
+      <header className="flex items-start justify-between gap-4 px-6 sm:px-10 py-4 border-b border-stone-200 bg-[#faf9f6]/90 backdrop-blur-sm sticky top-0 z-30">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 font-serif-display text-lg text-stone-900">
+            <BookOpen className="h-4.5 w-4.5 text-[#8C3A2A]" />
+            <span className="truncate" data-testid="workspace-assignment-title">
+              {session.assignment}
+            </span>
+          </div>
+          <p className="text-xs text-stone-500 mt-0.5 truncate" data-testid="workspace-task">
+            {session.current_writing_task}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <span
+            data-testid="revision-progress"
+            className="hidden sm:inline-flex items-center text-[10px] font-mono-panel uppercase tracking-[0.18em] text-stone-500 border border-stone-300 rounded-sm px-2.5 py-1"
+          >
+            {started ? `Revision ${reviseCount}` : "First draft"}
+          </span>
           {onNewAssignment && (
             <button
               onClick={() => !loading && onNewAssignment()}
               disabled={loading}
               data-testid="new-assignment-button"
-              className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-[#8C3A2A] border border-stone-300 hover:border-[#8C3A2A] rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-              title="Set up a new teacher assignment (does not restore the sample)"
+              className="hidden md:inline-flex items-center gap-1.5 text-[10px] font-mono-panel uppercase tracking-[0.15em] text-stone-400 hover:text-[#8C3A2A] transition-colors disabled:opacity-40"
+              title="Set up a new teacher assignment"
             >
-              <BookOpen className="h-3.5 w-3.5" />
-              New Assignment
+              New
             </button>
           )}
           {onNewSession && (
@@ -109,49 +137,33 @@ export default function StudentWorkspace({
               onClick={() => !loading && onNewSession()}
               disabled={loading}
               data-testid="reset-to-sample-button"
-              className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-[#8C3A2A] border border-stone-300 hover:border-[#8C3A2A] rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              className="hidden md:inline-flex items-center gap-1 text-[10px] font-mono-panel uppercase tracking-[0.15em] text-stone-400 hover:text-[#8C3A2A] transition-colors disabled:opacity-40"
               title="Reset to the sample assignment"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Reset to Sample
+              <RotateCcw className="h-3 w-3" />
             </button>
           )}
           <button
             onClick={onOpenPanel}
             data-testid="open-dev-panel-button"
-            className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-stone-900 border border-stone-300 hover:border-stone-900 rounded-sm px-3 py-1.5 transition-colors"
+            className="inline-flex items-center gap-1.5 text-[10px] font-mono-panel uppercase tracking-[0.15em] text-stone-400 hover:text-stone-900 transition-colors"
+            title="Teacher / developer reasoning panel"
           >
             <FlaskConical className="h-3.5 w-3.5" />
-            Dev Panel
           </button>
         </div>
       </header>
 
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12">
-        {/* Canvas */}
-        <section className="lg:col-span-7 xl:col-span-8 border-r border-stone-200 flex flex-col">
-          <div className="px-6 sm:px-12 pt-10 pb-6">
-            <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-stone-500">
-              Assignment
-            </p>
-            <h1 className="font-serif-display text-2xl sm:text-3xl tracking-tight text-stone-900 mt-1 leading-snug">
-              {session.assignment}
-            </h1>
-            <div className="mt-4 border-l-2 border-[#8C3A2A] pl-4">
-              <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-[#8C3A2A]">
-                Current Writing Task
-              </p>
-              <p className="text-stone-700 mt-1 leading-relaxed">
-                {session.current_writing_task}
-              </p>
-            </div>
+        {/* ============ DOCUMENT CANVAS (dominant, center) ============ */}
+        <section className="lg:col-span-8 xl:col-span-9 flex flex-col items-center px-4 sm:px-10 py-10">
+          <div className="w-full max-w-3xl relative">
             {session.assignment_prompt ? (
               <div
                 data-testid="assignment-prompt"
-                className="mt-4 rounded-sm bg-[#8C3A2A]/[0.06] border border-[#8C3A2A]/25 px-4 py-3"
+                className="mb-6 border-l-2 border-[#8C3A2A] pl-4"
               >
-                <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-[#8C3A2A] flex items-center gap-1.5">
-                  <HelpCircle className="h-3.5 w-3.5" />
+                <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-[#8C3A2A]">
                   Prompt — the question you're answering
                 </p>
                 <p className="text-stone-800 mt-1 leading-relaxed font-serif-display text-lg">
@@ -159,31 +171,155 @@ export default function StudentWorkspace({
                 </p>
               </div>
             ) : null}
-          </div>
 
-          <div className="px-6 sm:px-12 pb-10 flex-1 flex flex-col">
-            <label
-              htmlFor="draft"
-              className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2"
-            >
-              {started ? "Your draft — revise or keep writing" : "Your writing"}
-            </label>
-            <textarea
-              id="draft"
-              data-testid="writing-area"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder="Begin writing here. Take your time — write what you actually think, then send it to the coach."
-              className="flex-1 min-h-[320px] w-full bg-white border border-stone-300 rounded-sm p-6 text-[17px] leading-8 text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors resize-none custom-scroll font-serif-display"
-            />
-            <div className="mt-4 flex items-center justify-between">
-              <span className="text-xs text-stone-500 font-mono-panel">
-                {draft.trim() ? draft.trim().split(/\s+/).length : 0} words
+            {/* The living draft — paper surface, editable in place at all times. */}
+            <div className="relative bg-white border border-stone-300 rounded-sm">
+              <textarea
+                ref={canvasRef}
+                id="draft"
+                data-testid="writing-area"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Begin your draft here — write what you actually think. I won't write it for you."
+                className="block w-full min-h-[52vh] bg-transparent px-8 sm:px-14 py-10 text-[18px] leading-9 text-stone-900 placeholder:text-stone-400 outline-none resize-none custom-scroll font-serif-display"
+              />
+
+              {/* Anchored coaching marker — a single calm dot on the document's
+                  right margin, near the most recent writing. Only one at a time. */}
+              <AnimatePresence>
+                {activeCoaching && !loading && markerOpen && openCoachingId !== activeCoaching.id && (
+                  <motion.button
+                    key={`marker-${activeCoaching.id}`}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    onClick={() => setOpenCoachingId(activeCoaching.id)}
+                    data-testid="coaching-marker"
+                    className="absolute right-[-14px] bottom-10 group flex items-center gap-2"
+                    title="Your coach has a note on this draft"
+                  >
+                    <span className="coach-pulse h-3.5 w-3.5 rounded-full bg-[#8C3A2A] ring-4 ring-[#8C3A2A]/15" />
+                    <span className="hidden group-hover:inline-block text-[10px] font-mono-panel uppercase tracking-[0.15em] text-[#8C3A2A] bg-white border border-[#8C3A2A]/30 rounded-sm px-2 py-1">
+                      Coach note
+                    </span>
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+
+            {/* In-document thinking state — draft stays fully editable. */}
+            {loading && (
+              <div
+                data-testid="coach-thinking"
+                className="mt-4 flex items-center gap-2 text-sm text-stone-500"
+              >
+                <Loader2 className="h-4 w-4 animate-spin text-[#8C3A2A]" />
+                Reading your draft…
+              </div>
+            )}
+
+            {/* Inline coaching prompt — appears adjacent to the document, in the
+                coach's voice. One focused invitation; revise the draft above. */}
+            <AnimatePresence>
+              {activeCoaching && openCoachingId === activeCoaching.id && !loading && (
+                <motion.div
+                  key={`card-${activeCoaching.id}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  data-testid="coaching-card"
+                  className="mt-5 bg-white border-l-2 border-[#8C3A2A] border-y border-r border-stone-200 rounded-sm p-5 shadow-none"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[#8C3A2A] font-mono-panel">
+                      <MessageSquareQuote className="h-3.5 w-3.5" />
+                      Your coach
+                    </div>
+                    <button
+                      onClick={() => setOpenCoachingId(null)}
+                      data-testid="coaching-card-collapse"
+                      className="text-stone-400 hover:text-stone-700"
+                      aria-label="Set this note aside"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p
+                    data-testid="coaching-invitation"
+                    className="text-stone-800 leading-relaxed text-[15px] whitespace-pre-wrap"
+                  >
+                    {activeCoaching.content}
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-4">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] text-stone-500">
+                      <CornerDownRight className="h-3.5 w-3.5" />
+                      Revise your draft above, then send it back.
+                    </span>
+                    <button
+                      onClick={submitExplain}
+                      disabled={loading}
+                      data-testid="explain-more-button"
+                      className="text-[11px] font-mono-panel uppercase tracking-[0.14em] text-stone-500 hover:text-[#8C3A2A] transition-colors disabled:opacity-40"
+                    >
+                      Explain more
+                    </button>
+                    <button
+                      onClick={() => setReplyOpen((v) => !v)}
+                      data-testid="reply-to-coach-toggle"
+                      className="text-[11px] font-mono-panel uppercase tracking-[0.14em] text-stone-500 hover:text-[#8C3A2A] transition-colors"
+                    >
+                      Reply
+                    </button>
+                  </div>
+
+                  {/* Genuine side channel: think aloud WITHOUT changing the draft. */}
+                  {replyOpen && (
+                    <div className="mt-3 flex items-end gap-2">
+                      <textarea
+                        data-testid="reply-input"
+                        value={reply}
+                        onChange={(e) => setReply(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) submitReply();
+                        }}
+                        rows={2}
+                        placeholder="Think aloud to your coach (this doesn't change your draft)…"
+                        className="flex-1 bg-[#faf9f6] border border-stone-300 rounded-sm p-2.5 text-sm text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 resize-none"
+                      />
+                      <button
+                        onClick={submitReply}
+                        data-testid="send-reply-button"
+                        disabled={!reply.trim() || loading}
+                        className="shrink-0 bg-stone-900 text-white text-xs px-3 py-2 rounded-sm hover:bg-stone-700 transition-colors disabled:opacity-40"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Empty-state helper line before any writing. */}
+            {!started && !draft.trim() && (
+              <p
+                data-testid="empty-state-hint"
+                className="mt-4 text-sm text-stone-400 italic font-serif-display"
+              >
+                Write something and I'll read it as a reader would. I won't write it for you.
+              </p>
+            )}
+
+            {/* Primary action bar — anchored to the document. */}
+            <div className="mt-6 flex items-center justify-between">
+              <span className="text-xs text-stone-500 font-mono-panel" data-testid="word-count">
+                {wordCount} words
               </span>
               <button
                 onClick={submitDraft}
-                data-testid="continue-button"
-                disabled={!draft.trim() || loading}
+                data-testid="submit-draft-button"
+                disabled={!draft.trim() || loading || !dirty}
                 className="group inline-flex items-center gap-2 bg-[#8C3A2A] text-white px-6 py-3 rounded-sm font-medium tracking-wide hover:bg-[#6B2C20] enabled:hover:-translate-y-px transition-[background-color,transform] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? (
@@ -193,109 +329,97 @@ export default function StudentWorkspace({
                   </>
                 ) : (
                   <>
-                    {started ? "Send revised draft" : "Continue"}
+                    {started ? "Send revision" : "Send to coach"}
                     <ArrowRight className="h-4 w-4 transition-transform group-enabled:group-hover:translate-x-0.5" />
                   </>
                 )}
               </button>
             </div>
+            {started && !dirty && !loading && (
+              <p className="mt-2 text-right text-[11px] text-stone-400">
+                Add or change something in your draft to send a revision.
+              </p>
+            )}
           </div>
         </section>
 
-        {/* Scaffold thread */}
-        <aside className="lg:col-span-5 xl:col-span-4 flex flex-col bg-stone-50/60 h-[calc(100vh-65px)] sticky top-[65px]">
-          <div className="px-6 py-4 border-b border-stone-200 shrink-0">
-            <p className="font-serif-display text-lg text-stone-900">
-              Conversation with your coach
-            </p>
-            <p className="text-xs text-stone-500 mt-0.5">
-              One focused invitation at a time.
-            </p>
-          </div>
+        {/* ============ RIGHT RAIL (secondary — history, recessed) ============ */}
+        <aside className="lg:col-span-4 xl:col-span-3 border-l border-stone-200 bg-stone-50/60">
+          <div className="sticky top-[73px]">
+            <button
+              onClick={() => setRailOpen((v) => !v)}
+              data-testid="rail-toggle"
+              className="w-full flex items-center justify-between px-5 py-4 border-b border-stone-200 text-left"
+            >
+              <span className="flex items-center gap-2 font-serif-display text-base text-stone-700">
+                <History className="h-4 w-4 text-stone-400" />
+                Coaching &amp; revisions
+              </span>
+              <ChevronRight
+                className={`h-4 w-4 text-stone-400 transition-transform ${railOpen ? "rotate-90" : ""}`}
+              />
+            </button>
 
-          <div
-            ref={threadRef}
-            className="flex-1 overflow-y-auto custom-scroll px-5 py-5 space-y-4"
-            data-testid="conversation-thread"
-          >
-            {!started && (
-              <div className="h-full flex items-center justify-center text-center px-6">
-                <p className="text-stone-400 leading-relaxed text-sm">
-                  Send your first piece of writing and the coach will respond
-                  with a single developmental invitation.
-                </p>
+            {railOpen && (
+              <div
+                className="px-5 py-5 space-y-6 overflow-y-auto custom-scroll max-h-[calc(100vh-130px)]"
+                data-testid="coaching-rail"
+              >
+                {resolvedCoaching.length === 0 && studentTurns.length <= 1 && (
+                  <p className="text-xs text-stone-400 leading-relaxed">
+                    Resolved coaching notes and your revision history will collect here as you work. Your active note stays on the document.
+                  </p>
+                )}
+
+                {resolvedCoaching.length > 0 && (
+                  <div data-testid="coaching-history">
+                    <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">
+                      Resolved coaching
+                    </p>
+                    <div className="space-y-2.5">
+                      {resolvedCoaching.map((t, i) => (
+                        <div
+                          key={t.id}
+                          data-testid={`coaching-history-item-${i}`}
+                          className="border-l-2 border-stone-300 pl-3 py-0.5"
+                        >
+                          <p className="text-[13px] text-stone-600 leading-relaxed line-clamp-4">
+                            {t.content}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {studentTurns.length > 0 && (
+                  <div data-testid="revision-history">
+                    <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-stone-500 mb-2">
+                      Revision history
+                    </p>
+                    <div className="space-y-2.5">
+                      {studentTurns
+                        .filter((t) => t.kind === "writing" || t.kind === "revise")
+                        .map((t, i, arr) => (
+                          <div
+                            key={t.id}
+                            data-testid={`revision-history-item-${i}`}
+                            className="border border-stone-200 rounded-sm px-3 py-2 bg-white"
+                          >
+                            <p className="font-mono-panel text-[9px] uppercase tracking-[0.18em] text-stone-400 mb-1">
+                              {i === 0 ? "First draft" : `Revision ${i}`}
+                            </p>
+                            <p className="text-[12px] text-stone-600 leading-snug line-clamp-3">
+                              {t.content}
+                            </p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
-            {turns.map((t) => (
-              <ThreadBubble key={t.id} turn={t} />
-            ))}
-            {loading && (
-              <div className="flex items-center gap-1.5 pl-1">
-                <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" />
-                <span
-                  className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]"
-                  style={{ animationDelay: "0.2s" }}
-                />
-                <span
-                  className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]"
-                  style={{ animationDelay: "0.4s" }}
-                />
-              </div>
-            )}
           </div>
-
-          {started && (
-            <div className="border-t border-stone-200 p-4 shrink-0 bg-white">
-              <div className="flex gap-2 mb-2">
-                {["answer", "explain", "revise"].map((m) => (
-                  <button
-                    key={m}
-                    data-testid={`reply-mode-${m}`}
-                    onClick={() => setReplyMode(m)}
-                    className={`text-[11px] font-mono-panel uppercase tracking-[0.15em] px-3 py-1 rounded-sm border transition-colors ${
-                      replyMode === m
-                        ? "bg-stone-900 text-white border-stone-900"
-                        : "bg-transparent text-stone-500 border-stone-300 hover:border-stone-900"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-              <div className="flex items-end gap-2">
-                <textarea
-                  data-testid="reply-input"
-                  value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && (e.metaKey || e.ctrlKey))
-                      submitReply();
-                  }}
-                  rows={2}
-                  placeholder={
-                    replyMode === "answer"
-                      ? "Answer the coach's question…"
-                      : replyMode === "explain"
-                        ? "Explain your thinking…"
-                        : "Paste or type your revised writing…"
-                  }
-                  className="flex-1 bg-white border border-stone-300 rounded-sm p-3 text-sm text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors resize-none"
-                />
-                <button
-                  onClick={submitReply}
-                  data-testid="send-reply-button"
-                  disabled={!reply.trim() || loading}
-                  className="shrink-0 bg-[#8C3A2A] text-white p-3 rounded-sm hover:bg-[#6B2C20] enabled:hover:-translate-y-px transition-[background-color,transform] disabled:opacity-40 disabled:cursor-not-allowed"
-                  aria-label="Send reply"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
-              <p className="text-[10px] text-stone-400 mt-1.5">
-                Revise here with the <span className="font-medium">revise</span> mode, or edit your draft on the left and send it again.
-              </p>
-            </div>
-          )}
         </aside>
       </div>
     </div>

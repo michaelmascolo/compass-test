@@ -966,6 +966,7 @@ PREVIEW_OUTPUT_OVERRIDE = """
 
 === PREVIEW OUTPUT PAYLOAD OVERRIDE (this session only) ===
 Perform the COMPLETE recursive loop and governed instructional reasoning EXACTLY as specified above — do NOT shorten, skip, or simplify any analysis. Your branch read, primary target, developmental tension, chosen intervention, next student act, and the student_facing_invitation MUST be identical to what you would produce under the full schema. This directive changes ONLY which fields you serialize, to shrink the payload.
+RESTRAINT INVARIANT (do not let the reduced payload weaken this): apply the RESTRAINT rule with full force. Serializing fewer fields must NOT push you toward instruction. If the writer already presents a motivated, competent claim (their move is purposeful and effective and the productive edge is merely to sharpen, extend, ground, or specify), you MUST choose "invite_only" (or "interpretation_only") — NEVER "instruct_then_invite". Reserve "instruct_then_invite" only for a writer who is missing the concept, misusing it, or leaning on formula. When in doubt with a capable writer, teach less.
 In your final JSON, include ONLY these top-level keys (omit ALL others — they are not consumed this session and omitting them changes nothing about your reasoning or decision):
 {
   "student_facing_invitation": "...",

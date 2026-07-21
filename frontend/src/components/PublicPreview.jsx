@@ -1,35 +1,46 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowRight, Loader2, Compass } from "lucide-react";
+import {
+  ArrowRight,
+  Loader2,
+  Compass,
+  MessageSquareQuote,
+  X,
+  CornerDownRight,
+} from "lucide-react";
 import { startPreview, getSession, interact } from "@/lib/api";
 import PreviewBridge from "@/components/PreviewBridge";
 
 const PASSAGE_TYPES = ["Let Compass infer it", "Introduction", "Body paragraph", "Transition", "Conclusion", "Other"];
 
-// A single conversational surface. Fully in character: no assignment header,
-// no scoring, no jargon, no developer panel. The whole experience is the
-// writing invitation and the exchange that follows.
+// A faithful miniature of the canonical Student Workspace: the passage is the
+// center, editable in place, and Compass anchors ONE coaching note to it. No
+// chat column, no scoring, no jargon, no developer panel.
 export default function PublicPreview() {
   const [session, setSession] = useState(null);
   const [seed, setSeed] = useState("");
-  const [reply, setReply] = useState("");
+  const [draft, setDraft] = useState("");
   const [starting, setStarting] = useState(false);
   const [sending, setSending] = useState(false);
   const [showBridge, setShowBridge] = useState(false);
   const [passageType, setPassageType] = useState("Let Compass infer it");
   const [essayAbout, setEssayAbout] = useState("");
-  const threadRef = useRef(null);
+  const [cardOpen, setCardOpen] = useState(false);
+  const [openCoachingId, setOpenCoachingId] = useState(null);
+  const [replyOpen, setReplyOpen] = useState(false);
+  const [reply, setReply] = useState("");
 
   const isProcessing = !!session?.turns?.some((t) => t.status === "processing");
   const busy = starting || sending || isProcessing;
 
-  const turns = (session?.turns || []).filter(
-    (t) => !(t.role === "ai" && (t.status === "processing" || t.status === "failed"))
-  );
+  const allTurns = session?.turns || [];
+  const studentTurns = allTurns.filter((t) => t.role === "student");
+  const completedAi = allTurns.filter((t) => t.role === "ai" && t.status === "complete" && t.content);
+  const activeCoaching = completedAi.length ? completedAi[completedAi.length - 1] : null;
   const started = !!session;
-  const aiTurnCount = turns.filter((t) => t.role === "ai").length;
-  // Offer a gentle exit once the visitor has genuinely experienced the method.
-  const canBridge = aiTurnCount >= 2;
+  const reviseCount = studentTurns.filter((t) => t.kind === "revise").length;
+  // Offer a graceful close once the visitor has revised through a target or two.
+  const canBridge = completedAi.length >= 2;
 
   // Poll while the engine is reasoning in the background.
   useEffect(() => {
@@ -50,9 +61,13 @@ export default function PublicPreview() {
     };
   }, [session?.id, isProcessing]);
 
+  // A new coaching target auto-surfaces its marker.
   useEffect(() => {
-    if (threadRef.current) threadRef.current.scrollTop = threadRef.current.scrollHeight;
-  }, [turns.length, busy]);
+    if (activeCoaching) {
+      setCardOpen(true);
+      setOpenCoachingId(null);
+    }
+  }, [activeCoaching?.id]);
 
   const beginPreview = useCallback(async () => {
     if (!seed.trim() || starting) return;
@@ -60,28 +75,64 @@ export default function PublicPreview() {
     try {
       const s = await startPreview({ essay_about: essayAbout.trim(), passage_type: passageType });
       const updated = await interact(s.id, { kind: "writing", content: seed.trim() });
+      setDraft(seed.trim());
       setSession(updated);
     } catch (e) {
-      setStarting(false);
+      /* stay on seed screen */
     } finally {
       setStarting(false);
     }
   }, [seed, starting, essayAbout, passageType]);
+
+  const dirty = draft.trim() !== (studentTurns[studentTurns.length - 1]?.content || "").trim();
+
+  const sendRevision = useCallback(async () => {
+    if (!draft.trim() || busy || !session || !dirty) return;
+    setSending(true);
+    try {
+      const updated = await interact(session.id, { kind: "revise", content: draft.trim() });
+      setSession(updated);
+      setOpenCoachingId(null);
+    } catch (e) {
+      /* polling / retry */
+    } finally {
+      setSending(false);
+    }
+  }, [draft, busy, session, dirty]);
+
+  const sendExplain = useCallback(async () => {
+    if (busy || !session) return;
+    setSending(true);
+    try {
+      const updated = await interact(session.id, {
+        kind: "explain",
+        content: "Can you say a little more about what you mean?",
+      });
+      setSession(updated);
+    } catch (e) {
+      /* ignore */
+    } finally {
+      setSending(false);
+    }
+  }, [busy, session]);
 
   const sendReply = useCallback(async () => {
     if (!reply.trim() || busy || !session) return;
     setSending(true);
     const content = reply.trim();
     setReply("");
+    setReplyOpen(false);
     try {
       const updated = await interact(session.id, { kind: "answer", content });
       setSession(updated);
     } catch (e) {
-      /* ignore; polling / retry */
+      /* ignore */
     } finally {
       setSending(false);
     }
   }, [reply, busy, session]);
+
+  const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
 
   if (showBridge) {
     return <PreviewBridge sessionId={session?.id} onBack={() => setShowBridge(false)} />;
@@ -105,7 +156,7 @@ export default function PublicPreview() {
         )}
       </header>
 
-      <main className="w-full max-w-2xl flex-1 flex flex-col px-6 pb-10">
+      <main className="w-full max-w-2xl flex-1 flex flex-col px-6 pb-12">
         {!started ? (
           <SeedScreen
             seed={seed}
@@ -118,49 +169,162 @@ export default function PublicPreview() {
             setEssayAbout={setEssayAbout}
           />
         ) : (
-          <>
-            <div
-              ref={threadRef}
-              className="flex-1 overflow-y-auto custom-scroll py-6 space-y-6"
-              data-testid="preview-thread"
-            >
-              <AnimatePresence initial={false}>
-                {turns.map((t) => (
-                  <Message key={t.id} turn={t} />
-                ))}
+          <div className="flex-1 flex flex-col py-4">
+            {started && (
+              <p
+                data-testid="preview-revision-progress"
+                className="font-mono-panel text-[10px] uppercase tracking-[0.18em] text-stone-400 mb-3"
+              >
+                {reviseCount > 0 ? `Revision ${reviseCount}` : "Your passage"}
+              </p>
+            )}
+
+            {/* The passage — document canvas, editable in place. */}
+            <div className="relative bg-white border border-stone-300 rounded-sm">
+              <textarea
+                data-testid="preview-document"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder="Your passage…"
+                className="block w-full min-h-[34vh] bg-transparent px-7 sm:px-10 py-8 text-[17px] leading-9 text-stone-900 placeholder:text-stone-400 outline-none resize-none custom-scroll font-serif-display"
+              />
+              <AnimatePresence>
+                {activeCoaching && !busy && cardOpen && openCoachingId !== activeCoaching.id && (
+                  <motion.button
+                    key={`marker-${activeCoaching.id}`}
+                    initial={{ opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.6 }}
+                    onClick={() => setOpenCoachingId(activeCoaching.id)}
+                    data-testid="preview-coaching-marker"
+                    className="absolute right-[-12px] bottom-8 group flex items-center gap-2"
+                    title="Your coach has a note on this passage"
+                  >
+                    <span className="coach-pulse h-3.5 w-3.5 rounded-full bg-[#8C3A2A] ring-4 ring-[#8C3A2A]/15" />
+                    <span className="hidden group-hover:inline-block text-[10px] font-mono-panel uppercase tracking-[0.15em] text-[#8C3A2A] bg-white border border-[#8C3A2A]/30 rounded-sm px-2 py-1">
+                      Coach note
+                    </span>
+                  </motion.button>
+                )}
               </AnimatePresence>
-              {busy && <Thinking />}
             </div>
 
-            <div className="pt-3 border-t border-stone-200">
-              <div className="flex items-end gap-2">
-                <textarea
-                  data-testid="preview-reply-input"
-                  value={reply}
-                  onChange={(e) => setReply(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      sendReply();
-                    }
-                  }}
-                  rows={2}
-                  disabled={busy}
-                  placeholder="Type your reply…"
-                  className="flex-1 bg-white border border-stone-300 rounded-sm p-3.5 text-[15px] leading-relaxed text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 focus:border-stone-900 transition-colors resize-none disabled:opacity-60"
-                />
-                <button
-                  onClick={sendReply}
-                  data-testid="preview-send-button"
-                  disabled={!reply.trim() || busy}
-                  className="shrink-0 inline-flex items-center gap-2 bg-[#8C3A2A] text-white px-5 py-3.5 rounded-sm font-medium hover:bg-[#6B2C20] enabled:hover:-translate-y-px transition-[background-color,transform] disabled:opacity-40 disabled:cursor-not-allowed"
-                  aria-label="Send"
-                >
-                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
-                </button>
+            {busy && (
+              <div data-testid="preview-thinking" className="mt-4">
+                <Thinking />
               </div>
+            )}
+
+            {/* Inline coaching prompt — adjacent to the passage, coach's voice. */}
+            <AnimatePresence>
+              {activeCoaching && openCoachingId === activeCoaching.id && !busy && (
+                <motion.div
+                  key={`card-${activeCoaching.id}`}
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 8 }}
+                  transition={{ duration: 0.35, ease: "easeOut" }}
+                  data-testid="preview-coaching-card"
+                  className="mt-5 bg-white border-l-2 border-[#8C3A2A] border-y border-r border-stone-200 rounded-sm p-5"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-[0.18em] text-[#8C3A2A] font-mono-panel">
+                      <MessageSquareQuote className="h-3.5 w-3.5" />
+                      Your coach
+                    </div>
+                    <button
+                      onClick={() => setOpenCoachingId(null)}
+                      data-testid="preview-coaching-card-collapse"
+                      className="text-stone-400 hover:text-stone-700"
+                      aria-label="Set this note aside"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                  <p
+                    data-testid="preview-coaching-invitation"
+                    className="text-stone-800 leading-relaxed text-[16px] font-serif-display whitespace-pre-wrap"
+                  >
+                    {activeCoaching.content}
+                  </p>
+                  <div className="mt-4 flex flex-wrap items-center gap-4">
+                    <span className="inline-flex items-center gap-1.5 text-[11px] text-stone-500">
+                      <CornerDownRight className="h-3.5 w-3.5" />
+                      Revise your passage above, then send it back.
+                    </span>
+                    <button
+                      onClick={sendExplain}
+                      disabled={busy}
+                      data-testid="preview-explain-more"
+                      className="text-[11px] font-mono-panel uppercase tracking-[0.14em] text-stone-500 hover:text-[#8C3A2A] transition-colors disabled:opacity-40"
+                    >
+                      Explain more
+                    </button>
+                    <button
+                      onClick={() => setReplyOpen((v) => !v)}
+                      data-testid="preview-reply-toggle"
+                      className="text-[11px] font-mono-panel uppercase tracking-[0.14em] text-stone-500 hover:text-[#8C3A2A] transition-colors"
+                    >
+                      Reply
+                    </button>
+                  </div>
+                  {replyOpen && (
+                    <div className="mt-3 flex items-end gap-2">
+                      <textarea
+                        data-testid="preview-reply-input"
+                        value={reply}
+                        onChange={(e) => setReply(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) sendReply();
+                        }}
+                        rows={2}
+                        placeholder="Think aloud to your coach (this doesn't change your passage)…"
+                        className="flex-1 bg-[#faf9f6] border border-stone-300 rounded-sm p-2.5 text-sm text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-stone-900 resize-none"
+                      />
+                      <button
+                        onClick={sendReply}
+                        data-testid="preview-send-reply"
+                        disabled={!reply.trim() || busy}
+                        className="shrink-0 bg-stone-900 text-white text-xs px-3 py-2 rounded-sm hover:bg-stone-700 transition-colors disabled:opacity-40"
+                      >
+                        Send
+                      </button>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Primary action bar. */}
+            <div className="mt-6 flex items-center justify-between">
+              <span className="text-xs text-stone-500 font-mono-panel" data-testid="preview-word-count">
+                {wordCount} words
+              </span>
+              <button
+                onClick={sendRevision}
+                data-testid="preview-send-revision"
+                disabled={!draft.trim() || busy || !dirty}
+                className="group inline-flex items-center gap-2 bg-[#8C3A2A] text-white px-6 py-3 rounded-sm font-medium tracking-wide hover:bg-[#6B2C20] enabled:hover:-translate-y-px transition-[background-color,transform] disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {busy ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Reading…
+                  </>
+                ) : (
+                  <>
+                    Send revision
+                    <ArrowRight className="h-4 w-4 transition-transform group-enabled:group-hover:translate-x-0.5" />
+                  </>
+                )}
+              </button>
             </div>
-          </>
+            {!dirty && !busy && activeCoaching && (
+              <p className="mt-2 text-right text-[11px] text-stone-400">
+                Change something in your passage to send a revision.
+              </p>
+            )}
+          </div>
         )}
       </main>
     </div>
@@ -187,10 +351,9 @@ function SeedScreen({ seed, setSeed, onBegin, starting, passageType, setPassageT
       </p>
       <p className="text-stone-500 mt-2 text-[14px] leading-relaxed">
         The writing can be imperfect. The purpose is to experience how Compass helps a student
-        develop it.
+        develop it — you'll revise the passage right on the page.
       </p>
 
-      {/* Optional essay context */}
       <div className="mt-7">
         <label className="block font-mono-panel text-[11px] uppercase tracking-[0.14em] text-stone-500 mb-1.5">
           What is the essay about? <span className="text-stone-400 normal-case tracking-normal">Optional</span>
@@ -204,7 +367,6 @@ function SeedScreen({ seed, setSeed, onBegin, starting, passageType, setPassageT
         />
       </div>
 
-      {/* Optional passage type */}
       <div className="mt-4">
         <label className="block font-mono-panel text-[11px] uppercase tracking-[0.14em] text-stone-500 mb-1.5">
           What kind of passage are you entering? <span className="text-stone-400 normal-case tracking-normal">Optional</span>
@@ -255,32 +417,9 @@ function SeedScreen({ seed, setSeed, onBegin, starting, passageType, setPassageT
   );
 }
 
-function Message({ turn }) {
-  const isAI = turn.role === "ai";
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
-      className={isAI ? "flex justify-start" : "flex justify-end"}
-      data-testid={isAI ? "preview-coach-message" : "preview-user-message"}
-    >
-      {isAI ? (
-        <p className="max-w-[90%] text-stone-800 leading-relaxed text-[17px] font-serif-display whitespace-pre-wrap">
-          {turn.content}
-        </p>
-      ) : (
-        <p className="max-w-[85%] bg-stone-900 text-stone-100 rounded-sm px-4 py-2.5 leading-relaxed text-[15px] whitespace-pre-wrap">
-          {turn.content}
-        </p>
-      )}
-    </motion.div>
-  );
-}
-
 function Thinking() {
   const lines = [
-    "Reading your opening as a reader would…",
+    "Reading your passage as a reader would…",
     "Sitting with what you actually said…",
     "Thinking about what a reader needs here…",
   ];
@@ -291,7 +430,7 @@ function Thinking() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return (
-    <div className="flex items-center gap-3 pl-1" data-testid="preview-thinking">
+    <div className="flex items-center gap-3 pl-1">
       <div className="flex items-center gap-1.5">
         <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" />
         <span className="thinking-dot h-2 w-2 rounded-full bg-[#8C3A2A]" style={{ animationDelay: "0.2s" }} />

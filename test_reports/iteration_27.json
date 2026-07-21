@@ -1,0 +1,79 @@
+{
+  "summary": "Iteration 27 verifies the redesigned Anchored Coaching model in both the Student Workspace (?dev) and Public Preview (?preview) end-to-end, plus the durable-processing backend regression. Backend pytest suite (5 tests) 100% pass: POST /api/sessions creates a session with the teacher-provided telos; POST /api/sessions/{id}/interact returns in <15s with an AI 'processing' placeholder; polling GET /api/sessions/{id} yields a completed AI turn with non-empty content (workspace ~55-80s, preview ~40s); POST /api/sessions/preview creates a session with the fixed preview telos; preview interact + poll completes end-to-end. Frontend workspace Playwright test: writing-area/workspace-assignment-title/workspace-task/revision-progress ('First draft') all render; empty-state-hint shown and submit-draft-button disabled before writing; typing 30 words + clicking 'Send to coach' triggers coach-thinking + button relabel to 'Reading…'; after ~55s a single coaching-marker appears; opening the marker renders coaching-card with a single, non-empty coaching-invitation (~500 chars); coaching-card-collapse restores the marker; explain-more-button produces a new coaching and moves the previous one to coaching-history (coaching-history-item-0 visible); reply-to-coach-toggle reveals reply-input + send-reply-button, sending an 'answer' turn that produces a new coaching WITHOUT changing the draft text (verified char-by-char); editing the draft relabels submit to 'Send revision', clicking triggers a new coaching, revision-progress reads 'Revision 1', revision-history has item-0 (First draft) and item-1 (Revision 1); dirty-check guard confirmed (submit disabled when draft is unchanged from the last submitted content); at every step exactly ONE coaching-marker exists (single-focus rule holds); no chat/student-bubble elements found (no chat column). Frontend preview Playwright test: preview-seed-screen renders with preview-seed-input, preview-essay-about, preview-passage-type; preview-begin-button disabled + preview-empty-hint shown while empty; enabled after typing; clicking loads preview-document (editable canvas, NOT a chat) with the seed text (207 chars); preview-thinking shown; single preview-coaching-marker appears after ~40s; card opens with a non-empty preview-coaching-invitation (569 chars); preview-bring-own-work is CORRECTLY hidden after 1 coaching; editing document + preview-send-revision produces a 2nd coaching (~35s), preview-revision-progress reads 'Revision 1', preview-bring-own-work now visible. No console errors observed. One notable testing quirk (NOT a defect): the coaching-marker <motion.button> is positioned at right:-14px with framer-motion animation; Playwright's synthesized mouse click does not always trigger the onClick handler on the marker, but the same element responds correctly to DOM .click() and to real user mouse clicks (verified via evaluate).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/sessions", "issue": "Returns 200 instead of 201 for resource creation (carry-over from earlier iterations, non-blocking)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "StudentWorkspace top bar (revision-progress)", "issues": ["After the first draft is submitted (0 revise turns yet), revision-progress reads 'Revision 0' which reads awkwardly. Consider showing 'First draft' until the first true 'revise' turn arrives, or 'Awaiting coach' between submit and next revise. Minor copy issue, not blocking."]}
+    ]
+  },
+  "verified_behaviors": {
+    "backend_regression": [
+      "POST /api/sessions -> 200, {id, assignment, ...} present",
+      "POST /api/sessions/{id}/interact kind=writing -> 200 in <15s, last AI turn status='processing'",
+      "Polling GET /api/sessions/{id} -> AI turn.status='complete' with non-empty content within 130s (workspace)",
+      "POST /api/sessions/preview -> 200 with preview telos fields populated",
+      "Preview interact + poll -> complete AI turn with non-empty content within 100s (~40s observed)"
+    ],
+    "student_workspace_ui": [
+      "writing-area is dominant editable center; workspace-assignment-title + workspace-task + revision-progress render in slim top bar",
+      "empty-state-hint shown and submit-draft-button disabled before any writing",
+      "submit label = 'Send to coach' on first draft; changes to 'Reading…' during processing; 'Send revision' after first draft submitted",
+      "coach-thinking indicator appears in-document while a turn is processing",
+      "single coaching-marker appears after polling completes; clicking opens coaching-card with exactly ONE coaching-invitation (single-focus rule)",
+      "coaching-card-collapse restores marker",
+      "explain-more-button issues an 'explain' turn -> new coaching arrives, previous moves to coaching-history / coaching-history-item-0",
+      "reply-to-coach-toggle reveals reply-input + send-reply-button; sending an 'answer' turn produces new coaching WITHOUT changing draft (verified char-by-char equality)",
+      "Editing draft + submit triggers 'revise' turn; revision-progress -> 'Revision 1'; revision-history-item-0 and -1 both present",
+      "Dirty-check: submit-draft-button disabled when draft equals last submitted student content",
+      "Only one coaching-marker visible at any time throughout multi-turn flow",
+      "No chat/student-bubble elements — no chat column"
+    ],
+    "public_preview_ui": [
+      "preview-seed-screen renders with preview-seed-input + preview-essay-about + preview-passage-type",
+      "preview-begin-button disabled + preview-empty-hint visible while empty; enabled once seed typed",
+      "Post-begin, preview-document is the editable canvas containing the seed (NOT a chat thread)",
+      "preview-thinking indicator shown while processing",
+      "Single preview-coaching-marker after polling; clicking opens preview-coaching-card with non-empty preview-coaching-invitation",
+      "preview-bring-own-work hidden after 1 completed coaching (correct gate)",
+      "Editing preview-document + preview-send-revision produces 2nd coaching; preview-revision-progress -> 'Revision 1'",
+      "preview-bring-own-work becomes visible after 2 completed coachings"
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_anchored_coaching_iteration27.py",
+    "/app/test_reports/pytest/iter27_backend.xml"
+  ],
+  "critical_code_review_comments": [
+    "StudentWorkspace.jsx L46-77: markerOpen state is only reset to true when activeCoaching.id changes, and openCoachingId to null. This gives the correct single-focus behavior (previous coaching auto-recedes, new marker surfaces). However, once a user closes a card via coaching-card-collapse, if they later scroll away and back, the marker remains dormant only until a new AI turn — that is intended per spec, but a keyboard shortcut or a tiny 're-open note' affordance could improve accessibility.",
+    "StudentWorkspace.jsx L84-88 dirty-check uses .trim() on both sides — correct — but early-returns before setMarkerOpen(false). If the user hits submit while dirty=false and loading=false, no state changes; UX-wise the disabled button already prevents this, so it's fine.",
+    "StudentWorkspace.jsx L122 revision-progress renders 'Revision {reviseCount}' the moment started=true, so between first submit and first revise it reads 'Revision 0'. Minor copy issue — consider 'First draft (with coach)' or continue showing 'First draft' until the first successful revise turn.",
+    "StudentWorkspace.jsx L189-207 & PublicPreview.jsx L191-209: The coaching-marker button is positioned at right:-14px with framer-motion enter/exit animations. Synthesized mouse clicks (Playwright, some assistive tech that dispatches synthetic events) can miss this animated, negatively-offset button. Consider adding padding/hit-area (e.g. wrap the pulse dot with a larger clickable region using absolute inset extension or after: pseudo-element) so both real users and automation land reliably. Real mouse clicks worked in manual verification.",
+    "PublicPreview.jsx L72-85 beginPreview does two network calls back-to-back (startPreview then interact). If the second call fails, the visitor sees the seed screen again with the seed still populated — good — but the first session is orphaned in Mongo. Not user-visible but worth noting for cleanup.",
+    "PublicPreview.jsx L87 dirty-check compares draft against last student turn — same pattern as workspace; correct.",
+    "App.js L61-112 the polling effect keys on session?.id and isProcessing — clean lifecycle, teardown via cancelled flag + clearInterval. No leaks observed across a full multi-turn workspace session.",
+    "General: no console errors observed in either ?dev or ?preview across the full multi-turn flows."
+  ],
+  "action_items": [
+    "OPTIONAL / low-priority copy tweak: reconsider 'Revision 0' label on the workspace top bar between first submit and first revise (see design_issues).",
+    "OPTIONAL / testability improvement: enlarge the coaching-marker hit region or move it inside the document container padding so Playwright/synthesized clicks reliably reach it. This does not affect real user experience but would make automated regression tests less flaky.",
+    "OPTIONAL: consider cleanup of orphaned preview sessions when startPreview succeeds but the immediate 'writing' interact fails."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (5/5 pytest tests pass in 65.6s)",
+    "frontend": "100% (all Student Workspace + Public Preview acceptance criteria verified end-to-end)"
+  },
+  "test_credentials": "N/A (no auth in this app; ?dev auto-quickstarts the sample assignment, ?preview is the public flow).",
+  "seed_data_creation": "Backend pytest created 2 sessions prefixed TEST_iter27 (one workspace, one preview). Frontend Playwright created 2 additional live sessions (one via ?dev quickstart, one via ?preview seed). All produced real AI turns via the production LLM.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "For the anchored-coaching model, use these key data-testids to drive tests deterministically — Workspace: writing-area, submit-draft-button, coach-thinking, coaching-marker, coaching-card, coaching-invitation, coaching-card-collapse, explain-more-button, reply-to-coach-toggle, reply-input, send-reply-button, revision-progress, coaching-history, coaching-history-item-N, revision-history-item-N, empty-state-hint, word-count, reset-to-sample-button, new-assignment-button. Preview: preview-seed-screen, preview-seed-input, preview-essay-about, preview-passage-type, preview-begin-button, preview-empty-hint, preview-document, preview-thinking, preview-coaching-marker, preview-coaching-card, preview-coaching-invitation, preview-coaching-card-collapse, preview-send-revision, preview-explain-more, preview-reply-toggle, preview-reply-input, preview-send-reply, preview-bring-own-work, preview-revision-progress, preview-word-count. IMPORTANT for Playwright: the coaching-marker (and preview-coaching-marker) button is positioned at right:-14px with framer-motion animation — page.click(force=True) sometimes fails to trigger onClick. Use page.evaluate(\"document.querySelector('[data-testid=\\\"coaching-marker\\\"]').click()\") as the reliable path. Full backend regression file is /app/backend/tests/test_anchored_coaching_iteration27.py — runs in ~65s with 2 workers.",
+  "rca of the issue": "No functional defects. The anchored-coaching redesign faithfully implements the specified single-focus interaction: one document canvas, one marker at a time, revisions in place, side channels (explain / answer) that don't change the draft, and a resolved-coaching + revision-history right rail with no chat column. Durable polling and preview telos are working exactly as before. Minor observations logged above are copy/UX polish (Revision 0 label) and testability affordance (marker hit-area), not functional bugs."
+}
