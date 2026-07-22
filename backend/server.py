@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import time
 import asyncio
 import logging
@@ -427,6 +428,31 @@ class TheorySnapshot(BaseModel):
     created_at: str = Field(default_factory=now_iso)
 
 
+class RevisionRecord(BaseModel):
+    """One substantive student revision, preserved as the atomic developmental
+    unit for the Teacher Dashboard + Revision Analytics. Captures the full
+    before/after draft state and the coaching context that both preceded and
+    followed the change. The central question this data must answer is: how did
+    the student's control of the writing develop through the revision process?"""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    revision_index: int = 0                       # 1 = first revision of this draft, ...
+    draft_before: str = ""                        # full draft state BEFORE this revision
+    draft_after: str = ""                         # full draft state AFTER this revision
+    active_coaching_target: str = ""              # the coaching target the student was revising toward
+    coaching_unit: str = ""                       # unit the coaching addressed (sentence/paragraph/section/whole paper)
+    relevant_text_span: str = ""                  # best-effort anchored span (last paragraph of draft_before)
+    coaching_invitation_shown: str = ""           # the exact invitation text the student saw
+    student_reply_or_explanation: str = ""        # answer/explain turns between the coaching and this revision, if any
+    target_resolved: bool = False                 # did this revision resolve the active coaching target?
+    resolution_basis: str = ""                    # how resolution was judged (development_detected + cycle_status)
+    development_detected: str = ""                # engine revision_development.development_detected (yes/partial/no + brief)
+    primary_growth: str = ""                      # engine revision_development.primary_growth
+    next_instructional_target: str = ""           # Compass's NEXT primary target after reading this revision
+    next_instructional_mode: str = ""             # Compass's NEXT instructional mode
+    instructional_decision_changed: bool = False  # did the next target differ from the active coaching target?
+    created_at: str = Field(default_factory=now_iso)
+
+
 class SessionCreate(BaseModel):
     assignment: str
     pedagogical_purpose: str
@@ -461,6 +487,7 @@ class Session(BaseModel):
     theory_history: List[TheorySnapshot] = Field(default_factory=list)
     interactions: List[InteractionRecord] = Field(default_factory=list)
     developmental_profile: List[DevelopmentalObservation] = Field(default_factory=list)
+    revision_history: List[RevisionRecord] = Field(default_factory=list)
     teacher_edits: List[dict] = Field(default_factory=list)
     is_preview: bool = False
     preview_analytics: dict = Field(default_factory=dict)
@@ -1082,10 +1109,100 @@ def _merge_developmental_profile(session: Session, updates: list) -> None:
             by_el[el.lower()] = obs
 
 
+def _last_paragraph(text: str) -> str:
+    """Best-effort anchored span: the last non-empty paragraph of a draft, matching
+    the UI's whole-draft/last-paragraph anchoring model (engine returns no offsets)."""
+    if not text:
+        return ""
+    paras = [p.strip() for p in re.split(r"\n\s*\n", text.strip()) if p.strip()]
+    if paras:
+        return paras[-1]
+    return text.strip()[-400:]
+
+
+def _side_notes_since_last_draft(session: Session, revise_turn_id: str) -> str:
+    """Any student answer/explain turns between the previous draft and this revision."""
+    notes = []
+    for t in session.turns:
+        if t.id == revise_turn_id:
+            break
+        if t.role == "student":
+            if t.kind in DRAFT_KINDS:
+                notes = []  # reset at each new draft boundary
+            elif t.kind in ("answer", "explain") and t.content.strip():
+                notes.append(t.content.strip())
+    return "\n---\n".join(notes)
+
+
+def _norm(s: str) -> str:
+    return re.sub(r"\s+", " ", (s or "").strip().lower())
+
+
+def _previous_draft_excluding(session: Session, ai_turn_id: str, req: InteractRequest) -> Optional[str]:
+    """The full draft state BEFORE the current submission. The last draft-kind
+    student turn is the current submission (== req.content); the one before it is
+    the prior draft. Returns None when there is no prior draft (first submission)."""
+    drafts = [t.content for t in session.turns if t.role == "student" and t.kind in DRAFT_KINDS]
+    return drafts[-2] if len(drafts) >= 2 else None
+
+
+def _record_revision(session: Session, req: InteractRequest, result: dict,
+                     prior_theory: DevelopmentalTheory, prior_invitation: str,
+                     draft_before: str, revise_turn_id: str) -> None:
+    """Capture one substantive revision as the developmental unit for analytics.
+    Called from _finalize_turn only for a `revise` turn that actually changed the
+    draft. `prior_theory`/`prior_invitation` are the pre-mutation coaching context."""
+    draft_after = req.content.strip()
+    prior_sc = prior_theory.scaffolding_control
+    new_theory = result["theory"]
+    new_sc = new_theory.scaffolding_control
+    rev_dev = new_theory.revision_development
+
+    dd = (rev_dev.development_detected or "")
+    cs = (new_sc.cycle_status or "")
+    resolved = dd.strip().lower().startswith("yes") or cs.strip().lower() in ("consolidate_and_return", "stop")
+    active_target = prior_sc.primary_target or ""
+    next_target = new_sc.primary_target or ""
+
+    session.revision_history.append(
+        RevisionRecord(
+            revision_index=len(session.revision_history) + 1,
+            draft_before=draft_before,
+            draft_after=draft_after,
+            active_coaching_target=active_target,
+            coaching_unit=prior_sc.current_unit or "",
+            relevant_text_span=_last_paragraph(draft_before),
+            coaching_invitation_shown=prior_invitation or "",
+            student_reply_or_explanation=_side_notes_since_last_draft(session, revise_turn_id),
+            target_resolved=resolved,
+            resolution_basis=f"development_detected={dd!r}; cycle_status={cs!r}",
+            development_detected=dd,
+            primary_growth=rev_dev.primary_growth or "",
+            next_instructional_target=next_target,
+            next_instructional_mode=new_sc.instructional_mode or "",
+            instructional_decision_changed=bool(active_target and next_target and _norm(active_target) != _norm(next_target)),
+        )
+    )
+
+
 def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, result: dict) -> None:
     """Fill the pre-persisted placeholder AI turn with the completed reasoning and
     update the working theory. Mirrors the prior apply logic but targets the
     existing placeholder turn instead of appending a new one."""
+    # Capture the pre-mutation coaching context (what the student was revising
+    # toward) BEFORE we replace theory / append the new interaction.
+    prior_theory = session.theory
+    prior_invitation = next(
+        (t.content for t in reversed(session.turns)
+         if t.role == "ai" and t.status == "complete" and t.id != ai_turn_id and t.content),
+        "",
+    )
+    draft_before = _previous_draft_excluding(session, ai_turn_id, req)
+    is_substantive_revision = (
+        req.kind == "revise" and draft_before is not None
+        and _norm(draft_before) != _norm(req.content)
+    )
+
     # snapshot the theory that motivated this response BEFORE replacing it
     session.theory_history.append(
         TheorySnapshot(
@@ -1094,12 +1211,19 @@ def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, resu
             theory=session.theory,
         )
     )
+    revise_turn_id = None
     for t in session.turns:
         if t.id == ai_turn_id:
             t.content = result["invitation"]
             t.kind = "invitation"
             t.status = "complete"
             break
+    # the student's revise turn is the completed student turn just before the placeholder
+    if is_substantive_revision:
+        for t in reversed(session.turns):
+            if t.role == "student" and t.kind == "revise":
+                revise_turn_id = t.id
+                break
     session.telos = result["telos"]
     session.theory = result["theory"]
     _merge_developmental_profile(session, result.get("profile_update", []))
@@ -1113,6 +1237,8 @@ def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, resu
             observed_reorganization=result["observed_reorganization"],
         )
     )
+    if is_substantive_revision and revise_turn_id:
+        _record_revision(session, req, result, prior_theory, prior_invitation, draft_before, revise_turn_id)
     session.updated_at = now_iso()
 
 
@@ -1312,6 +1438,28 @@ async def get_session(session_id: str):
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
     return Session(**doc)
+
+
+@api_router.get("/sessions/{session_id}/revision-history")
+async def get_revision_history(session_id: str):
+    """The structured revision-history record — the data source for the upcoming
+    Teacher Dashboard + Revision Analytics. One entry per substantive student
+    revision: full before/after draft, the coaching that preceded it, whether the
+    target was resolved, and whether Compass's next instructional decision changed."""
+    doc = await db.sessions.find_one(
+        {"id": session_id},
+        {"_id": 0, "revision_history": 1, "assignment": 1, "current_writing_task": 1},
+    )
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    history = doc.get("revision_history", []) or []
+    return {
+        "session_id": session_id,
+        "assignment": doc.get("assignment", ""),
+        "current_writing_task": doc.get("current_writing_task", ""),
+        "revision_count": len(history),
+        "revisions": history,
+    }
 
 
 # --- Public Preview instrumentation (DEV/analytics only; never shown to learner) ---
@@ -1800,6 +1948,7 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
                 "theory_history": [s.model_dump() for s in session2.theory_history],
                 "interactions": [i.model_dump() for i in session2.interactions],
                 "developmental_profile": [o.model_dump() for o in session2.developmental_profile],
+                "revision_history": [r.model_dump() for r in session2.revision_history],
                 "preview_analytics": session2.preview_analytics,
                 "updated_at": session2.updated_at,
             }},

@@ -1,0 +1,21 @@
+[
+  {
+    "id": "9fa90829-31b5-4d30-a3d4-7c1537a9b252",
+    "revision_index": 1,
+    "draft_before": "Social media is bad for teen friendships. Teens spend too much time on their phones. They do not talk in person anymore.",
+    "draft_after": "Social media weakens teen friendships because it replaces the shared, in-person time that actually builds trust. When teens scroll instead of talking, they trade real conversation for quick reactions, and over time the friendship becomes shallower. That is the cost we do not see.",
+    "active_coaching_target": "Claim with reasoning \u2014 add the 'why' that makes the position defensible",
+    "coaching_unit": "paragraph",
+    "relevant_text_span": "Social media is bad for teen friendships. Teens spend too much time on their phones. They do not talk in person anymore.",
+    "coaching_invitation_shown": "You've made a clear opening move: social media harms teen friendships. That's a position, which is exactly what this assignment calls for. Here's a writing principle worth holding onto: a strong claim is one a reasonable reader could actually push back on \u2014 it's the disagreement that gives your evidence a job. Right now your draft asserts a position but doesn't yet give the reader a reason to accept it over the opposite view. In one sentence, can you add *why* social media harms teen friendships \u2014 the specific reason you'd want a reader to accept?",
+    "student_reply_or_explanation": "",
+    "target_resolved": true,
+    "resolution_basis": "development_detected='yes \u2014 substantial; student moved from bare assertion to claim with explicit reasoning and a mechanistic explanation.'; cycle_status='continue'",
+    "development_detected": "yes \u2014 substantial; student moved from bare assertion to claim with explicit reasoning and a mechanistic explanation.",
+    "primary_growth": "Claim-with-reasoning: 'because' structure now visible; causal mechanism added.",
+    "next_instructional_target": "Complete the opening's persuasive function \u2014 name the specific stake/significance in sentence 3",
+    "next_instructional_mode": "developmental_question",
+    "instructional_decision_changed": true,
+    "created_at": "2026-07-22T12:24:09.011658+00:00"
+  }
+]
