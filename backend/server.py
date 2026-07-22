@@ -406,6 +406,7 @@ class Turn(BaseModel):
     kind: str = "message"
     content: str
     status: str = "complete"  # complete | processing | failed | cancelled (durable revision processing)
+    reasoning_path: str = ""  # which reasoning path produced this AI turn (exhaustive_full | triage_focused | foundational_fallback_full)
     created_at: str = Field(default_factory=now_iso)
 
 
@@ -459,6 +460,7 @@ class SessionCreate(BaseModel):
     current_writing_task: str
     teacher_notes: Optional[str] = ""
     assignment_prompt: Optional[str] = ""  # display-only reminder shown to the student; NOT fed to the engine
+    reasoning_mode: Optional[str] = "exhaustive"  # exhaustive | triage_experimental
 
 
 class TelosEdit(BaseModel):
@@ -491,6 +493,7 @@ class Session(BaseModel):
     teacher_edits: List[dict] = Field(default_factory=list)
     is_preview: bool = False
     preview_analytics: dict = Field(default_factory=dict)
+    reasoning_mode: str = "exhaustive"  # exhaustive | triage_experimental (per-session; exhaustive is default, unchanged frozen path)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
@@ -1212,11 +1215,13 @@ def _finalize_turn(session: Session, ai_turn_id: str, req: InteractRequest, resu
         )
     )
     revise_turn_id = None
+    _path = (result.get("_triage_meta", {}) or {}).get("path") or (result.get("_exhaustive_meta", {}) or {}).get("path") or "exhaustive_full"
     for t in session.turns:
         if t.id == ai_turn_id:
             t.content = result["invitation"]
             t.kind = "invitation"
             t.status = "complete"
+            t.reasoning_path = _path
             break
     # the student's revise turn is the completed student turn just before the placeholder
     if is_substantive_revision:
@@ -1437,6 +1442,22 @@ async def get_session(session_id: str):
     doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
+    return Session(**doc)
+
+
+class ReasoningModePatch(BaseModel):
+    reasoning_mode: str  # exhaustive | triage_experimental
+
+
+@api_router.patch("/sessions/{session_id}/reasoning-mode", response_model=Session)
+async def set_reasoning_mode(session_id: str, patch: ReasoningModePatch):
+    if patch.reasoning_mode not in ("exhaustive", "triage_experimental"):
+        raise HTTPException(status_code=422, detail="reasoning_mode must be 'exhaustive' or 'triage_experimental'")
+    doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Session not found")
+    await db.sessions.update_one({"id": session_id}, {"$set": {"reasoning_mode": patch.reasoning_mode, "updated_at": now_iso()}})
+    doc["reasoning_mode"] = patch.reasoning_mode
     return Session(**doc)
 
 
@@ -1924,7 +1945,15 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
         # detection and history behave exactly as before.
         reason_session = session.model_copy(deep=True)
         reason_session.turns = [t for t in session.turns if t.id != ai_turn_id]
-        result = await _run_engine(reason_session, req)
+        # Per-session reasoning-mode flag. Exhaustive is the default frozen path.
+        # Triage is the experimental path (rapid triage -> early-exit -> focused
+        # analysis -> foundational fallback to the full frozen engine). We never
+        # switch silently: the chosen path is recorded on the AI turn.
+        if (session.reasoning_mode or "exhaustive") == "triage_experimental":
+            import triage_experiment
+            result = await triage_experiment.run_triage_pipeline(reason_session, req)
+        else:
+            result = await _run_engine(reason_session, req)
 
         # reload fresh, then persist onto the still-processing placeholder
         doc2 = await db.sessions.find_one({"id": session_id}, {"_id": 0})
@@ -2020,15 +2049,18 @@ def _load_test_cases() -> list:
 class TestRunRequest(BaseModel):
     case_ids: Optional[List[str]] = None  # None / empty => run ALL cases
     label: Optional[str] = None
+    reasoning_mode: Optional[str] = "exhaustive"  # exhaustive | triage_experimental
 
 
 class TestRunLabelRequest(BaseModel):
     label: str = ""
 
 
-async def _harness_run_turn(session: Session, content: str, kind: str) -> dict:
+async def _harness_run_turn(session: Session, content: str, kind: str, reasoning_mode: str = "exhaustive") -> dict:
     """Mirror the production interact + _run_reasoning flow exactly, but capture
-    the engine's actual instructional decisions + latency/prompt-size metadata."""
+    the engine's actual instructional decisions + latency/prompt-size metadata.
+    Honors the per-run reasoning_mode so the triage path can be evaluated by the
+    frozen evaluator and compared via Compare-Two-Runs."""
     content = content.strip()
     session.turns.append(Turn(role="student", kind=kind, content=content, status="complete"))
     ai_turn = Turn(role="ai", kind="pending", content="", status="processing")
@@ -2039,7 +2071,11 @@ async def _harness_run_turn(session: Session, content: str, kind: str) -> dict:
     reason_session.turns = [t for t in session.turns if t.id != ai_turn.id]
 
     t0 = time.monotonic()
-    result = await _run_engine(reason_session, req)
+    if reasoning_mode == "triage_experimental":
+        import triage_experiment
+        result = await triage_experiment.run_triage_pipeline(reason_session, req)
+    else:
+        result = await _run_engine(reason_session, req)
     latency = round(time.monotonic() - t0, 2)
 
     _finalize_turn(session, ai_turn.id, req, result)
@@ -2049,11 +2085,15 @@ async def _harness_run_turn(session: Session, content: str, kind: str) -> dict:
     sc = theory.scaffolding_control
     interv = result["intervention"]
     meta = result.get("_meta", {})
+    tri = result.get("_triage", {}) or {}
+    tmeta = result.get("_triage_meta", {}) or {}
+    xmeta = result.get("_exhaustive_meta", {}) or {}
     return {
         "kind": kind,
         "student_input": content,
         "invitation": result["invitation"],
         "latency_s": latency,
+        "reasoning_path": tmeta.get("path") or xmeta.get("path") or "exhaustive_full",
         "reasoner_prompt_bytes": meta.get("reasoner_prompt_bytes"),
         "selected_instructional_objects": meta.get("selected_instructional_objects", []),
         "active_instructional_element": ir.active_instructional_element,
@@ -2065,10 +2105,25 @@ async def _harness_run_turn(session: Session, content: str, kind: str) -> dict:
         "postponed": sc.postponed,
         "cycle_status": sc.cycle_status,
         "instructional_mode": sc.instructional_mode,
+        "intervention_type": interv.type,
         "intervention_focus": interv.focus,
         "one_target_ok": bool(sc.primary_target) and bool(result["invitation"]),
         "theory_history_len": len(session.theory_history),
         "developmental_profile_update": result.get("profile_update", []),
+        # triage operational + shadow-comparison fields (empty on exhaustive)
+        "triage_route": tri.get("instructional_route", ""),
+        "triage_inside_outside": tri.get("inside_or_outside", ""),
+        "triage_prev_target_status": tri.get("prev_target_status", ""),
+        "triage_learner_state": tri.get("learner_state", ""),
+        "triage_foundational": tri.get("foundational_problem", None),
+        "triage_dimension": tri.get("highest_leverage_dimension", ""),
+        "triage_confidence": tri.get("route_confidence", None),
+        "triage_latency_s": tmeta.get("triage_latency_s"),
+        "focused_latency_s": tmeta.get("focused_latency_s"),
+        "total_latency_s": tmeta.get("total_latency_s") or xmeta.get("total_latency_s"),
+        "num_model_calls": tmeta.get("num_model_calls") or xmeta.get("num_model_calls"),
+        "prompt_tokens": tmeta.get("prompt_tokens") or xmeta.get("prompt_tokens"),
+        "output_tokens": tmeta.get("output_tokens") or xmeta.get("output_tokens"),
     }
 
 
@@ -2199,7 +2254,7 @@ async def _evaluate_case(case: dict, turns: list) -> dict:
     return {"overall": "error", "criteria": [], "summary": f"Evaluator failed: {last_err}"}
 
 
-async def _run_test_suite(run_id: str, cases: list) -> None:
+async def _run_test_suite(run_id: str, cases: list, reasoning_mode: str = "exhaustive") -> None:
     """Background task: run each case through the real engine, evaluate, persist."""
     for case in cases:
         result = {"case_id": case.get("id"), "name": case.get("name"), "level": case.get("level")}
@@ -2210,6 +2265,7 @@ async def _run_test_suite(run_id: str, cases: list) -> None:
                 current_writing_task=case.get("current_writing_task", ""),
                 teacher_notes="",
                 assignment_prompt=case.get("assignment", ""),
+                reasoning_mode=reasoning_mode,
                 telos=Telos(
                     governing_pedagogical_purpose=case.get("pedagogical_purpose", ""),
                     immediate_task_purpose=case.get("current_writing_task", ""),
@@ -2226,9 +2282,9 @@ async def _run_test_suite(run_id: str, cases: list) -> None:
                     episodes=p.get("episodes", 1),
                 ))
 
-            turn_metas = [await _harness_run_turn(session, case.get("initial_draft", ""), "writing")]
+            turn_metas = [await _harness_run_turn(session, case.get("initial_draft", ""), "writing", reasoning_mode)]
             for resp in case.get("responses", []) or []:
-                turn_metas.append(await _harness_run_turn(session, resp, "answer"))
+                turn_metas.append(await _harness_run_turn(session, resp, "answer", reasoning_mode))
 
             evaluation = await _evaluate_case(case, turn_metas)
             result.update({
@@ -2339,6 +2395,7 @@ async def start_test_run(req: TestRunRequest):
         "id": str(uuid.uuid4()),
         "status": "running",
         "label": (req.label or "").strip(),
+        "reasoning_mode": req.reasoning_mode or "exhaustive",
         "case_ids": [c.get("id") for c in cases],
         "total": len(cases),
         "completed_count": 0,
@@ -2348,7 +2405,7 @@ async def start_test_run(req: TestRunRequest):
         "updated_at": now_iso(),
     }
     await db.test_runs.insert_one(dict(run))
-    asyncio.create_task(_run_test_suite(run["id"], cases))
+    asyncio.create_task(_run_test_suite(run["id"], cases, req.reasoning_mode or "exhaustive"))
     return run
 
 

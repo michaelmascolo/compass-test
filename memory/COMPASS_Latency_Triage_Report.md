@@ -112,3 +112,52 @@ Only 2 of 6, and the independent LLM judge rated **triage better in both** (equi
 - `backend/triage_benchmark.py` — exhaustive-vs-triage benchmark harness.
 - `test_reports/triage_benchmark.json` — full per-case results + aggregate.
 
+---
+
+# PART II — Production integration + full 66-case validation (deliverable)
+
+## Production integration behind a per-session flag (DONE)
+- `Session.reasoning_mode` ∈ {`exhaustive` (default, unchanged frozen path), `triage_experimental`}. `Turn.reasoning_path` records which path produced each AI turn (`exhaustive_full` | `triage_focused` | `foundational_fallback_full`) — never a silent switch. Set at create (`SessionCreate.reasoning_mode`) or flipped via `PATCH /api/sessions/{id}/reasoning-mode`. Dispatch in `_run_reasoning`; triage path = rapid Stage 1 + early-exit rules + inside/outside classification + focused Stage 2 + `foundational_problem → full frozen engine` fallback. Verified live (session → interact → poll → `reasoning_path=triage_focused`).
+- **Shadow comparison**: the test harness (`_harness_run_turn`) honors `reasoning_mode` and captures, per turn, the full comparison payload (route, target, span, support level via intervention.type, inside/outside, invitation, next act, anti-coauthoring focus, fallback flag, stage latencies, token counts). `TestRunRequest.reasoning_mode` runs the whole suite in either mode and stores a normal `test_run` → **Compare-Two-Runs** compatible with the exhaustive baseline `fd0dec0c`.
+
+## Full 66-case results (triage run `f9d4e3a7` vs exhaustive `fd0dec0c`, frozen evaluator)
+- **Verdicts** — exhaustive 58 pass / 8 partial / 0 fail (87.9%); triage **49 pass / 16 partial / 0 FAIL / 1 error** (74.2%). **Zero fails in both.** The extra partials are almost entirely "equivalent-but-different" targets the frozen evaluator scored down (see divergence table), not constitutional failures.
+- **Latency (per turn)** — exhaustive avg 64.9s / median 64.7 / p90 73.6 / max 80.6; triage avg **38.5s** / median **37.8** / p90 **42.4** / max 57.0 → **−40.7% avg, −42% p90**, tight distribution (stable across case types).
+- **Latency by stage (triage)** — Stage 1 triage avg **3.9s**; Stage 2 focused avg **34.3s** (= **89%** of the triage turn). DB read/write ≈ 0.001s each (negligible). Remaining delay is dominated by the focused frozen-engine **output generation**, even trimmed.
+- **Tokens** — triage output ~1.4–1.7k vs exhaustive ~3k (≈ −42%); triage prompt comparable.
+- **Anti-coauthoring / constitutional** — triage **73/73** `focus=writing` (exhaustive 74/74). **Zero regressions.**
+- **Fallback** — `foundational_fallback_full` fired **1/73 (1.4%)**; `triage_focused` 72. Confidence is saturated high (0.8–0.9, avg 0.9) → confidence-based fallback alone is ineffective; explicit structural triggers are needed.
+- **Routing** — routes: inside_out_clarification 49, outside_in_reader_task 12, convention_instruction 6, stall_support 6. inside/outside: 56 inside / 17 outside (76% inside — a mild inside-out lean; the routing invariant helps but does not fully counter it).
+
+## Divergence classification (22 of 65 differ; LLM-judged)
+- **triage_better 9** (improved_routing 3, over_narrowing-toward-foundation 3, early_exit 1, inside/outside correction 1, missed_foundational-but-better 1) — incl. TC63 (POV correction) and TC42/TC27 (retreat to the real foundational purpose).
+- **equivalent_but_different 10** (all evaluator_ambiguity) — triage chose a defensible different target (often "central claim") that the frozen evaluator scored partial; not degradations.
+- **exhaustive_better 2** — TC30 & TC61 (`over_narrowing`: triage retreated to claim/generic where the live edge was evidence-interpretation).
+- **triage_unsafe 1** — **TC15** (`missed_foundational`): the assignment purpose explicitly targeted transitions/relationships; triage retreated to "central claim", inventing a deficiency outside the stated purpose (a W-D teacher-purpose miss).
+- Disagreement is NOT failure: 9 better + 10 equivalent + 2 worse + 1 unsafe.
+
+## Inside-out / outside-in analysis
+Classification present on every turn; 1 explicit correction (TC63) rated better; overall a mild inside-out lean (76%). No case showed inside-out persisting after intention was clearly established in a harmful way, but the "central claim" default (below) is the same root tendency.
+
+## Root causes of the residual gap (all addressable)
+1. **"Central claim / purpose-alignment" narrowing bias** — Stage 1 over-selects thesis/purpose as highest-leverage even when a downstream target (evidence-interpretation, transitions, POV) is the live edge (TC30, TC61) or the teacher purpose names another skill (TC15). This drives most extra partials + the 2 exhaustive-better + the 1 unsafe.
+2. **Foundational detector under-fires** (1.4%) and can't lean on the model's saturated confidence.
+3. **No Stage-2 retry** — the 1 error (TC17) was an unreadable focused-output; the exhaustive path retries once, the focused path does not.
+
+## Recommended confidence & fallback thresholds
+- Fall back to the full frozen engine when ANY: `foundational_problem=true`; the draft does not address the assignment / whole purpose unclear (explicit structural trigger, not self-confidence); triage selects claim/purpose **while a prior downstream target was unresolved**; OR the teacher purpose names a specific element that triage did not select. Confidence `<0.75` as a secondary trigger (rare given current calibration).
+- Add **one Stage-2 retry** on unreadable output (parity with the exhaustive path) before failing.
+
+## Safety-gate verdict
+- ✅ zero constitutional/anti-coauthoring regressions; ✅ zero fails; ✅ stable latency win across case types.
+- ⚠️ NOT met: no systematic premature narrowing (5 over-narrowings, 2 worse); no systematic foundational miss (TC15 + 1.4% fallback); teacher-purpose adherence (TC15).
+
+## 10. RECOMMENDATION — **REVISE AND RETEST** (then enable for limited sessions)
+Triage delivers a **~41% latency reduction with zero constitutional/anti-coauthoring regressions and zero fails**, and improves several known weaknesses — but it is **not yet safe as the default** because of the central-claim narrowing bias (1 unsafe + 2 worse) and an under-firing foundational fallback. Recommended path: (1) apply the 3 fixes above (curb central-claim retreat / honor explicit teacher purpose; strengthen structural foundational triggers; add Stage-2 retry); (2) re-run the 66-case suite and Compare-Two-Runs vs `fd0dec0c`; (3) if the unsafe/worse divergences clear and fallback fires appropriately, **enable triage for limited opt-in sessions** behind the existing per-session flag (already shipped, default exhaustive) before considering it the default. Next latency lever after that: **stream the Stage-2 invitation** (bookkeeping is ~0ms, so partial-result delivery alone is negligible; streaming is the real time-to-first-word win) — requires approval as a transport change.
+
+### Files (Part II)
+- `backend/server.py` — reasoning_mode flag, reasoning_path, dispatch, PATCH endpoint, harness threading.
+- `/tmp/analyze_triage.py` — deliverable analyzer (kept outside the reload-watched dir).
+- `test_reports/triage_66_deliverable.json` — full metrics + divergence classification.
+- Runs: triage `f9d4e3a7` ("Triage 66 v2"), exhaustive baseline `fd0dec0c`.
+
