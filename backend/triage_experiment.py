@@ -54,8 +54,8 @@ DECISIONS:
 3. learner_state: engaged | stalled | confused | finished_with_target.
 4. instructional_route: exactly one of — stall_support | inside_out_clarification | outside_in_reader_task | convention_instruction | transfer_test | support_fading.
 5. inside_or_outside: inside_out (learner does not yet have sufficient control of intended meaning / purpose / position / idea) | outside_in (minimally adequate intention is present, so test how the writing functions for a reader / task / convention). ROUTING INVARIANT: do NOT stay inside_out once intended meaning is sufficiently clear — move promptly to an outside_in test.
-6. foundational_problem: true ONLY if a broad reassessment across many dimensions is genuinely required (e.g., the draft does not address the assignment at all, or the whole purpose is unclear); false when a single dimension is clearly highest-leverage.
-7. highest_leverage_dimension: the ONE dimension to work (e.g., "purpose/assignment alignment", "central claim", "claim reasoning", "evidence-interpretation", "paragraph focus", "reader orientation", "transitions/coherence", "conclusion completion", "sentence clarity", "convention/terminology", "transfer to next writing").
+6. foundational_problem: true ONLY when a BROAD reassessment across many dimensions is genuinely required — this should be RARE (expect well under a quarter of turns). Set true only if ANY: (a) the draft does not actually address the assignment / is off-task; (b) the writer's basic intended meaning or overall communicative purpose cannot be determined at all; (c) the writing is so incoherent across ideas that no single dimension can be worked in isolation. Do NOT set foundational just because the draft is weak, missing a thesis, imperfect, or not yet succeeding at the assignment's named skill — those are handled by selecting the RIGHT single dimension in (7), NOT by broad reassessment. When one dimension is clearly highest-leverage, foundational_problem is false even if the draft is quite weak.
+7. highest_leverage_dimension: the ONE dimension to work. ANTI-NARROWING RULE — do NOT default to "central claim"/"thesis"/"purpose alignment" out of habit. Choose central claim ONLY when the writer genuinely lacks a claim/position or the claim is absent/unarguable. If the draft ALREADY presents a workable claim/position, select the LIVE DOWNSTREAM EDGE instead (e.g., evidence-interpretation, causal reasoning, paragraph focus, transitions/coherence, point-of-view consistency, conclusion completion, sentence clarity, convention). If a PRIOR coaching target on a downstream element is unresolved, keep working THAT element — do not retreat upstream to the claim. Always honor the ASSIGNMENT PURPOSE: if it names a specific element, that element (not a generic thesis) is the default focus.
 8. relevant_instructional_objects: 1-2 canonical element names most relevant to the dimension (e.g., "Thesis", "Central Claim", "Evidence", "Paragraph", "Introduction", "Purpose", "Reader", "Organization", "Transitions", "Conclusion").
 9. route_confidence: 0.0-1.0.
 10. rationale: one sentence.
@@ -206,12 +206,24 @@ def _resolve_io(triage: dict):
 async def run_focused(session: Session, req: InteractRequest, triage: dict) -> dict:
     selections, io_names = _resolve_io(triage)
     prompt = _focused_prompt(session, req, triage, selections, io_names)
-    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"focused-{session.id}",
-                   system_message=SYSTEM_MESSAGE).with_model(*MODEL)
     t0 = time.perf_counter()
-    raw = await chat.send_message(UserMessage(text=prompt))
+    last_err = None
+    raw = ""
+    # Single retry on recoverable (unreadable / no-invitation) failures — parity
+    # with the exhaustive path's retry. No other architectural change.
+    for attempt in range(2):
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"focused-{session.id}-{attempt}",
+                       system_message=SYSTEM_MESSAGE).with_model(*MODEL)
+        raw = await chat.send_message(UserMessage(text=prompt))
+        try:
+            parsed = _parse_engine_output(session, raw)
+            break
+        except ValueError as e:
+            last_err = e
+            continue
+    else:
+        raise last_err
     dt = time.perf_counter() - t0
-    parsed = _parse_engine_output(session, raw)
     parsed["_meta"] = {
         "focused_prompt_tokens": _tok(prompt),
         "focused_output_tokens": _tok(raw),

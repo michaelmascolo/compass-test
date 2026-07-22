@@ -161,3 +161,50 @@ Triage delivers a **~41% latency reduction with zero constitutional/anti-coautho
 - `test_reports/triage_66_deliverable.json` — full metrics + divergence classification.
 - Runs: triage `f9d4e3a7` ("Triage 66 v2"), exhaustive baseline `fd0dec0c`.
 
+---
+
+# PART III — Revise-and-retest cycle (3 fixes; final result)
+
+Three approved fixes, no other architectural change: (1) reduce central-claim narrowing bias + honor the assignment's named element at the **dimension-selection** step; (2) strengthen foundational triggering; (3) add a single Stage-2 retry for recoverable (unreadable) failures.
+
+## Iteration log (why two retest runs)
+- **v3 (`115b7491`)** — first pass of the 3 fixes. Quality up (78.8%, 0 fail, TC15 unsafe fixed, TC30 flipped to better) BUT the strengthened foundational trigger **over-fired to 68.9%** — 69% of turns fell back to the full frozen engine, erasing the latency win (avg 59.1s, only −9%). Root cause: a foundational trigger keyed on "assignment names an element and the draft is failing at it" matched nearly every case.
+- **Recalibration** — moved teacher-purpose adherence entirely into **dimension selection** (fix #1) and narrowed `foundational_problem` to genuinely broad cases only (off-task / undeterminable purpose / incoherent-across-ideas; "rare").
+- **v4 (`532b8231`)** — deployable result below.
+
+## Final results — v4 (recalibrated) vs exhaustive baseline `fd0dec0c`
+| Metric | Exhaustive | Triage v4 | Δ |
+|---|---|---|---|
+| Verdicts | 58 pass / 8 partial / 0 fail | **57 pass / 9 partial / 0 fail / 0 error** | −1 pass (statistically equivalent) |
+| Pass rate | 87.9% | **86.4%** | −1.5 pts |
+| Latency avg | 64.9s | **37.2s** | **−42.7%** |
+| Latency median / p90 | 64.7 / 73.6 | **36.0 / 40.9** | −44% / −44% |
+| Stage split | — | triage 3.8s + focused 32.9s | — |
+| Anti-coauthoring | 74/74 | **74/74** | zero regressions |
+| Fallback rate | — | **1.4%** (1 case) | appropriately rare |
+| Errors | 0 | **0** | retry fix works (v2/v3 had 1) |
+
+## Divergences (25 of 66; LLM-judged) — **0 unsafe**
+- **triage_better 9** (TC02, TC06, TC25, TC29, TC32, TC35, TC42, TC59, TC60) — improved routing, inside/outside corrections, and catching foundational edges the exhaustive path missed.
+- **equivalent_but_different 13** (evaluator ambiguity — defensible different target).
+- **exhaustive_better 3** (TC07, TC17, TC22 — minor residual over-narrowing / one inside-outside call). Not systematic, not unsafe.
+- **triage_unsafe 0.** The previous unsafe case (TC15) is resolved via correct dimension selection (targets idea-relationships, not thesis), not fallback.
+
+## Safety-gate assessment (v4)
+- ✅ zero constitutional / anti-coauthoring regressions; ✅ zero fails; ✅ zero errors.
+- ✅ no systematic foundational miss (0 unsafe; the "missed_foundational"-tagged divergences were judged triage-*better*).
+- ✅ latency win restored and stable (median 36.0, p90 40.9, tight); ✅ fallback fires rarely and appropriately (1.4%).
+- ⚠️ minor residual premature-narrowing on 3 cases (TC07/TC17/TC22) — small, not systematic.
+
+## Recommended thresholds (calibrated from v4)
+- **Fallback to full engine when** `foundational_problem=true` (now narrow: off-task / purpose undeterminable / incoherent-across-ideas). Confidence is saturated high (0.8–0.9) so a confidence threshold is a weak secondary signal; the structural triggers carry it. Current fallback 1.4% is healthy — do not re-broaden it; teacher-purpose adherence is handled at dimension selection, not fallback.
+- **Retry:** one Stage-2 retry on unreadable output (shipped) — eliminated all errors.
+
+## Recommendation (per directive: do NOT auto-enable default)
+Triage v4 delivers **~43% latency reduction at baseline-equivalent instructional quality** (86.4% vs 87.9%, 0 fails, 0 errors, 0 unsafe, anti-coauthoring intact). It is **safe enough to enable for limited opt-in sessions** behind the shipped per-session flag. Per your instruction, it is **not** being made the default. Before that decision, see the **Stage-2 Architecture Review** (`COMPASS_Stage2_Architecture_Review.md`): Stage 1 is functioning well (~3.8s); the residual ~33s lives in the focused Stage-2 call, which still runs the frozen SYSTEM_MESSAGE's broad multi-framework mandates internally — the next design decision is whether to factor the frozen prompt into a constitutional core + conditional diagnostic layer.
+
+### Files (Part III)
+- `backend/triage_experiment.py` — recalibrated TRIAGE_SYSTEM_MESSAGE (fixes 1–2) + Stage-2 retry (fix 3).
+- `test_reports/triage_66_deliverable_v4.json` (+ `_v3`) — full metrics + divergence classification.
+- Runs: v3 `115b7491`, **v4 `532b8231`** (final), exhaustive baseline `fd0dec0c`.
+
