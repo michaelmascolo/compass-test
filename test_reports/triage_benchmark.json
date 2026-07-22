@@ -1,0 +1,387 @@
+{
+  "aggregate": {
+    "n": 6,
+    "avg_latency_exhaustive_s": 64.7,
+    "avg_latency_triage_s": 36.5,
+    "latency_reduction_pct": 43.6,
+    "avg_output_tokens_exhaustive": 2990,
+    "avg_output_tokens_triage": 1743,
+    "output_token_reduction_pct": 41.7,
+    "same_target": "4/6",
+    "materially_different_decisions": "2/6"
+  },
+  "rows": [
+    {
+      "case_id": "TC01",
+      "name": "Misunderstanding the assignment",
+      "expected_target": "purpose/assignment alignment",
+      "exhaustive": {
+        "invitation": "You've got a clear sense that school matters \u2014 that's a real starting point. Right now your writing tells me the topic (school is important), but not yet your position on the specific question: does year-round school help students learn? A thesis gives the reader the one idea your whole essay is trying to get them to accept. So here's the act: in one sentence, tell me \u2014 does year-round school help students learn, yes or no, and give the main reason you believe that?",
+        "primary_target": "Thesis \u2014 producing an arguable claim that answers the assignment question",
+        "instructional_mode": "explicit_instruction",
+        "cycle_status": "continue",
+        "intervention_type": "instruct_then_invite",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "path": "exhaustive_full",
+        "stage_a_latency_s": 3.77,
+        "stage_b_latency_s": 57.49,
+        "total_latency_s": 61.26,
+        "num_model_calls": 2,
+        "prompt_tokens": 5079,
+        "output_tokens": 2865
+      },
+      "triage": {
+        "invitation": "You've written some true things about school \u2014 but the assignment asks you to take a side: would year-round school actually help students learn? Right now your draft doesn't yet say yes or no. A claim is something a thoughtful reader could genuinely disagree with \u2014 that's what gives your argument something to defend. Try finishing this sentence in your own words: \"Year-round school would [or would not] help students learn because _____.\"",
+        "primary_target": "central claim \u2014 moving from general observations about school to an arguable position on year-round school",
+        "instructional_mode": "explicit_instruction",
+        "cycle_status": "continue",
+        "intervention_type": "instruct_then_invite",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "triage_decision": {
+          "text_changed": "first draft",
+          "prev_target_status": "none",
+          "learner_state": "engaged",
+          "instructional_route": "inside_out_clarification",
+          "inside_or_outside": "inside_out",
+          "foundational_problem": false,
+          "highest_leverage_dimension": "central claim",
+          "relevant_instructional_objects": [
+            "Central Claim",
+            "Purpose"
+          ],
+          "route_confidence": 0.88,
+          "rationale": "The draft lists general observations about school but takes no arguable position in response to a specific question, so the student needs to clarify what they are actually claiming before reader-facing work can begin.",
+          "_prompt_tokens": 140,
+          "_output_tokens": 139,
+          "_latency_s": 3.18
+        },
+        "path": "triage_focused",
+        "triage_latency_s": 3.18,
+        "focused_latency_s": 39.76,
+        "total_latency_s": 42.94,
+        "num_model_calls": 2,
+        "prompt_tokens": 8786,
+        "output_tokens": 1861
+      },
+      "comparison": {
+        "same_target": true,
+        "materially_different_decision": false,
+        "both_anti_coauthoring_ok": true,
+        "which_better": "equivalent",
+        "note": "Both moves identify the identical gap (no position on year-round school), make the same developmental ask (produce an arguable yes/no claim with a reason), and use the same instruct-then-invite structure, differing only in wording and the triage move's helpful sentence stem."
+      }
+    },
+    {
+      "case_id": "TC03",
+      "name": "No thesis",
+      "expected_target": "thesis",
+      "exhaustive": {
+        "invitation": "You've introduced homework as a topic, and the assignment asks you to argue a position on it \u2014 so your reader needs to know where you stand. Here's a useful distinction: a *topic* names a subject, but a *thesis* makes a claim about it \u2014 something a reader could actually disagree with. Right now your draft names the topic; the next step is to add a claim. What do you actually think: should homework be limited, and why? Try writing one sentence that takes a real position.",
+        "primary_target": "Distinguishing topic from thesis/claim and producing a contestable position",
+        "instructional_mode": "explicit_instruction",
+        "cycle_status": "continue",
+        "intervention_type": "instruct_then_invite",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "path": "exhaustive_full",
+        "stage_a_latency_s": 3.4,
+        "stage_b_latency_s": 63.29,
+        "total_latency_s": 66.69,
+        "num_model_calls": 2,
+        "prompt_tokens": 5061,
+        "output_tokens": 2782
+      },
+      "triage": {
+        "invitation": "You've introduced the topic of homework and noted that people have different opinions \u2014 that gives your reader a starting point. For this essay, though, your reader needs to know where YOU stand, not just that opinions exist. Try finishing this sentence in your own words: 'Homework should be limited because...' \u2014 what's the main reason you believe that?",
+        "primary_target": "central claim \u2014 moving from topic to arguable position",
+        "instructional_mode": "explicit_instruction",
+        "cycle_status": "continue",
+        "intervention_type": "instruct_then_invite",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "triage_decision": {
+          "text_changed": "first draft",
+          "prev_target_status": "none",
+          "learner_state": "engaged",
+          "instructional_route": "inside_out_clarification",
+          "inside_or_outside": "inside_out",
+          "foundational_problem": false,
+          "highest_leverage_dimension": "central claim",
+          "relevant_instructional_objects": [
+            "Thesis",
+            "Central Claim"
+          ],
+          "route_confidence": 0.92,
+          "rationale": "The draft introduces a topic but takes no position, so the student needs to form a clear argumentative stance before any reader-facing work can proceed.",
+          "_prompt_tokens": 126,
+          "_output_tokens": 123,
+          "_latency_s": 3.17
+        },
+        "path": "triage_focused",
+        "triage_latency_s": 3.17,
+        "focused_latency_s": 31.58,
+        "total_latency_s": 34.75,
+        "num_model_calls": 2,
+        "prompt_tokens": 8395,
+        "output_tokens": 1673
+      },
+      "comparison": {
+        "same_target": true,
+        "materially_different_decision": false,
+        "both_anti_coauthoring_ok": true,
+        "which_better": "triage",
+        "note": "Both moves target the same topic-to-thesis distinction and use instruct-then-invite; triage is slightly more efficient by offering a sentence stem that scaffolds the claim without over-explaining."
+      }
+    },
+    {
+      "case_id": "TC07",
+      "name": "Strong thesis that should not be over-taught",
+      "expected_target": "light / consolidate or move forward",
+      "exhaustive": {
+        "invitation": "This is a strong opening move \u2014 the contrast between 'proximity mistaken for teamwork' and deliberately designed connection gives the reader a clear, arguable claim to follow. As you continue drafting, keep that controlling idea in view: every paragraph you write should develop some aspect of what 'deliberately designed connection' means or why it's better. What's the first reason or piece of evidence you want to bring in to support that claim?",
+        "primary_target": "Release to body drafting \u2014 consolidate the thesis function and redirect to next unit.",
+        "instructional_mode": "consolidation",
+        "cycle_status": "consolidate_and_return",
+        "intervention_type": "consolidate",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "path": "exhaustive_full",
+        "stage_a_latency_s": 3.01,
+        "stage_b_latency_s": 66.69,
+        "total_latency_s": 69.7,
+        "num_model_calls": 2,
+        "prompt_tokens": 6811,
+        "output_tokens": 3412
+      },
+      "triage": {
+        "invitation": "Your claim does something interesting: it reframes the premise rather than just picking a side \u2014 remote work doesn't hurt collaboration, it reveals what collaboration actually required all along. That's a position a reader could genuinely push back on. The next move is to test whether that claim can be defended: what would a skeptical reader say collaboration *does* require from physical presence, and why does your reframe hold against that?",
+        "primary_target": "central claim \u2014 reader-facing arguability and supportability",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "intervention_type": "invite_only",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "triage_decision": {
+          "text_changed": "first draft",
+          "prev_target_status": "none",
+          "learner_state": "engaged",
+          "instructional_route": "outside_in_reader_task",
+          "inside_or_outside": "outside_in",
+          "foundational_problem": false,
+          "highest_leverage_dimension": "central claim",
+          "relevant_instructional_objects": [
+            "Central Claim",
+            "Purpose"
+          ],
+          "route_confidence": 0.85,
+          "rationale": "The two-sentence draft has a sharp, clear thesis with a compelling reframe; meaning is fully legible, so the highest-leverage move is testing how this claim functions for a reader and prompting the writer to develop supporting reasoning rather than probing intent further.",
+          "_prompt_tokens": 164,
+          "_output_tokens": 152,
+          "_latency_s": 3.56
+        },
+        "path": "triage_focused",
+        "triage_latency_s": 3.56,
+        "focused_latency_s": 31.31,
+        "total_latency_s": 34.87,
+        "num_model_calls": 2,
+        "prompt_tokens": 8841,
+        "output_tokens": 1668
+      },
+      "comparison": {
+        "same_target": false,
+        "materially_different_decision": true,
+        "both_anti_coauthoring_ok": true,
+        "which_better": "triage",
+        "note": "Exhaustive redirects to body drafting (development), while Triage keeps the writer on the claim itself to stress-test its arguability against a skeptic\u2014different developmental stages and moves."
+      }
+    },
+    {
+      "case_id": "TC08",
+      "name": "Evidence without explanation",
+      "expected_target": "explanation/analysis",
+      "exhaustive": {
+        "invitation": "You've brought in two pieces of evidence \u2014 a test-score study and a teacher survey \u2014 and that gives your paragraph real grounding. Now here's the key move: evidence doesn't explain itself. Right now a reader sees the numbers but doesn't yet see what you want them to conclude from them. Pick one of those two pieces of evidence and tell me, in your own words: what does that finding *show* about why phones hurt learning?",
+        "primary_target": "Interpretation / explanation \u2014 connecting evidence to the claim",
+        "instructional_mode": "explicit_instruction",
+        "cycle_status": "continue",
+        "intervention_type": "instruct_then_invite",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "path": "exhaustive_full",
+        "stage_a_latency_s": 3.24,
+        "stage_b_latency_s": 63.34,
+        "total_latency_s": 66.59,
+        "num_model_calls": 2,
+        "prompt_tokens": 5324,
+        "output_tokens": 3208
+      },
+      "triage": {
+        "invitation": "You've got two pieces of evidence \u2014 the 20% test-score drop and teachers noticing distraction \u2014 but right now they sit next to your claim without being connected to it. Here's the key writing move: evidence doesn't explain itself; you have to tell the reader what it means and why it proves your point. So pick one of those two pieces of evidence and answer this question in your own words: what does this finding actually show about why phones hurt learning?",
+        "primary_target": "evidence interpretation \u2014 connecting evidence to the claim through explanation",
+        "instructional_mode": "explicit_instruction",
+        "cycle_status": "continue",
+        "intervention_type": "instruct_then_invite",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "triage_decision": {
+          "text_changed": "first draft",
+          "prev_target_status": "none",
+          "learner_state": "engaged",
+          "instructional_route": "inside_out_clarification",
+          "inside_or_outside": "inside_out",
+          "foundational_problem": false,
+          "highest_leverage_dimension": "claim reasoning",
+          "relevant_instructional_objects": [
+            "Central Claim",
+            "Evidence"
+          ],
+          "route_confidence": 0.85,
+          "rationale": "The draft lists two evidence items but provides no explanation connecting them to the claim, so the highest-leverage move is to prompt the student to articulate what the evidence means and why it supports 'phones hurt learning.'",
+          "_prompt_tokens": 145,
+          "_output_tokens": 143,
+          "_latency_s": 3.38
+        },
+        "path": "triage_focused",
+        "triage_latency_s": 3.38,
+        "focused_latency_s": 33.17,
+        "total_latency_s": 36.54,
+        "num_model_calls": 2,
+        "prompt_tokens": 8430,
+        "output_tokens": 1843
+      },
+      "comparison": {
+        "same_target": true,
+        "materially_different_decision": false,
+        "both_anti_coauthoring_ok": true,
+        "which_better": "equivalent",
+        "note": "Both moves target the identical gap (uninterpreted evidence), use the same instruct-then-invite structure, and issue virtually the same narrow prompt asking the student to explain one piece of evidence in their own words."
+      }
+    },
+    {
+      "case_id": "TC25",
+      "name": "Student asks the AI to write the answer",
+      "expected_target": "thesis (student-performed)",
+      "exhaustive": {
+        "invitation": "That's a real starting place \u2014 you've got the topic (public transit, money, cities) and an honest signal that you're not sure where to go yet. Before you write a sentence, try this: take a side. Do you think public transit should be free, or not? Once you know which way you're leaning, tell me in plain words \u2014 no essay language needed yet \u2014 just what you actually think.",
+        "primary_target": "forming a contestable position (stance before thesis language)",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "intervention_type": "invite_only",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "path": "exhaustive_full",
+        "stage_a_latency_s": 3.48,
+        "stage_b_latency_s": 55.54,
+        "total_latency_s": 59.02,
+        "num_model_calls": 2,
+        "prompt_tokens": 5053,
+        "output_tokens": 2634
+      },
+      "triage": {
+        "invitation": "You've got some real ingredients here \u2014 public transit, money, cities. Before any drafting, let's find out what you actually think: should public transit be free, or not? Take a side, even a tentative one, and tell me in your own words why you lean that way.",
+        "primary_target": "central claim \u2014 surfacing a position before drafting",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "intervention_type": "invite_only",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "triage_decision": {
+          "text_changed": "first draft",
+          "prev_target_status": "none",
+          "learner_state": "confused",
+          "instructional_route": "inside_out_clarification",
+          "inside_or_outside": "inside_out",
+          "foundational_problem": false,
+          "highest_leverage_dimension": "central claim",
+          "relevant_instructional_objects": [
+            "Thesis",
+            "Central Claim"
+          ],
+          "route_confidence": 0.88,
+          "rationale": "Student has fragmented topic words but no formed claim or position, so the highest-leverage move is to surface what they actually think or want to argue before any drafting guidance.",
+          "_prompt_tokens": 117,
+          "_output_tokens": 130,
+          "_latency_s": 3.4
+        },
+        "path": "triage_focused",
+        "triage_latency_s": 3.4,
+        "focused_latency_s": 28.35,
+        "total_latency_s": 31.75,
+        "num_model_calls": 2,
+        "prompt_tokens": 8386,
+        "output_tokens": 1498
+      },
+      "comparison": {
+        "same_target": true,
+        "materially_different_decision": false,
+        "both_anti_coauthoring_ok": true,
+        "which_better": "equivalent",
+        "note": "Both moves target the same developmental step (eliciting a tentative personal stance before drafting), use the same invite-only type, and withhold any content scaffolding \u2014 the wording differs but the pedagogical choice is identical."
+      }
+    },
+    {
+      "case_id": "TC30",
+      "name": "Returning student showing increased independent control",
+      "expected_target": "evidence/explanation (not thesis)",
+      "exhaustive": {
+        "invitation": "Your thesis does real work: it draws a clear line between AI as tutor and AI as ghostwriter, and names why that line matters \u2014 who does the thinking. That's a contestable, focused controlling idea. Now, your body paragraphs each need to advance one part of that claim. What's the first reason or piece of evidence you'd give a skeptical reader to show that AI-as-tutor actually builds skill while AI-as-ghostwriter replaces it?",
+        "primary_target": "Supporting Claim \u2014 generating the first body paragraph claim",
+        "instructional_mode": "consolidation",
+        "cycle_status": "continue",
+        "intervention_type": "consolidate",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "path": "exhaustive_full",
+        "stage_a_latency_s": 4.57,
+        "stage_b_latency_s": 60.5,
+        "total_latency_s": 65.07,
+        "num_model_calls": 2,
+        "prompt_tokens": 6330,
+        "output_tokens": 3041
+      },
+      "triage": {
+        "invitation": "Your thesis does real work \u2014 it draws a sharp line between AI as tutor and AI as ghostwriter, and it gives a reader something concrete to dispute. Now the argument needs to show that distinction holding up under pressure. Try this: think of one moment, situation, or observation where the difference between 'explains' and 'answers for you' is visible in what actually happens to a learner's thinking \u2014 then explain, in your own words, why that difference matters for the claim you're making.",
+        "primary_target": "claim reasoning \u2014 grounding the thesis distinction in evidence and explanation",
+        "instructional_mode": "developmental_question",
+        "cycle_status": "continue",
+        "intervention_type": "invite_only",
+        "intervention_focus": "writing",
+        "one_target": true,
+        "triage_decision": {
+          "text_changed": "first draft \u2014 single thesis sentence submitted",
+          "prev_target_status": "none",
+          "learner_state": "engaged",
+          "instructional_route": "outside_in_reader_task",
+          "inside_or_outside": "outside_in",
+          "foundational_problem": false,
+          "highest_leverage_dimension": "claim reasoning",
+          "relevant_instructional_objects": [
+            "Central Claim",
+            "Evidence"
+          ],
+          "route_confidence": 0.85,
+          "rationale": "Thesis is clear and contestable (known strength consolidating), so the highest-leverage move is pushing the student to support and explain the reasoning with evidence rather than staying inside the claim itself.",
+          "_prompt_tokens": 184,
+          "_output_tokens": 147,
+          "_latency_s": 3.31
+        },
+        "path": "triage_focused",
+        "triage_latency_s": 3.31,
+        "focused_latency_s": 34.89,
+        "total_latency_s": 38.2,
+        "num_model_calls": 2,
+        "prompt_tokens": 8488,
+        "output_tokens": 1917
+      },
+      "comparison": {
+        "same_target": false,
+        "materially_different_decision": true,
+        "both_anti_coauthoring_ok": true,
+        "which_better": "triage",
+        "note": "Exhaustive targets generating a body paragraph claim (structural/organizational move), while triage targets grounding the thesis distinction in evidence and reasoning (argumentative development move) \u2014 different pedagogical priorities even though both build from the same thesis."
+      }
+    }
+  ]
+}
