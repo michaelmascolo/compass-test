@@ -70,13 +70,16 @@ const Stat = ({ icon: Icon, value, label }) => (
 );
 
 const AssignmentCard = ({ a, i }) => (
-  <motion.button
+  <motion.div
     data-testid={`assignment-card-${a.code}`}
+    role="button"
+    tabIndex={0}
     initial={{ opacity: 0, y: 12 }}
     animate={{ opacity: 1, y: 0 }}
     transition={{ delay: i * 0.05, duration: 0.35 }}
     onClick={() => goDashboard(a.id)}
-    className="group text-left w-full bg-white border border-stone-200 hover:border-stone-300 rounded-md p-5 transition-all hover:shadow-[0_2px_20px_rgba(0,0,0,0.05)]"
+    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goDashboard(a.id); } }}
+    className="group text-left w-full cursor-pointer bg-white border border-stone-200 hover:border-stone-300 rounded-md p-5 transition-all hover:shadow-[0_2px_20px_rgba(0,0,0,0.05)] focus:outline-none focus:ring-2 focus:ring-[#8C3A2A]/30"
   >
     <div className="flex items-start justify-between gap-3">
       <div className="min-w-0">
@@ -108,7 +111,7 @@ const AssignmentCard = ({ a, i }) => (
       <span className="text-[11px] uppercase tracking-widest text-stone-400">join code</span>
       <CopyCode code={a.code} />
     </div>
-  </motion.button>
+  </motion.div>
 );
 
 export default function TeacherHome() {

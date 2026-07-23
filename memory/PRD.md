@@ -313,3 +313,20 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - Phase (ii) Merged Create-Assignment: single coherent "I am creating an assignment" flow (reuse `TeacherConfig` engine); on completion return to Teacher Home (not straight into a student session). P1.
 - Phase (iii) Teacher Dashboard (`?dashboard={config_id}`): per-assignment student roster + triage "who needs attention" (developmental status, not scores). P1.
 - Phase (iv) Revision Analytics: per-student DEVELOPMENTAL history (writing evolution, coaching targets over time, learner responses, support required, fading evidence, emerging frontier) + class-level planning. North-star: growth in independent performance. P1.
+
+## Teacher Product — Phase (ii) Merged Create-Assignment (2026-06, DONE + tested)
+- The existing `TeacherConfiguration` model already captures ALL analytics-relevant fields the user flagged for future developmental analytics: teacher instructional goals (`learning.objectives`), assignment purpose (`assignment.purpose`), standards (`learning.standards`), developmental priorities (`guidance.feedbackPriorities`), teacher focus areas (`guidance.instructionalEmphases`), config metadata (`status`, `configurationVersion`, timestamps, `gradeCalibration`). No model change needed — architectural prep satisfied.
+- UX: reframed `TeacherConfig.jsx` (`?config`) to ONE coherent "Create an assignment" mental model (H1 "Create an assignment.", eyebrow "New assignment", primary CTA "Create assignment", "Check" instead of "Validate", "Assignment summary" aside, back-to-Workspace link). Removed the old "Configuration/Setup" framing.
+- Flow correction: `activate()` NO LONGER starts a student session/redirects to `?app`. It now shows a success screen (`assignment-created`) with the big shareable join code (`created-join-code`), `created-go-home` (→ `?teacher`) and `created-create-another`. Creating an assignment returns to Teacher Home.
+- Tested: `testing_agent` iteration_28 — backend 8/8 pass (list shape, join-by-code + counter increment, config→activate→create-session linkage, per-assignment sessions, validation error path, legacy /sessions regression), frontend full flow verified (create→success→go-home; validation blocks empty; no auto student session). Backend tests: `backend/tests/test_teacher_assignments.py`. Fixed 1 LOW issue (invalid nested <button> in AssignmentCard → now role=button div; 0 console warnings).
+
+## Teacher Product — Phase (iii) Teacher Dashboard — SPEC (next)
+- Route: `?dashboard={config_id}` (currently a "coming next" toast on card click in TeacherHome — wire it up).
+- Answer ONLY three questions initially: (1) Which students need my attention today? (2) Which students are progressing well? (3) Why does Compass believe that?
+- **Independence Trend** (lightweight layer, from EXISTING `revision_history` evidence only — NO sophisticated longitudinal modeling yet). Indicators: target resolution; successful revision after coaching; amount of support required; support-fading evidence; successful transfer; repeated dependence on the same target. Evidence-based ESTIMATE, not a measurement.
+- Present as CATEGORIES, never a single numeric "Independence Score": Increasing Independence / Stable / Needs Continued Support / Possible Regression. Every category must be CLICKABLE → inspect the evidence behind it (transparency; never opaque AI judgment).
+- "Who needs attention" prioritization = Independence Trend + persistent stalls + repeated coaching on same target + lack of progress across revisions + unusual patterns suggesting misunderstanding.
+- Dashboard SUMMARIZES (decide where to look). It must NOT become a second Revision Analytics screen.
+
+## Teacher Product — Phase (iv) Revision Analytics — SPEC (later)
+- Expands the evidence behind the Dashboard: revision history, coaching targets over time, support fading, transfer evidence, developmental trajectory. Analytics EXPLAINS (understand what you find). North-star metric: growth in independent performance (can the learner now perform with less support, greater understanding, greater transfer than before?).
