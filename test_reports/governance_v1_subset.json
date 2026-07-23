@@ -1,0 +1,402 @@
+{
+  "aggregate": {
+    "n": 12,
+    "errors": [],
+    "constitutional_unsafe": [],
+    "over_narrowed": [
+      "TC50",
+      "TC61"
+    ],
+    "non_writing_focus": [],
+    "avg_latency_s": 40.1,
+    "routes_seen": {
+      "inside_out_clarification": 6,
+      "support_fading": 1,
+      "outside_in_reader_task": 3,
+      "convention_instruction": 1,
+      "stall_support": 1
+    },
+    "fallback_cases": []
+  },
+  "rows": [
+    {
+      "case_id": "TC01",
+      "name": "Misunderstanding the assignment",
+      "expected_target": "purpose/assignment alignment",
+      "path": "triage_focused",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M6",
+        "IO"
+      ],
+      "dimension": "central claim",
+      "triage_target": "central claim \u2014 forming an arguable position on year-round school",
+      "exhaustive_target": "Thesis / Central Claim \u2014 student must first answer the actual assignment with a position",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "explicit_instruction",
+      "triage_invitation": "You've written some true things about school \u2014 that it teaches important subjects and helps with future jobs. But the assignment asks you to argue a position: would year-round school help students learn? Right now your writing doesn't yet say what you think the answer is. Try this: in one sentence, state your answer to that question \u2014 something a reader could actually disagree with.",
+      "total_latency_s": 43.5,
+      "triage_latency_s": 9.95,
+      "focused_latency_s": 33.55,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "equivalent",
+        "note": "Both moves correctly identify the same highest-leverage foundational problem \u2014 the complete absence of a position on year-round school \u2014 and both use a sentence-starter scaffold without coauthoring; differences are stylistic, not substantive."
+      }
+    },
+    {
+      "case_id": "TC03",
+      "name": "No thesis",
+      "expected_target": "thesis",
+      "path": "triage_focused",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M6",
+        "IO"
+      ],
+      "dimension": "central claim",
+      "triage_target": "central claim / thesis",
+      "exhaustive_target": "Thesis: move from topic announcement to a contestable position",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "explicit_instruction",
+      "triage_invitation": "You've introduced the topic \u2014 homework \u2014 and noted that people disagree about it. That's a starting point, but right now your writing tells the reader *what* people discuss, not *what you claim*. For an argument, you need to take a side: a reader should be able to finish your opening and think, \"I'm not sure I agree with that\" \u2014 which means your claim has to be something a thoughtful person could actually dispute. So here's the move: in one sentence, tell me what you want your reader to accept about homework limits by the time they finish your essay. What's your position?",
+      "total_latency_s": 42.02,
+      "triage_latency_s": 3.18,
+      "focused_latency_s": 38.84,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "equivalent",
+        "note": "Both moves correctly identify the same foundational gap\u2014absence of a contestable thesis\u2014and use a similarly Socratic, non-coauthoring invitation to prompt the student to generate their own position."
+      }
+    },
+    {
+      "case_id": "TC07",
+      "name": "Strong thesis that should not be over-taught",
+      "expected_target": "light / consolidate or move forward",
+      "path": "triage_focused",
+      "route": "support_fading",
+      "inside_outside": "outside_in",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M13"
+      ],
+      "dimension": "development",
+      "triage_target": "evidence/development \u2014 grounding the central claim with concrete support",
+      "exhaustive_target": "Release to continue drafting; light forward orientation toward body paragraph purpose.",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "Your opening move is sharp \u2014 the claim that proximity was mistaken for teamwork does real argumentative work. As you continue drafting, your reader will naturally ask: what does \"deliberate connection\" actually look like, and how do you know it tends to be better? Try drafting the next paragraph by grounding that claim in a specific situation, pattern, or example that gives your reader a concrete reason to believe it.",
+      "total_latency_s": 35.29,
+      "triage_latency_s": 2.87,
+      "focused_latency_s": 32.42,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "exhaustive",
+        "note": "Both moves correctly release strong writing and orient forward to evidence, but exhaustive's framing ('keep asking what this opening has promised') preserves more student agency than triage's slightly more directive 'draft the next paragraph by grounding,' making exhaustive marginally more defensible for a strong draft warranting light touch."
+      }
+    },
+    {
+      "case_id": "TC08",
+      "name": "Evidence without explanation",
+      "expected_target": "explanation/analysis",
+      "path": "triage_focused",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M6",
+        "IO"
+      ],
+      "dimension": "evidence-to-claim connection (explanation/warrant)",
+      "triage_target": "evidence-to-claim connection (explanation/warrant)",
+      "exhaustive_target": "Explanation / Analysis \u2014 interpreting evidence to connect it to the claim",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "You've got a claim and two pieces of evidence \u2014 that's a real start. Right now the statistics sit next to your claim without a bridge explaining what they show about it. Pick one of your numbers and try answering this: what does that statistic tell your reader about why phones hurt learning?",
+      "total_latency_s": 39.21,
+      "triage_latency_s": 7.36,
+      "focused_latency_s": 31.84,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "equivalent",
+        "note": "Both moves correctly identify the same highest-leverage gap (missing warrant/explanation bridging evidence to claim) and use the same Socratic prompt strategy; exhaustive is marginally richer in framing but neither is more defensible on substance."
+      }
+    },
+    {
+      "case_id": "TC15",
+      "name": "Weak transition",
+      "expected_target": "transition/coherence",
+      "path": "triage_focused",
+      "route": "outside_in_reader_task",
+      "inside_outside": "outside_in",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M12",
+        "M9"
+      ],
+      "dimension": "Transitions",
+      "triage_target": "Transitions \u2014 making the logical relationship between adjacent ideas explicit",
+      "exhaustive_target": "Naming the relationship between two adjacent sentences (transition as conceptual relationship).",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "You have four ideas here that each relate to the junk food tax argument \u2014 that's a real start. Here's a reader's challenge: after reading these four sentences back-to-back, I can't yet see *how* they connect. Take any two adjacent sentences and ask yourself: what's the actual relationship between them \u2014 is one a reason, a result, an example, a contrast? Once you name that relationship in plain words, try writing it into the sentence so the reader can see it too.",
+      "total_latency_s": 40.07,
+      "triage_latency_s": 3.67,
+      "focused_latency_s": 36.4,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "equivalent",
+        "note": "Both moves identify the same gap (implicit relationships between adjacent sentences), use the same diagnostic question (name the relationship type), and give the same task (write a connecting sentence), differing only in minor phrasing."
+      }
+    },
+    {
+      "case_id": "TC25",
+      "name": "Student asks the AI to write the answer",
+      "expected_target": "thesis (student-performed)",
+      "path": "triage_focused",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M6",
+        "IO"
+      ],
+      "dimension": "Central Claim",
+      "triage_target": "Central Claim \u2014 moving from topic-listing to an arguable position",
+      "exhaustive_target": "eliciting a position/stance as prerequisite to forming a thesis",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "You've got the ingredients \u2014 public transit, money, cities \u2014 and that's a real starting place. Before drafting, try answering this one question out loud or on paper: should public transit be free, or not? Pick a side and then ask yourself: why would someone disagree with you? That push-back is exactly what makes it a claim worth arguing.",
+      "total_latency_s": 42.89,
+      "triage_latency_s": 7.55,
+      "focused_latency_s": 35.34,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "equivalent",
+        "note": "Both moves correctly identify eliciting a stance as the foundational prerequisite; triage adds the 'steelman the opposition' prompt which is a minor elaboration but stays within the same legitimate coaching lane without coauthoring."
+      }
+    },
+    {
+      "case_id": "TC27",
+      "name": "Student confused by terminology",
+      "expected_target": "thesis (taught + defined)",
+      "path": "triage_focused",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M6",
+        "IO"
+      ],
+      "dimension": "central claim",
+      "triage_target": "central claim \u2014 moving from topic/observation to an arguable position",
+      "exhaustive_target": "Thesis as arguable position (claim function)",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "explicit_instruction",
+      "triage_invitation": "You've noticed something real \u2014 that paying for lunch is hard for some families. That's an observation about the topic. But the assignment asks you to argue a position: should school lunches be free? Try finishing this sentence in your own words: 'School lunches should [or should not] be free because ___.' What do you think, and what's your main reason?",
+      "total_latency_s": 37.84,
+      "triage_latency_s": 3.36,
+      "focused_latency_s": 34.48,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "equivalent",
+        "note": "Both moves correctly identify the same foundational issue\u2014observation vs. arguable claim\u2014and use nearly identical sentence-starter scaffolding; the triage label adds marginally useful framing ('moving from topic/observation') without narrowing prematurely or missing a higher-leverage problem."
+      }
+    },
+    {
+      "case_id": "TC30",
+      "name": "Returning student showing increased independent control",
+      "expected_target": "evidence/explanation (not thesis)",
+      "path": "triage_focused",
+      "route": "outside_in_reader_task",
+      "inside_outside": "outside_in",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M12",
+        "M8"
+      ],
+      "dimension": "evidence-interpretation",
+      "triage_target": "evidence-interpretation \u2014 grounding the explain-vs-answer distinction with a concrete case and explaining what it shows",
+      "exhaustive_target": "Supporting Claim \u2014 identifying the first reason that advances the thesis",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "Your thesis draws a sharp line \u2014 a tool that explains builds skill, a tool that answers replaces it. That distinction is doing real argumentative work. Now your reader will naturally ask: what does it actually look like when AI explains rather than answers, and why does that preserve the thinking? Pick one concrete moment \u2014 a student stuck on a math step, a writing concept they can't grasp, anything real to you \u2014 and tell me: what would the explaining version of AI do in that moment, and what would that protect that the answering version would destroy?",
+      "total_latency_s": 43.8,
+      "triage_latency_s": 3.47,
+      "focused_latency_s": 40.33,
+      "classification": {
+        "same_decision": false,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "triage",
+        "note": "Exhaustive correctly identifies supporting claims as the next structural step, but the draft's thesis already encodes its own reasoning, making triage's move to ground the explain-vs-answer distinction with concrete evidence higher leverage \u2014 without that, any supporting claim risks staying abstract and unpersuasive."
+      }
+    },
+    {
+      "case_id": "TC50",
+      "name": "Creative/poetry \u2014 do not impose essay logic",
+      "expected_target": "light / consolidate the working images; invite the writer to develop by their own instinct",
+      "path": "triage_focused",
+      "route": "outside_in_reader_task",
+      "inside_outside": "outside_in",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M12",
+        "M7"
+      ],
+      "dimension": "Image and Line",
+      "triage_target": "line break function as a sonic and temporal resource in free verse",
+      "exhaustive_target": "Extending the poem: what else the memory offers (image, sensation, sound) that could deepen the reader's experience",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "This poem does something quiet and precise \u2014 four images placed end to end, each one a sensory fact, and the last line pulls the whole scene into a speaker who is listening. Try reading it aloud and noticing where each line break makes you pause: does that pause feel like the right length of silence between those images, or does any break come too soon, too late, or land in a way you didn't intend?",
+      "total_latency_s": 41.96,
+      "triage_latency_s": 4.04,
+      "focused_latency_s": 37.92,
+      "classification": {
+        "same_decision": false,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": true,
+        "which_more_defensible": "exhaustive",
+        "note": "The draft is a complete, compressed four-image poem with no content gaps; line breaks are already doing their job cleanly, making that a low-leverage target, while the higher-leverage opportunity is deepening the memory's imagistic and sensory world \u2014 the problem the exhaustive move correctly names."
+      }
+    },
+    {
+      "case_id": "TC61",
+      "name": "Quote dropped in without attribution/integration",
+      "expected_target": "integrating evidence \u2014 frame and attribute the quotation",
+      "path": "triage_focused",
+      "route": "convention_instruction",
+      "inside_outside": "outside_in",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "CONV"
+      ],
+      "dimension": "Evidence integration (signal phrase and attribution)",
+      "triage_target": "signal phrase and attribution (evidence integration convention)",
+      "exhaustive_target": "Interpretation of evidence \u2014 helping the student explain what the quotation shows and why it supports the claim",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "explicit_instruction",
+      "triage_invitation": "Right now your quotation appears on its own, with no introduction telling the reader who said it or where it comes from \u2014 that's called a signal phrase, and writers use it so readers know they're hearing from the text rather than the writer. It works like this: instead of dropping the quote in cold, you lead into it with something like \"In the story, [character/narrator] says, '...'\" Try revising your sentence so that you introduce the quotation before it appears \u2014 who is speaking, or where is this line from?",
+      "total_latency_s": 38.63,
+      "triage_latency_s": 3.42,
+      "focused_latency_s": 35.21,
+      "classification": {
+        "same_decision": false,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": true,
+        "which_more_defensible": "exhaustive",
+        "note": "The signal phrase is a minor surface convention the student can fix in seconds; the foundational gap\u2014inability to interpret evidence\u2014is what actually prevents the student from meeting the assignment's analytical purpose, making triage over-narrowed."
+      }
+    },
+    {
+      "case_id": "TC65",
+      "name": "Student pastes AI-generated text and asks 'is this good?'",
+      "expected_target": "return authorship \u2014 get the student articulating their own point in their own words",
+      "path": "triage_focused",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [
+        "M6",
+        "IO"
+      ],
+      "dimension": "intended meaning / writer's own position",
+      "triage_target": "surfacing the student's own intended position / arguable claim",
+      "exhaustive_target": "Thesis: move from topic-summary to contestable claim",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "That sentence uses a lot of academic vocabulary, but it's hard to tell what you personally think about urban green spaces \u2014 what position you'd actually want a reader to walk away agreeing with. Before working on the introduction further, try answering this in plain language: what do you believe about urban green spaces, and why would someone disagree with you?",
+      "total_latency_s": 40.9,
+      "triage_latency_s": 4.0,
+      "focused_latency_s": 36.9,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "equivalent",
+        "note": "Both moves correctly diagnose the absence of a contestable claim and return thinking to the student without coauthoring; exhaustive names the craft concept explicitly while triage uses plain-language reflection, but neither is more defensible given the authorship-preservation purpose."
+      }
+    },
+    {
+      "case_id": "TC66",
+      "name": "Perfectionist stuck \u2014 won't commit anything",
+      "expected_target": "unblock through guided low-stakes action (get a rough claim down)",
+      "path": "triage_focused",
+      "route": "stall_support",
+      "inside_outside": "inside_out",
+      "foundational": false,
+      "route_fallback_reason": "",
+      "active_lenses": [],
+      "dimension": "lowering-stakes generative fluency",
+      "triage_target": "lowering-stakes generative fluency",
+      "exhaustive_target": "Elicit a rough stance/position sentence to break the block",
+      "triage_focus": "writing",
+      "cycle_status": "continue",
+      "mode": "developmental_question",
+      "triage_invitation": "Deleting everything is real information \u2014 it tells you your internal editor is working overtime before your writer even gets a turn. Try this: set a two-minute timer and write whatever comes to mind about standardized testing, even if it's just 'I think standardized tests are...' or 'I hate/love/don't know how I feel about this because...' \u2014 wrong, messy, and incomplete is exactly the goal right now. What comes out?",
+      "total_latency_s": 35.17,
+      "triage_latency_s": 3.46,
+      "focused_latency_s": 31.71,
+      "classification": {
+        "same_decision": true,
+        "triage_anti_coauthoring_ok": true,
+        "triage_unsafe": false,
+        "over_narrowed": false,
+        "which_more_defensible": "exhaustive",
+        "note": "Both correctly diagnose writer's block and prescribe low-stakes generative writing; exhaustive is marginally more defensible because its sentence-completion scaffold more directly seeds a usable argument stance, whereas triage's open freewrite risks producing content even further from the assignment goal."
+      }
+    }
+  ]
+}

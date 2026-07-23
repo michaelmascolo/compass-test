@@ -109,24 +109,217 @@ async def run_triage(session: Session, req: InteractRequest) -> dict:
     return data
 
 
+# ===========================================================================
+# STAGE 2 — FOCUSED ANALYSIS (frozen SYSTEM_MESSAGE + governed focused prompt)
+# ===========================================================================
+# COMPASS GOVERNANCE IMPLEMENTATION v1 — Stage-2 Decomposition.
+# Canonical reference: /app/memory/COMPASS_GOVERNANCE_ARCHITECTURE.md
+#
+# Authority flows downward L1 -> L5. The frozen SYSTEM_MESSAGE remains the
+# AUTHORITATIVE source of Layer 1 (Constitutional Commitments) and Layer 2
+# (Developmental Policy). This module NEVER paraphrases them into a competing
+# constitution; it only (a) FOREGROUNDS the applicable invariants so they
+# govern the focused turn, and (b) makes Layer 3 (Diagnostic Reasoning)
+# CONDITIONAL on the triage route. Layer 4 (Learner Model) and Layer 5
+# (Presentation) are unchanged in behavior; tagged here for traceability.
+# The route->lens map below is the SINGLE implementation source of truth for
+# conditional diagnostic activation and is pure + unit-testable.
 # ---------------------------------------------------------------------------
-# STAGE 2 — FOCUSED ANALYSIS (frozen SYSTEM_MESSAGE + focused user prompt)
-# ---------------------------------------------------------------------------
-FOCUSED_OUTPUT_OVERRIDE = """
 
-=== FOCUSED ANALYSIS DIRECTIVE (rapid triage already ran) ===
-A fast triage stage has ALREADY identified the single highest-leverage coaching target for THIS turn. Honor every rule, boundary, and constitutional commitment in your system message EXACTLY — anti-coauthoring, one student-facing invitation, never rewrite/supply content, respect competent performance. What changes is ONLY scope + payload, to reduce latency:
-- Do NOT re-scan or re-diagnose every framework/rubric dimension. Analyze ONLY the triaged dimension below and the minimum context needed to interpret it.
-- If prev_target_status is "unchanged", KEEP the same prior coaching target; do not search for a new one.
-- If prev_target_status is "resolved", assess fade/advance (consolidate the gain; only advance if a clearly more important target has become primary).
-- If learner_state is "stalled", give stall support on the current target — do not open a new target.
-- Honor the inside/outside routing: if intended meaning is already sufficiently clear, do NOT linger in inside-out inquiry — test how the writing functions for a reader/task/convention.
+# [L3] Diagnostic lenses (frozen SYSTEM_MESSAGE frameworks). Named here ONLY to
+# ACTIVATE / hold dormant per route; their definitions live in SYSTEM_MESSAGE.
+LENS = {
+    "M6":   "M6 communicative-purpose re-inference",
+    "M7":   "M7 functional paragraph analysis",
+    "M8":   "M8 functional evidence & support analysis",
+    "M9":   "M9 transitions & coherence analysis",
+    "M10":  "M10 conclusion / completion analysis",
+    "M12":  "M12 reader construction",
+    "M13":  "M13 revision-as-development analysis",
+    "IO":   "IO 12-step canonical element analysis",
+    "CONV": "sentence-level analysis of the single convention at issue",
+}
+ALL_CONTENT_LENSES = ["M6", "M7", "M8", "M9", "M10", "M12", "IO", "CONV"]
+
+# [L1 + governing L2] Minimum always-govern safety set. "Always run" = these
+# ALWAYS GOVERN the output; they do NOT require lengthy written analysis of each
+# item. Kept short deliberately so the always-on core never recreates latency.
+MIN_SAFETY_SET = [
+    "M6-thin: confirm the communicative purpose before instructing",
+    "M5A anti-coauthoring boundary (never write/rewrite/supply copyable content)",
+    "answer-the-assignment check (honor the teacher's named purpose; surface drift)",
+    "restraint on competent performance (invent no deficiencies; proportional intervention)",
+    "one instructional target + one learner-facing invitation; no scores",
+    "stopping rules (honor independence requests / diminishing returns)",
+]
+
+# [L3] Route -> lens activation map. SINGLE SOURCE OF TRUTH for conditional
+# diagnostic activation, keyed on the triage `instructional_route`. Each entry:
+#   active_lenses        lenses that run this route (codes into LENS)
+#   dimension_selected   whether a content lens is chosen from the dimension
+#   permitted_moves      instructional move types allowed on this route
+#   may_select_new_target whether a NEW target may be opened
+#   consolidation_allowed / fading_allowed
+#   fallback_if          the condition that forces the full-engine fallback
+ROUTE_LENS_MAP = {
+    "stall_support": {
+        "active_lenses": [],  # no new broad diagnostic search
+        "dimension_selected": False,
+        "permitted_moves": ["developmental_question", "brief_demonstration", "reflection"],
+        "may_select_new_target": False,
+        "consolidation_allowed": False,
+        "fading_allowed": False,
+        "fallback_if": "the stall cannot be explained locally on the current edge and genuinely needs broad reassessment",
+    },
+    "inside_out_clarification": {
+        "active_lenses": ["M6", "IO"],
+        "dimension_selected": False,
+        "permitted_moves": ["developmental_question", "explicit_instruction", "brief_demonstration"],
+        "may_select_new_target": True,
+        "consolidation_allowed": False,
+        "fading_allowed": False,
+        "fallback_if": "the learner's basic intended meaning / overall communicative purpose cannot be determined at all",
+    },
+    "outside_in_reader_task": {
+        "active_lenses": ["M12"],  # reader model + the dimension-selected content lens
+        "dimension_selected": True,
+        "permitted_moves": ["developmental_question", "explicit_instruction", "brief_demonstration", "guided_revision"],
+        "may_select_new_target": True,
+        "consolidation_allowed": False,
+        "fading_allowed": False,
+        "fallback_if": "the writing is so incoherent across ideas that no single dimension can be worked in isolation",
+    },
+    "convention_instruction": {
+        "active_lenses": ["CONV"],
+        "dimension_selected": False,
+        "permitted_moves": ["explicit_instruction", "brief_demonstration", "developmental_question"],
+        "may_select_new_target": True,
+        "consolidation_allowed": False,
+        "fading_allowed": False,
+        "fallback_if": "the convention problem is actually a symptom of a deeper meaning / organization problem",
+    },
+    "transfer_test": {
+        "active_lenses": ["M13"],
+        "dimension_selected": False,
+        "permitted_moves": ["reflection", "developmental_question", "consolidation"],
+        "may_select_new_target": False,
+        "consolidation_allowed": True,
+        "fading_allowed": True,
+        "fallback_if": "the transfer test reveals the prior gain did not hold and a new foundational issue emerged",
+    },
+    "support_fading": {
+        "active_lenses": ["M13"],
+        "dimension_selected": False,
+        "permitted_moves": ["consolidation", "reflection", "developmental_question"],
+        "may_select_new_target": False,
+        "consolidation_allowed": True,
+        "fading_allowed": True,
+        "fallback_if": "fading reveals the target was not actually consolidated (regression)",
+    },
+}
+_DEFAULT_ROUTE = "outside_in_reader_task"
+
+# [L3] dimension keyword -> content lens, used only when dimension_selected.
+# M12 (reader) is the baseline for outside-in, so it is NOT listed here.
+DIMENSION_LENS_KEYWORDS = [
+    ("M8",  ("evidence", "support", "cite", "citation", "quotation", "quote", "source", "data", "proof", "attribut", "integrat", "synthes")),
+    ("M9",  ("transition", "coheren", "cohesion", "organiz", "flow", "connect", "sequenc", "order", "structur", "parallel")),
+    ("M10", ("conclusion", "ending", "closing", "completion", "resolve", "resolution")),
+    ("M7",  ("paragraph", "topic sentence", "unity", "development", "showing", "scene", "pacing")),
+]
+
+# prev_target_status -> the L2/L3 handling rule foregrounded in the directive.
+_PREV_TARGET_RULES = {
+    "unchanged": "keep the SAME prior coaching target; do not search for a new one.",
+    "partially_resolved": "the prior target is only partially met; keep working THAT element.",
+    "resolved": "the prior target is resolved; consolidate the gain and only advance if a clearly more important target has become primary.",
+    "worse": "the prior target regressed; return to it with a DIFFERENT scaffold.",
+    "none": "no prior target; select the single highest-leverage target for the triaged dimension.",
+}
+
+
+def select_content_lens(triage: dict) -> str:
+    """Pick ONE content lens (M7/M8/M9/M10) for a dimension-selected route from
+    the triaged dimension + instructional-object names. Returns '' when the
+    reader model (M12) alone suffices. Pure + unit-testable."""
+    io_names = [n for n in (triage.get("relevant_instructional_objects") or []) if isinstance(n, str)]
+    dims = " ".join([str(triage.get("highest_leverage_dimension", ""))] + io_names).lower()
+    for code, kws in DIMENSION_LENS_KEYWORDS:
+        if any(k in dims for k in kws):
+            return code
+    return ""
+
+
+def resolve_route_activation(triage: dict, has_prior_draft: bool) -> dict:
+    """Resolve the concrete L3 lens activation + move policy for THIS turn from
+    ROUTE_LENS_MAP (single source of truth). Pure + unit-testable."""
+    route = (triage.get("instructional_route") or "").strip() or _DEFAULT_ROUTE
+    base = ROUTE_LENS_MAP.get(route) or ROUTE_LENS_MAP[_DEFAULT_ROUTE]
+    active = list(base["active_lenses"])
+    if base.get("dimension_selected"):
+        lens = select_content_lens(triage)
+        if lens and lens not in active:
+            active.append(lens)
+    # M13 revision lens is conditional-on-revise regardless of route.
+    if has_prior_draft and "M13" not in active:
+        active.append("M13")
+    dormant = [c for c in (ALL_CONTENT_LENSES + ["M13"]) if c not in active]
+    may_new = base["may_select_new_target"]
+    consolidation = base["consolidation_allowed"]
+    fading = base["fading_allowed"]
+    prev = (triage.get("prev_target_status") or "none").strip()
+    if prev not in _PREV_TARGET_RULES:
+        prev = "none"
+    if prev == "unchanged":
+        may_new = False
+    elif prev == "resolved":
+        consolidation = True
+    return {
+        "route": route,
+        "active_lenses": active,
+        "dormant_lenses": dormant,
+        "permitted_moves": base["permitted_moves"],
+        "may_select_new_target": may_new,
+        "consolidation_allowed": consolidation,
+        "fading_allowed": fading,
+        "fallback_if": base["fallback_if"],
+        "prev_target_status": prev,
+    }
+
+
+# Directive template. Uses @@..@@ placeholders (NOT .format) so the literal JSON
+# braces in the output contract need no escaping.
+_FOCUSED_OVERRIDE_TEMPLATE = """
+
+=== FOCUSED ANALYSIS DIRECTIVE — COMPASS GOVERNANCE v1 (rapid triage already ran) ===
+This directive narrows the diagnostic work required for the current route. It does not replace, revise, weaken, or supersede any constitutional commitment or developmental policy in the governing SYSTEM_MESSAGE.
+
+[L1 CONSTITUTIONAL COMMITMENTS + L2 DEVELOPMENTAL POLICY — ALWAYS GOVERN, on every route]
+Your governing SYSTEM_MESSAGE remains fully in force and is authoritative. Let these invariants GOVERN this turn — govern the decision; do NOT write a long analysis of each: anti-coauthoring (never write, rewrite, or supply copyable content); the learner owns the writing; answer-the-assignment and honor the teacher's named purpose; function before convention; EXACTLY ONE instructional target and ONE learner-facing invitation; restraint on competent performance (invent no deficiencies; keep intervention proportional); no scores; honor stopping rules (independence request / diminishing returns); move promptly from inside-out clarification to an outside-in test once intended meaning is sufficiently clear.
+
+[L3 DIAGNOSTIC REASONING — CONDITIONAL on the triage route THIS turn]
+Run ONLY the diagnostic lens(es) listed ACTIVE below. Hold the DORMANT lenses off — do not scan, diagnose, or serialize them. Read only the minimum context needed to interpret the active lens.
+ROUTE: @@ROUTE@@
+ACTIVE lens(es): @@ACTIVE@@
+DORMANT lens(es) (do not run): @@DORMANT@@
+Permitted instructional move(s): @@MOVES@@
+May select a NEW instructional target this turn: @@NEWTARGET@@
+Consolidation allowed: @@CONSOLIDATION@@ | Support-fading allowed: @@FADING@@
+prev_target_status = @@PREV@@ -> @@PREVRULE@@
+
+[L3 ANTI-SUPPRESSION FALLBACK — the route may NOT hide a foundational problem]
+If, while analyzing, you find evidence INCONSISTENT with this route — specifically that @@FALLBACKIF@@, or the draft does not actually address the assignment — do NOT force the material into the active lens and do NOT fabricate a focused answer. Instead set "route_fallback_required": true with a one-sentence "route_fallback_reason"; the system will then re-run the full exhaustive engine for a broad reassessment. Use this ONLY for a genuine foundational mismatch (rare).
+
+[L4 LEARNER MODEL] Record observed learner state + revision evidence truthfully; never fabricate growth or a conclusion the text does not support.
+[L5 PRESENTATION] Produce exactly ONE learner-facing invitation in the coach's voice, anchored to the learner's document; no scores, no rewriting.
 
 TRIAGE DECISION:
-{triage}
+@@TRIAGE@@
 
-Serialize ONLY these top-level keys (omit all others — they are not needed this turn and omitting them changes nothing about your judgment):
+[L5 OUTPUT CONTRACT] Serialize ONLY these top-level keys (omit all others — they are not needed this turn and omitting them changes nothing about your judgment):
 {
+  "route_fallback_required": false,
+  "route_fallback_reason": "",
   "student_facing_invitation": "...",
   "theory": {
     "communicative_purpose": {...},
@@ -138,18 +331,46 @@ Serialize ONLY these top-level keys (omit all others — they are not needed thi
   "selected_invitation": {...},
   "intervention": {...}
 }
-theory.scaffolding_control MUST contain exactly one primary_target (the triaged dimension). Include theory.revision_development only when a prior draft exists to compare. Output compact JSON."""
+Generate EXACTLY TWO internal candidate_invitations, then select ONE — the two candidates remain internal and only the single student_facing_invitation reaches the learner. theory.scaffolding_control MUST contain exactly one primary_target (the triaged dimension). Include theory.revision_development only when a prior draft exists to compare. Output compact JSON."""
+
+
+def build_focused_override(triage: dict, has_prior_draft: bool) -> str:
+    """Generate the governed Stage-2 directive from ROUTE_LENS_MAP (L1/L2 always
+    on; L3 conditional). Everything is derived from the map — no free-text
+    routing table is maintained separately."""
+    act = resolve_route_activation(triage, has_prior_draft)
+
+    def _names(codes):
+        return ", ".join(LENS[c] for c in codes) if codes else "(none — constitutional/policy core only)"
+
+    triage_json = json.dumps({k: triage.get(k) for k in (
+        "instructional_route", "inside_or_outside", "prev_target_status",
+        "learner_state", "highest_leverage_dimension", "route_confidence", "rationale")}, indent=2)
+    repl = {
+        "@@ROUTE@@": act["route"],
+        "@@ACTIVE@@": _names(act["active_lenses"]),
+        "@@DORMANT@@": _names(act["dormant_lenses"]),
+        "@@MOVES@@": ", ".join(act["permitted_moves"]),
+        "@@NEWTARGET@@": "yes" if act["may_select_new_target"] else "no — keep the current target",
+        "@@CONSOLIDATION@@": "yes" if act["consolidation_allowed"] else "no",
+        "@@FADING@@": "yes" if act["fading_allowed"] else "no",
+        "@@FALLBACKIF@@": act["fallback_if"],
+        "@@PREV@@": act["prev_target_status"],
+        "@@PREVRULE@@": _PREV_TARGET_RULES[act["prev_target_status"]],
+        "@@TRIAGE@@": triage_json,
+    }
+    out = _FOCUSED_OVERRIDE_TEMPLATE
+    for k, v in repl.items():
+        out = out.replace(k, v)
+    return out
 
 
 def _focused_prompt(session: Session, req: InteractRequest, triage: dict, selections: list, io_names: list) -> str:
     full_domain_data = get_relevant_domain_data(selections)
     io_objects = get_relevant_instructional_objects(io_names or [])
     io_network = build_instructional_network(io_objects)
-    override = FOCUSED_OUTPUT_OVERRIDE.replace("{triage}", json.dumps({
-        k: triage.get(k) for k in (
-            "instructional_route", "inside_or_outside", "prev_target_status",
-            "learner_state", "highest_leverage_dimension", "route_confidence", "rationale")
-    }, indent=2))
+    has_prior = req.kind in server.DRAFT_KINDS and bool(_previous_draft(session))
+    override = build_focused_override(triage, has_prior)
     return f"""CURRENT DEVELOPMENTAL TELOS (component A — provisional, revisable):
 {json.dumps(session.telos.model_dump(), indent=2)}
 
@@ -224,12 +445,24 @@ async def run_focused(session: Session, req: InteractRequest, triage: dict) -> d
     else:
         raise last_err
     dt = time.perf_counter() - t0
+    # [L3] anti-suppression fallback signal — the focused pass may flag when the
+    # triage route cannot contain the actual problem (a foundational mismatch).
+    fb_required, fb_reason = False, ""
+    try:
+        _fb = _extract_json(raw)
+        fb_required = bool(_fb.get("route_fallback_required"))
+        fb_reason = (_fb.get("route_fallback_reason") or "") if fb_required else ""
+    except Exception:
+        pass
+    parsed["_route_fallback"] = fb_required
+    parsed["_route_fallback_reason"] = fb_reason
     parsed["_meta"] = {
         "focused_prompt_tokens": _tok(prompt),
         "focused_output_tokens": _tok(raw),
         "t_focused_s": round(dt, 2),
         "reasoner_prompt_bytes": len(prompt),
         "reasoner_output_bytes": len(raw),
+        "candidate_count_directive": 2,  # L2: exactly two internal candidates
     }
     return parsed
 
@@ -257,6 +490,24 @@ async def run_triage_pipeline(session: Session, req: InteractRequest) -> dict:
         }
         return result
     result = await run_focused(session, req, triage)
+    # [L3] anti-suppression: the route may not hide a foundational problem. If
+    # the focused pass flagged a genuine mismatch, escalate to the full engine.
+    if result.get("_route_fallback"):
+        focused_latency = result.get("_meta", {}).get("t_focused_s")
+        full = await server._run_engine(session, req)
+        m = full.get("_meta", {})
+        full["_triage"] = triage
+        full["_triage_meta"] = {
+            "path": "route_fallback_full",
+            "route_fallback_reason": result.get("_route_fallback_reason", ""),
+            "triage_latency_s": triage["_latency_s"],
+            "focused_latency_s": focused_latency,
+            "total_latency_s": round(time.perf_counter() - t0, 2),
+            "num_model_calls": 4,  # triage + focused + full stage-A + full stage-B
+            "prompt_tokens": triage["_prompt_tokens"] + int((m.get("reasoner_prompt_bytes") or 0) / 4),
+            "output_tokens": triage["_output_tokens"] + int((m.get("reasoner_output_bytes") or 0) / 4),
+        }
+        return full
     fm = result["_meta"]
     result["_triage"] = triage
     result["_triage_meta"] = {
@@ -351,12 +602,22 @@ async def run_focused_streaming(session: Session, req: InteractRequest, triage: 
         raw = await chat2.send_message(UserMessage(text=prompt))
         parsed = _parse_engine_output(session, raw)
     dt = time.perf_counter() - t0
+    fb_required, fb_reason = False, ""
+    try:
+        _fb = _extract_json(raw)
+        fb_required = bool(_fb.get("route_fallback_required"))
+        fb_reason = (_fb.get("route_fallback_reason") or "") if fb_required else ""
+    except Exception:
+        pass
+    parsed["_route_fallback"] = fb_required
+    parsed["_route_fallback_reason"] = fb_reason
     parsed["_meta"] = {
         "focused_prompt_tokens": _tok(prompt),
         "focused_output_tokens": _tok(raw),
         "t_focused_s": round(dt, 2),
         "reasoner_prompt_bytes": len(prompt),
         "reasoner_output_bytes": len(raw),
+        "candidate_count_directive": 2,
     }
     return parsed
 
@@ -381,6 +642,29 @@ async def run_triage_pipeline_streaming(session: Session, req: InteractRequest, 
         }
         return result
     result = await run_focused_streaming(session, req, triage, on_delta)
+    # [L3] anti-suppression escalation (rare). In streaming, the full-engine
+    # result supersedes the streamed focused invitation; emit the final text so
+    # the surface reflects the finalized invitation.
+    if result.get("_route_fallback"):
+        focused_latency = result.get("_meta", {}).get("t_focused_s")
+        full = await server._run_engine(session, req)
+        try:
+            await on_delta(full.get("invitation", ""))
+        except Exception:
+            pass
+        m = full.get("_meta", {})
+        full["_triage"] = triage
+        full["_triage_meta"] = {
+            "path": "route_fallback_full",
+            "route_fallback_reason": result.get("_route_fallback_reason", ""),
+            "triage_latency_s": triage["_latency_s"],
+            "focused_latency_s": focused_latency,
+            "total_latency_s": round(time.perf_counter() - t0, 2),
+            "num_model_calls": 4,
+            "prompt_tokens": triage["_prompt_tokens"] + int((m.get("reasoner_prompt_bytes") or 0) / 4),
+            "output_tokens": triage["_output_tokens"] + int((m.get("reasoner_output_bytes") or 0) / 4),
+        }
+        return full
     fm = result["_meta"]
     result["_triage"] = triage
     result["_triage_meta"] = {

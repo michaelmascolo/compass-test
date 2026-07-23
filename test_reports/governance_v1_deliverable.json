@@ -1,0 +1,309 @@
+{
+  "runs": {
+    "exhaustive_baseline": "fd0dec0c-7e00-4df0-976b-7307f46a09a1",
+    "governance_v1": "fab70c01-1cdb-4bc5-b604-4a3f7849c633"
+  },
+  "verdict_distribution": {
+    "exhaustive": {
+      "pass": 58,
+      "partial": 8
+    },
+    "governance_v1": {
+      "pass": 55,
+      "partial": 11
+    }
+  },
+  "latency_s": {
+    "exhaustive_per_turn": {
+      "avg": 64.9,
+      "median": 64.7,
+      "p90": 73.6,
+      "max": 80.6,
+      "min": 54.2,
+      "n": 74
+    },
+    "gov_total_per_turn": {
+      "avg": 40.4,
+      "median": 40.4,
+      "p90": 44.0,
+      "max": 60.5,
+      "min": 32.5,
+      "n": 66
+    },
+    "gov_stage1_triage": {
+      "avg": 3.6,
+      "median": 3.4,
+      "p90": 4.0,
+      "max": 5.8,
+      "min": 3.0,
+      "n": 66
+    },
+    "gov_stage2_focused": {
+      "avg": 36.5,
+      "median": 36.7,
+      "p90": 39.5,
+      "max": 43.5,
+      "min": 29.1,
+      "n": 65
+    },
+    "latency_reduction_pct_median": 37.5
+  },
+  "anti_coauthoring": {
+    "gov_focus_writing": "74/74",
+    "exhaustive_focus_writing": "74/74"
+  },
+  "constitutional_unsafe_cases": [],
+  "over_narrowed_cases": [],
+  "decision_equivalence": {
+    "compared": 66,
+    "same_target": 52,
+    "same_target_pct": 78.8,
+    "divergences": 14
+  },
+  "fallback": {
+    "route_fallback_full": 0,
+    "foundational_fallback_full": 1,
+    "triage_focused": 73,
+    "fallback_pct": 1.4
+  },
+  "routing": {
+    "routes": {
+      "inside_out_clarification": 47,
+      "outside_in_reader_task": 10,
+      "support_fading": 1,
+      "convention_instruction": 9,
+      "stall_support": 6,
+      "transfer_test": 1
+    },
+    "inside_outside": {
+      "inside_out": 55,
+      "outside_in": 19
+    }
+  },
+  "divergence_classification": [
+    {
+      "case_id": "TC06",
+      "name": "Adequate thesis",
+      "exhaustive_target": "supporting claim formation",
+      "triage_target": "evidence and support \u2014 identifying what the claim requires the reader to believe and what information would supply that reason",
+      "route": "outside_in_reader_task",
+      "inside_outside": "outside_in",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves legitimately advance the student from thesis to support-building, differing only in entry angle \u2014 exhaustive targets subclaim formation while triage targets evidence identification \u2014 neither is clearly higher-leverage at this developmental stage."
+      }
+    },
+    {
+      "case_id": "TC07",
+      "name": "Strong thesis that should not be over-taught",
+      "exhaustive_target": "Release to continue drafting; light forward orientation toward body paragraph purpose.",
+      "triage_target": "development \u2014 moving from a sharp opening claim to supporting reasoning and evidence",
+      "route": "support_fading",
+      "inside_outside": "outside_in",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both responses affirm the draft's strength and forward-orient toward body paragraph development; triage asks the student to draft next sentences while exhaustive withholds that nudge, a difference in degree of scaffolding rather than a meaningful quality gap."
+      }
+    },
+    {
+      "case_id": "TC08",
+      "name": "Evidence without explanation",
+      "exhaustive_target": "Explanation / Analysis \u2014 interpreting evidence to connect it to the claim",
+      "triage_target": "evidence-to-claim connection (explanation/interpretation)",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves correctly diagnose the same foundational gap (evidence lacks interpretive connection to claim) and invite the student to supply their own reasoning; phrasing and entry point differ but leverage and safety are equivalent."
+      }
+    },
+    {
+      "case_id": "TC15",
+      "name": "Weak transition",
+      "exhaustive_target": "Naming the relationship between two adjacent sentences (transition as conceptual relationship).",
+      "triage_target": "logical connection between ideas (inside-out clarification of intended reasoning sequence before transitions can be addressed)",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "triage_better",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "inside_outside_correction",
+        "note": "Exhaustive jumps to labeling inter-sentence relationships (outside-in surface fix) before the student has demonstrated awareness of the underlying argument sequence; triage correctly asks the student to first articulate the logical chain, making any subsequent transition work meaningful rather than cosmetic."
+      }
+    },
+    {
+      "case_id": "TC20",
+      "name": "Sentence-level confusion",
+      "exhaustive_target": "Identify the sentence's central actor and main action as the foundation for revision",
+      "triage_target": "intended meaning / core idea \u2014 identifying the one thing the writer most wants to say about skateboarding",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves correctly identify the same foundational problem (tangled ideas, no clear core message) and invite the writer to name the one central idea before revising; exhaustive frames it through the lens of actor/action structure while triage frames it as meaning-finding, but neither is clearly superior in leverage or safety."
+      }
+    },
+    {
+      "case_id": "TC25",
+      "name": "Student asks the AI to write the answer",
+      "exhaustive_target": "eliciting a position/stance as prerequisite to forming a thesis",
+      "triage_target": "Intended position / central claim \u2014 surfacing what the student actually believes about free public transit",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves correctly identify the same foundational prerequisite \u2014 surfacing the student's position before drafting \u2014 and differ only in minor phrasing and framing, with no meaningful difference in leverage or safety."
+      }
+    },
+    {
+      "case_id": "TC31",
+      "name": "Ambiguous: both-sides could be a legitimate nuanced thesis",
+      "exhaustive_target": "what counts as evidence/support for this claim (linking thesis to body)",
+      "triage_target": "central claim arguability and scope",
+      "route": "outside_in_reader_task",
+      "inside_outside": "outside_in",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves address the claim's argumentative strength at the same developmental level but use different entry points (falsifiability test vs. evidence-linking), making neither clearly superior for this already-strong draft."
+      }
+    },
+    {
+      "case_id": "TC32",
+      "name": "Ambiguous: reflective piece not needing a thesis",
+      "exhaustive_target": "Purpose articulation \u2014 helping the student name where the reflection is headed before developing further",
+      "triage_target": "grounding the reflective insight in concrete scene/supporting detail",
+      "route": "outside_in_reader_task",
+      "inside_outside": "outside_in",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves are defensible next steps for this early-stage draft \u2014 exhaustive surfaces destination/purpose before expansion, triage grounds the insight in concrete scene \u2014 neither is clearly higher-leverage given how undeveloped the draft is."
+      }
+    },
+    {
+      "case_id": "TC35",
+      "name": "Descriptive \u2014 flat detail, no dominant impression",
+      "exhaustive_target": "Sensory/concrete supporting detail \u2014 moving from inventory to experienced description",
+      "triage_target": "Unifying Impression / Dominant Mood (communicative purpose for descriptive writing)",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "triage_better",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "improved_routing",
+        "note": "Triage correctly identifies the upstream problem \u2014 the student has no controlling impression yet \u2014 so coaching mood/purpose first prevents detail work from going in the wrong direction; exhaustive jumps to craft execution before the writer knows what they're trying to convey."
+      }
+    },
+    {
+      "case_id": "TC37",
+      "name": "Compare/contrast \u2014 no organizing scheme",
+      "exhaustive_target": "Establish a controlling comparative claim (thesis)",
+      "triage_target": "communicative purpose / central claim",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves correctly identify the missing thesis/central claim as the foundational problem and invite the student to generate it themselves; the difference is framing (comparative dimension vs. authorial stance) rather than quality."
+      }
+    },
+    {
+      "case_id": "TC58",
+      "name": "Concession is a straw man",
+      "exhaustive_target": "Fair representation of the counterargument (no straw man)",
+      "triage_target": "representing opposing views fairly (steelmanning before rebutting)",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves correctly identify the straw-man as the foundational problem and invite the student to steelman the opposition; triage is marginally more explicit about concrete counter-reasons but neither outperforms the other on leverage or safety."
+      }
+    },
+    {
+      "case_id": "TC59",
+      "name": "Conclusion introduces a new argument",
+      "exhaustive_target": "Eliminating the new-argument error and replacing it with synthesis/completion of the essay's actual purpose",
+      "triage_target": "conclusion function \u2014 synthesis vs. new-claim introduction",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves correctly identify the new-argument error, explain the synthesis-vs-new-claim distinction, and redirect the student toward completing the essay's established purpose without coauthoring; differences are stylistic rather than substantive."
+      }
+    },
+    {
+      "case_id": "TC65",
+      "name": "Student pastes AI-generated text and asks 'is this good?'",
+      "exhaustive_target": "Thesis: move from topic-summary to contestable claim",
+      "triage_target": "authentic voice and intended meaning \u2014 what the student genuinely wants to argue",
+      "route": "inside_out_clarification",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "triage_better",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "inside_outside_correction",
+        "note": "Triage correctly identifies that the student's problem is borrowed academic language masking an absent genuine position, and routes to authentic voice before thesis-craft work can be meaningful; exhaustive jumps to thesis mechanics on a sentence that may not yet represent what the student actually thinks."
+      }
+    },
+    {
+      "case_id": "TC66",
+      "name": "Perfectionist stuck \u2014 won't commit anything",
+      "exhaustive_target": "Elicit a rough stance/position sentence to break the block",
+      "triage_target": "lowering-stakes generative fluency",
+      "route": "stall_support",
+      "inside_outside": "inside_out",
+      "path": "triage_focused",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "triage_anti_coauthoring_ok": true,
+        "over_narrowed": false,
+        "cause": "evaluator_ambiguity",
+        "note": "Both moves competently address the block with a low-stakes generative prompt; triage uses open-ended freewrite while exhaustive offers a sentence-stem scaffold, but neither is clearly superior for this stage."
+      }
+    }
+  ]
+}
