@@ -285,3 +285,111 @@ async def run_exhaustive(session: Session, req: InteractRequest) -> dict:
         "output_tokens": int((m.get("reasoner_output_bytes") or 0) / 4),
     }
     return result
+
+
+# ---------------------------------------------------------------------------
+# STREAMING (perceived-latency only; does NOT alter the instructional decision)
+# ---------------------------------------------------------------------------
+def _extract_partial_invitation(raw: str) -> str:
+    """Extract the in-progress value of the FIRST-emitted student_facing_invitation
+    field from a partially-streamed JSON string."""
+    key = raw.find('"student_facing_invitation"')
+    if key == -1:
+        return ""
+    colon = raw.find(":", key)
+    if colon == -1:
+        return ""
+    q = raw.find('"', colon)
+    if q == -1:
+        return ""
+    out, i = [], q + 1
+    esc = {"n": "\n", "t": "\t", '"': '"', "\\": "\\"}
+    while i < len(raw):
+        c = raw[i]
+        if c == "\\" and i + 1 < len(raw):
+            out.append(esc.get(raw[i + 1], raw[i + 1]))
+            i += 2
+            continue
+        if c == '"':
+            break
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+async def run_focused_streaming(session: Session, req: InteractRequest, triage: dict, on_delta) -> dict:
+    """Focused Stage 2, streamed. Emits the invitation to `on_delta` as it is
+    generated (invitation is the first serialized field), then parses the full
+    payload. Retries once non-streaming on unreadable output."""
+    from emergentintegrations.llm.chat import TextDelta
+    selections, io_names = _resolve_io(triage)
+    prompt = _focused_prompt(session, req, triage, selections, io_names)
+    t0 = time.perf_counter()
+    raw = ""
+    last_emit, last_len = 0.0, 0
+    chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"focused-{session.id}",
+                   system_message=SYSTEM_MESSAGE).with_model(*MODEL)
+    try:
+        async for ev in chat.stream_message(UserMessage(text=prompt)):
+            if isinstance(ev, TextDelta) and ev.content:
+                raw += ev.content
+                partial = _extract_partial_invitation(raw)
+                now = time.perf_counter()
+                if partial and (len(partial) - last_len >= 12 or now - last_emit > 0.6):
+                    last_emit, last_len = now, len(partial)
+                    try:
+                        await on_delta(partial)
+                    except Exception:
+                        pass
+    except Exception:
+        raw = ""  # streaming failed; fall through to non-streaming retry
+    try:
+        parsed = _parse_engine_output(session, raw)
+    except ValueError:
+        chat2 = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"focused-{session.id}-r",
+                        system_message=SYSTEM_MESSAGE).with_model(*MODEL)
+        raw = await chat2.send_message(UserMessage(text=prompt))
+        parsed = _parse_engine_output(session, raw)
+    dt = time.perf_counter() - t0
+    parsed["_meta"] = {
+        "focused_prompt_tokens": _tok(prompt),
+        "focused_output_tokens": _tok(raw),
+        "t_focused_s": round(dt, 2),
+        "reasoner_prompt_bytes": len(prompt),
+        "reasoner_output_bytes": len(raw),
+    }
+    return parsed
+
+
+async def run_triage_pipeline_streaming(session: Session, req: InteractRequest, on_delta) -> dict:
+    """Streaming variant of the triage pipeline. Foundational cases fall back to
+    the full (non-streaming) frozen engine, exactly as the non-streaming path."""
+    t0 = time.perf_counter()
+    triage = await run_triage(session, req)
+    if bool(triage.get("foundational_problem")):
+        result = await server._run_engine(session, req)
+        m = result.get("_meta", {})
+        result["_triage"] = triage
+        result["_triage_meta"] = {
+            "path": "foundational_fallback_full",
+            "triage_latency_s": triage["_latency_s"],
+            "focused_latency_s": None,
+            "total_latency_s": round(time.perf_counter() - t0, 2),
+            "num_model_calls": 2,
+            "prompt_tokens": triage["_prompt_tokens"] + int((m.get("reasoner_prompt_bytes") or 0) / 4),
+            "output_tokens": triage["_output_tokens"] + int((m.get("reasoner_output_bytes") or 0) / 4),
+        }
+        return result
+    result = await run_focused_streaming(session, req, triage, on_delta)
+    fm = result["_meta"]
+    result["_triage"] = triage
+    result["_triage_meta"] = {
+        "path": "triage_focused",
+        "triage_latency_s": triage["_latency_s"],
+        "focused_latency_s": fm["t_focused_s"],
+        "total_latency_s": round(time.perf_counter() - t0, 2),
+        "num_model_calls": 2,
+        "prompt_tokens": triage["_prompt_tokens"] + fm["focused_prompt_tokens"],
+        "output_tokens": triage["_output_tokens"] + fm["focused_output_tokens"],
+    }
+    return result

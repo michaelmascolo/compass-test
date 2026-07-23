@@ -29,13 +29,18 @@ export default function StudentWorkspace({
   const completedAi = allTurns.filter(
     (t) => t.role === "ai" && t.status === "complete" && t.content
   );
+  // A turn mid-stream: its invitation is rendering progressively.
+  const streamingTurn = allTurns.find(
+    (t) => t.role === "ai" && t.status === "streaming" && t.content
+  );
+  const streaming = !!streamingTurn;
   const started = studentTurns.length > 0;
   const reviseCount = studentTurns.filter((t) => t.kind === "revise").length;
 
-  // The single active coaching target = the most recent completed AI turn.
-  const activeCoaching = completedAi.length
-    ? completedAi[completedAi.length - 1]
-    : null;
+  // The single active coaching target = the streaming turn, else the most recent
+  // completed AI turn.
+  const activeCoaching = streamingTurn
+    || (completedAi.length ? completedAi[completedAi.length - 1] : null);
   // Everything earlier is resolved coaching (right-rail history), newest first.
   const resolvedCoaching = useMemo(
     () => completedAi.slice(0, Math.max(0, completedAi.length - 1)).reverse(),
@@ -68,13 +73,22 @@ export default function StudentWorkspace({
     if (session?.id) localStorage.setItem(draftKey(session.id), draft);
   }, [draft, session?.id]);
 
-  // A new coaching target auto-surfaces its marker (single-focus rule).
+  // During streaming, auto-open the card so the invitation renders live.
   useEffect(() => {
-    if (activeCoaching) {
+    if (streamingTurn) {
       setMarkerOpen(true);
-      setOpenCoachingId(null);
+      setOpenCoachingId(streamingTurn.id);
     }
-  }, [activeCoaching?.id]);
+  }, [streamingTurn?.id]);
+
+  // A newly completed coaching that did NOT stream surfaces marker-first; a
+  // streamed one stays open through completion (same turn id).
+  useEffect(() => {
+    if (activeCoaching && !streaming) {
+      setMarkerOpen(true);
+      setOpenCoachingId((prev) => (prev === activeCoaching.id ? prev : null));
+    }
+  }, [activeCoaching?.id, streaming]);
 
   const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
   const dirty = started
@@ -82,7 +96,7 @@ export default function StudentWorkspace({
     : draft.trim().length > 0;
 
   const submitDraft = () => {
-    if (!draft.trim() || loading || !dirty) return;
+    if (!draft.trim() || loading || streaming || !dirty) return;
     onSubmit(started ? "revise" : "writing", draft.trim());
     setMarkerOpen(false);
   };
@@ -250,6 +264,9 @@ export default function StudentWorkspace({
                     className="text-stone-800 leading-relaxed text-[15px] whitespace-pre-wrap"
                   >
                     {activeCoaching.content}
+                    {streaming && (
+                      <span className="stream-caret inline-block w-[2px] h-[1.05em] align-[-0.15em] ml-0.5 bg-[#8C3A2A]" />
+                    )}
                   </p>
                   <div className="mt-4 flex flex-wrap items-center gap-4">
                     <span className="inline-flex items-center gap-1.5 text-[11px] text-stone-500">
@@ -319,7 +336,7 @@ export default function StudentWorkspace({
               <button
                 onClick={submitDraft}
                 data-testid="submit-draft-button"
-                disabled={!draft.trim() || loading || !dirty}
+                disabled={!draft.trim() || loading || streaming || !dirty}
                 className="group inline-flex items-center gap-2 bg-[#8C3A2A] text-white px-6 py-3 rounded-sm font-medium tracking-wide hover:bg-[#6B2C20] enabled:hover:-translate-y-px transition-[background-color,transform] disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {loading ? (

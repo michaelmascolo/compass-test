@@ -208,3 +208,19 @@ Triage v4 delivers **~43% latency reduction at baseline-equivalent instructional
 - `test_reports/triage_66_deliverable_v4.json` (+ `_v3`) — full metrics + divergence classification.
 - Runs: v3 `115b7491`, **v4 `532b8231`** (final), exhaustive baseline `fd0dec0c`.
 
+---
+
+# PART IV — Streaming + limited opt-in (implemented, verified)
+
+## Triage v4 — limited opt-in (WS1, DONE)
+Per-session flag ships as the opt-in surface: `PATCH /api/sessions/{id}/reasoning-mode` or `SessionCreate.reasoning_mode`. Frontend opt-in via `?triage` (or `localStorage dws_reasoning_mode`) — sessions created in triage mode; everyone else stays on the exhaustive default. `reasoning_path` recorded per turn keeps comparison data flowing.
+
+## Streaming the coaching invitation (WS2, DONE — perceived-latency only)
+Implemented over the existing durable-polling transport (no SSE → sidesteps the 60s ingress cap). The focused Stage-2 call now uses `LlmChat.stream_message`; because `student_facing_invitation` is the first serialized field, its tokens are extracted and written to the placeholder turn (`status="streaming"`) as they generate. The frontend polls at 1.2s, auto-opens the coaching card, and renders the invitation live with a caret; background bookkeeping (full theory, analytics, revision-history, persistence) finalizes afterward (`status="complete"`) with the **identical** invitation text.
+- Guard fix: `_run_reasoning` finalize + interact concurrency now treat `streaming` as in-flight (previously the streaming status tripped the "no longer processing → discard" guard).
+- **Measured (live triage session):** invitation fully visible at **~8s** vs the full turn completing at **~36s** — a **~4–5× reduction in time-to-first-coaching**, with byte-identical invitation between the streamed and finalized states (decision NOT altered). Verified in-browser (`?dev&triage`): card auto-opens and renders live.
+- Scope: streaming is wired for the triage focused path (invitation-first). The default exhaustive path is unchanged (its schema is not invitation-first); enabling streaming there would require reordering the frozen schema (a prompt change) — deferred to the Stage-2 refactor.
+
+## Stage-2 decomposition design (WS3/4, DELIVERED for review — NO prompt edits)
+`COMPASS_Stage2_Decomposition_Design.md` classifies every SYSTEM_MESSAGE section as **[A] invariant constitutional rule**, **[B] conditional diagnostic process**, **[C] learner-model update**, or **[D] reporting/output**, with rationale, plus the proposed constitutional-core + conditional-diagnostic architecture and open design questions. **No prompt will be modified until this is reviewed and approved**; any refactor must then clear the full 66-case Compare-Two-Runs (WS5), judged on constitutional behavior, not textual similarity.
+

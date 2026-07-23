@@ -1951,7 +1951,21 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
         # switch silently: the chosen path is recorded on the AI turn.
         if (session.reasoning_mode or "exhaustive") == "triage_experimental":
             import triage_experiment
-            result = await triage_experiment.run_triage_pipeline(reason_session, req)
+
+            async def _on_invitation_delta(partial: str) -> None:
+                # Progressive streaming over the durable-polling transport: write the
+                # partial invitation to the placeholder turn so the learner sees it
+                # render while background bookkeeping continues. Does NOT alter the
+                # instructional decision — the final write carries the same invitation.
+                await db.sessions.update_one(
+                    {"id": session_id, "turns.id": ai_turn_id},
+                    {"$set": {"turns.$.content": partial, "turns.$.status": "streaming",
+                              "turns.$.reasoning_path": "triage_focused"}},
+                )
+
+            result = await triage_experiment.run_triage_pipeline_streaming(
+                reason_session, req, _on_invitation_delta
+            )
         else:
             result = await _run_engine(reason_session, req)
 
@@ -1961,8 +1975,8 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
             return
         session2 = Session(**doc2)
         ai = next((t for t in session2.turns if t.id == ai_turn_id), None)
-        if ai is None or ai.status != "processing":
-            logger.info(f"[reason] turn {ai_turn_id} no longer processing; discarding result")
+        if ai is None or ai.status not in ("processing", "streaming"):
+            logger.info(f"[reason] turn {ai_turn_id} no longer active; discarding result")
             return
         _finalize_turn(session2, ai_turn_id, req, result)
         if session2.is_preview:
@@ -2009,7 +2023,7 @@ async def interact(session_id: str, req: InteractRequest):
         raise HTTPException(status_code=400, detail="Empty submission")
 
     # prevent duplicate concurrent turns while one is still being prepared
-    if any(t.status == "processing" for t in session.turns):
+    if any(t.status in ("processing", "streaming") for t in session.turns):
         raise HTTPException(status_code=409, detail="A response is already being prepared for this session.")
 
     # persist the student turn + a processing placeholder AI turn IMMEDIATELY,

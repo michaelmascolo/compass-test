@@ -56,10 +56,21 @@ function StudioApp() {
   const [submitting, setSubmitting] = useState(false);
   const [savingTelos, setSavingTelos] = useState(false);
   const [panelOpen, setPanelOpen] = useState(false);
+  // Limited opt-in to the experimental triage reasoning path (?triage). The
+  // exhaustive frozen path remains the production default for everyone else.
+  const triageOptIn =
+    new URLSearchParams(window.location.search).has("triage") ||
+    localStorage.getItem("dws_reasoning_mode") === "triage_experimental";
+  const withMode = (form) =>
+    triageOptIn ? { ...form, reasoning_mode: "triage_experimental" } : form;
   const notifiedFailRef = useRef(new Set());
 
   // A turn is being reasoned on in the background whenever any turn is "processing".
+  // "streaming" means the invitation is progressively rendering — keep polling
+  // (faster) so the learner sees it appear, but don't show the pre-token spinner.
   const isProcessing = !!session?.turns?.some((t) => t.status === "processing");
+  const isStreaming = !!session?.turns?.some((t) => t.status === "streaming");
+  const isBusy = isProcessing || isStreaming;
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -88,7 +99,7 @@ function StudioApp() {
   // survives reloads, disconnects, and slow (>180s) reasoning — on reconnect the
   // completed turn is simply loaded from the DB.
   useEffect(() => {
-    if (!session?.id || !isProcessing) return;
+    if (!session?.id || !isBusy) return;
     const id = session.id;
     let cancelled = false;
     const timer = setInterval(async () => {
@@ -104,17 +115,17 @@ function StudioApp() {
       } catch (e) {
         // transient network error — keep polling; the DB still holds the work
       }
-    }, 2500);
+    }, 1200);
     return () => {
       cancelled = true;
       clearInterval(timer);
     };
-  }, [session?.id, isProcessing]);
+  }, [session?.id, isBusy]);
 
   const handleBegin = async (form) => {
     setSubmitting(true);
     try {
-      const s = await createSession(form);
+      const s = await createSession(withMode(form));
       localStorage.setItem(STORAGE_KEY, s.id);
       setSession(s);
     } catch (e) {
@@ -128,7 +139,7 @@ function StudioApp() {
     setSubmitting(true);
     try {
       sessionStorage.removeItem("dws_manual_setup");
-      const s = await createSession(TEST_PRESET);
+      const s = await createSession(withMode(TEST_PRESET));
       localStorage.setItem(STORAGE_KEY, s.id);
       setSession(s);
     } catch (e) {
