@@ -1,6 +1,7 @@
 # Compass Governance v2 — Architecture Specification (DRAFT FOR REVIEW)
 
-> Status: **DRAFT**, architectural level only (behavior + interfaces, no code). Once approved this becomes the authoritative implementation contract for Governance v2.
+> Status: **DRAFT — refinements incorporated (round 2), awaiting your confirmation to lock as the authoritative contract.** Architectural level only (behavior + interfaces, no code).
+> Change log: round-2 refinements applied — three-pass call granularity (§1), Assignment vs. Student purpose (S1), functional-representation output (S4), prewriting triggers only on insufficient conceptual organization not weak prose (S4/B2), target = leverage + forward progress (S5), reader-perspective explicit teaching (S7), `why_this_now` transparency field (§5), Cognitive-Substitution gating evaluator dimension (§7/§8), and the "Interpret Before Instruct" architectural principle (§0).
 > Relationship to v1: Governance v2 is a **candidate successor** to Governance v1. It is implemented behind the existing `reasoning_mode` feature flag (`reasoning_mode: "governance_v2"`). The default **`exhaustive` (frozen v1) engine remains unchanged and is the safety net + baseline.** v2 is promoted to default only after it passes the 66-case Compare-Two-Runs constitutional review AND demonstrates improvement in clarity, transparency, instructional quality, and latency — not merely output matching.
 
 ---
@@ -14,6 +15,9 @@
 - If, after validation, we find the KB *itself* needs changes, that becomes a future "true SYSTEM_MESSAGE v2." Not a goal now.
 
 The 5-Layer Governance Architecture (L1 Constitutional, L2 Developmental Policy, L3 Diagnosis, L4 Learner Model, L5 Presentation) is preserved. v2 changes **the order in which the layers are engaged** and adds an explicit, inspectable orchestration spine.
+
+### Central architectural principle — INTERPRET BEFORE INSTRUCT
+Governance v2 intentionally **separates interpretation from instruction**. Compass must first *understand what communicative work the student's writing is currently performing* (S1–S4) before deciding *how to teach* (S5–S7). Interpretation stages never teach, model the learner, or select a target; instruction stages never re-open interpretation. This separation is the central architectural improvement over Governance v1, and it is what makes each downstream decision cheap, scoped, and inspectable.
 
 ---
 
@@ -45,7 +49,15 @@ The 5-Layer Governance Architecture (L1 Constitutional, L2 Developmental Policy,
                     one learner-facing invitation + transparency_state
 ```
 
-**Ordering principles enforced by the spine:** purpose before development (S1); writing unit before learner model (S2 before S6); interpret before teach (S4 before S7); exactly one target (S5); developmental reasoning deferred until after the target is chosen (S6); explicit, reader-centered teaching (S7); function over form (S3/S4); prewriting as a decision point (B2); transparency emitted every turn (S7).
+**Ordering principles enforced by the spine:** interpret before instruct (S1–S4 before S5–S7); purpose before development (S1); writing unit before learner model (S2 before S6); interpret before teach (S4 before S7); exactly one target (S5); developmental reasoning deferred until after the target is chosen (S6); explicit, reader-centered teaching (S7); function over form (S3/S4); prewriting as a decision point (B2); transparency emitted every turn (S7).
+
+### Call granularity (DECIDED) — three logical passes, seven conceptual stages
+The seven stages are conceptual and always distinct in the reasoning ledger, but they are executed in **three batched model passes** (not one call per stage, not one monolithic call):
+- **Pass 1 — Orientation & functional frame:** S1 Purpose · S2 Writing Unit · S3 Canonical Functional Model.
+- **Pass 2 — Interpretation & target:** S4 Functional Interpretation · S5 Single Instructional Target.
+- **Pass 3 — Strategy & teaching:** S6 Developmental Strategy · S7 Dialogue / Explicit Teaching.
+
+Rationale: preserves the conceptual seven-stage separation (and full inspectability via the ledger) while keeping latency low. Branch checks (B1 after S1, B2/B3 after S4) are evaluated at the end of the pass that produces their trigger, and may short-circuit the remaining passes. Implementation retains flexibility *within* this batching (e.g., how much KB each pass loads), but the pass boundaries above are part of the contract.
 
 ---
 
@@ -55,17 +67,17 @@ A single accumulating structure flows through the stages and is persisted per tu
 
 ```
 GovernanceV2Trace {
-  purpose:                { communicative_purpose, confidence, source, assignment_alignment }
+  purpose:                { assignment_purpose, student_purpose, purpose_alignment, confidence, source, assignment_alignment }
   writing_unit:           { unit, scope, confidence, prior_unit_continuity }
   functional_model:       { functions[], reader_needs[] }
-  functional_interpretation: { function_status[ {function, status, evidence} ], reader_gap_summary }
-  target:                 { primary_target, leverage_rationale, target_continuity }
+  functional_interpretation: { functional_representation, function_status[ {function, functional_reading, evidence} ], reader_gap_summary }
+  target:                 { primary_target, leverage_rationale, forward_progress_rationale, target_continuity }
   developmental_strategy: { learner_state, zpd_position, scaffolding_level, support_move, consolidation/fading }
   dialogue:               { student_facing_invitation, candidate_invitations[2], teaching_content, reflection_prompt }
-  transparency_state:     { where_you_are, current_unit, why_it_matters, todays_goal, whats_next }
+  transparency_state:     { where_you_are, current_unit, why_it_matters, why_this_now, todays_goal, whats_next }
   branch:                 none | purpose_unclear | prewriting | foundational_fallback
   layers_invoked:         { per-stage list of L1..L5 }
-  stage_latencies_s:      { per-stage timing }
+  pass_latencies_s:       { pass1, pass2, pass3 }
 }
 ```
 
@@ -78,13 +90,15 @@ Each stage appends only its own outputs; downstream stages read only what they n
 For each stage: **Responsibility · Inputs · Outputs · Does NOT do · Governance layer(s) · KB referenced.**
 
 ### S1 — PURPOSE
-- **Responsibility:** Determine the communicative purpose of the writing task — what the student is trying to accomplish for a reader — honoring the teacher's stated purpose.
+- **Responsibility:** Determine the communicative purpose of the writing task, distinguishing two purposes that may differ and must be detected **separately**:
+  - **Assignment Purpose** — what the *teacher* is asking students to accomplish (from telos / teacher_notes / assignment).
+  - **Student Purpose** — what the *student's writing suggests they believe* they are trying to accomplish (inferred from the text itself).
 - **Inputs:** session telos (teacher purpose, assignment, teacher_notes), current student text, prior conversation.
-- **Outputs:** `communicative_purpose`, `purpose_confidence`, `purpose_source` (teacher | student-stated | inferred), `assignment_alignment` (on-task | drift | off-task).
-- **Does NOT:** diagnose weaknesses, model the learner, select a target, or teach.
+- **Outputs:** `assignment_purpose`, `student_purpose`, `purpose_alignment` (aligned | partial | divergent), `confidence`, `source` (teacher | student-stated | inferred), `assignment_alignment` (on-task | drift | off-task).
+- **Does NOT:** diagnose weaknesses, model the learner, select a target, or teach. (Note: a divergence between assignment and student purpose is *observed* here, not yet acted on — it becomes evidence for later stages.)
 - **Layers:** L2 (purpose-first, honor teacher purpose), L1 (answer-the-assignment gate).
 - **KB:** M6 communicative purpose; telos/teacher_notes.
-- **Branch:** if `purpose_confidence` below threshold or intended meaning indeterminate → **B1 Purpose-Unclear**.
+- **Branch:** if the **student purpose** cannot be determined at all (intended meaning indeterminate) or overall `confidence` is below threshold → **B1 Purpose-Unclear**.
 
 ### S2 — WRITING UNIT
 - **Responsibility:** Identify the current instructional object (prewriting, thesis, introduction, body paragraph, evidence, transition, conclusion, whole-draft, …).
@@ -103,18 +117,20 @@ For each stage: **Responsibility · Inputs · Outputs · Does NOT do · Governan
 - **KB:** the unit's functional frameworks (M6–M13) + IO element definitions.
 
 ### S4 — FUNCTIONAL INTERPRETATION
-- **Responsibility:** Interpret the student's actual writing against the functional model — which functions are **present & working**, **weak**, or **missing** — from the reader's perspective. **Understand, not teach.**
-- **Inputs:** `functions[]`, `reader_needs[]`, student text, purpose.
-- **Outputs:** `function_status[]` (each: function, status ∈ {present, weak, missing}, evidence = span/quote), `reader_gap_summary`.
-- **Does NOT:** select a target, teach, model the learner, invent deficiencies (restraint), or score.
+- **Responsibility:** Produce a **functional representation** of the student's current writing — a description of *what communicative work each part is currently performing (or attempting) for a reader* — interpreted against the functional model. **Understand, not evaluate.** The emphasis is understanding communicative function, **not** assigning quality labels.
+  - *Not:* "Thesis weak."
+  - *Instead:* "The writer appears to be attempting to state a position, but the statement does not yet organize the essay for the reader."
+- **Inputs:** `functions[]`, `reader_needs[]`, student text, purpose (assignment + student).
+- **Outputs:** `functional_representation` (prose account of the writing's current communicative work), `function_status[]` (each: function, `functional_reading` = what this part is doing / attempting for the reader, evidence = span/quote), `reader_gap_summary` (what the reader still needs).
+- **Does NOT:** select a target, teach, model the learner, invent deficiencies (restraint), or assign quality scores/labels.
 - **Layers:** L3 (diagnosis — interpretation only), reader-centered, L1 (restraint: no invented deficiencies).
 - **KB:** the unit's functional frameworks.
-- **Branches:** if weakness reflects **insufficient conceptual organization** (no locatable idea/claim to organize; the unit's functions cannot even be attempted because the thinking isn't developed yet) → **B2 Prewriting Mode**. If the text is **off-task or incoherent across ideas** (inconsistent with the established purpose/unit) → **B3 Foundational Fallback**.
+- **Branches:** enter **B2 Prewriting Mode** ONLY when the functional representation shows **insufficient conceptual organization** — i.e., there is not yet a developed idea/claim for the unit's functions to organize, so the functions cannot even be meaningfully attempted. **Weak prose alone does NOT trigger prewriting.** If the text is **off-task or incoherent across ideas** (inconsistent with the established purpose/unit) → **B3 Foundational Fallback**.
 
 ### S5 — INSTRUCTIONAL TARGET
-- **Responsibility:** Select **exactly ONE** instructional target with the greatest developmental leverage among the weak/missing functions.
-- **Inputs:** `function_status[]`, `reader_gap_summary`, purpose, prior target/continuity.
-- **Outputs:** `primary_target` (single function/aspect of the unit), `leverage_rationale`, `target_continuity` (new | continued | resolved→advance).
+- **Responsibility:** Select **exactly ONE** instructional target. Selection criterion is twofold: the issue with the **greatest developmental leverage**, *while also preserving forward progress toward completion of the assignment*. The chosen target should both matter most developmentally and keep the student moving toward finishing the task (not send them into an unbounded detour).
+- **Inputs:** `functional_representation`, `function_status[]`, `reader_gap_summary`, purpose (assignment + student), prior target/continuity.
+- **Outputs:** `primary_target` (single function/aspect of the unit), `leverage_rationale`, `forward_progress_rationale` (how addressing this keeps the student advancing toward completing the assignment), `target_continuity` (new | continued | resolved→advance).
 - **Does NOT:** model the learner (next stage), teach, or address multiple issues.
 - **Layers:** L2 (one-target policy), L3.
 - **Constitutional:** exactly one target.
@@ -130,7 +146,7 @@ For each stage: **Responsibility · Inputs · Outputs · Does NOT do · Governan
 ### S7 — DIALOGUE / EXPLICIT TEACHING
 - **Responsibility:** Generate ONE learner-facing coaching turn following the **explicit-teaching pattern**:
   1. **Orient** — where we are (unit) and why it matters (reader-centered).
-  2. **Teach** — explicitly explain the concept and the communicative function it serves for the reader.
+  2. **Teach** — explicitly explain the concept **from the reader's perspective**: what the concept does for the reader, not merely a formal definition. E.g., *"A thesis helps readers understand the central idea that will organize the essay,"* rather than *"a thesis expresses an opinion."*
   3. **Locate** — identify the student's closest current attempt; explain why it's working or where its function is incomplete.
   4. **Invite** — invite the student to apply/revise **their own writing** (one invitation).
   5. **Reflect** — set up reflection on how the revision improved communication.
@@ -150,7 +166,7 @@ For each stage: **Responsibility · Inputs · Outputs · Does NOT do · Governan
 - **Exit:** once purpose is sufficiently clear (this or a later turn), resume the normal pipeline at S2.
 
 ### B2 — Prewriting Mode (after S4)
-- **Trigger:** functional interpretation shows the weakness is insufficient conceptual organization, not drafting.
+- **Trigger:** the S4 functional representation shows **insufficient conceptual organization** — not merely weak prose. Prewriting is invoked only when there is not yet a developed idea/claim for the unit's functions to organize. **Weak or clumsy prose that nonetheless carries an organizable idea does NOT trigger prewriting** (it is handled as a normal target).
 - **Behavior:** temporarily set `writing_unit = prewriting`; the target becomes organizing thinking (idea generation, claim formation, structure-of-thought) before returning to drafting/revision. Explicit teaching of the prewriting move; the student does the thinking.
 - **Exit:** when sufficient conceptual organization exists, return to the drafting unit.
 - **Design intent:** detection uses only S4 signals (cheap), so we do NOT reintroduce the global analysis v2 is trying to avoid.
@@ -167,6 +183,7 @@ Every v2 turn MUST emit `transparency_state` (the engine produces it even before
 - `where_you_are` — position in the assignment arc.
 - `current_unit` — the writing unit being worked.
 - `why_it_matters` — reader-centered rationale.
+- `why_this_now` — **why we are working on this before something else** (makes instructional prioritization transparent to the learner; derived from S5's leverage + forward-progress rationale).
 - `todays_goal` — the single instructional target as a student-facing goal.
 - `whats_next` — the anticipated next unit/step.
 
@@ -175,28 +192,30 @@ Layer: L5 + a later `StudentWorkspace` UI sub-phase. The evaluator scores its co
 ---
 
 ## 6. Where key things happen (explicit answers)
-- **Purpose determination:** S1.
-- **Writing unit / instructional context:** S2 (before learner modeling).
-- **Functional interpretation (understand, not teach):** S4.
-- **Single instructional target selected:** S5.
-- **Learner modeling BEGINS:** S6.
-- **Developmental reasoning BEGINS:** S6.
-- **Explicit teaching occurs:** S7 (steps 2–3), using KB concept definitions.
-- **Dialogue generation occurs:** S7.
+- **Purpose determination (assignment + student, separately):** S1 (Pass 1).
+- **Writing unit / instructional context:** S2 (Pass 1, before learner modeling).
+- **Functional interpretation (functional representation; understand, not evaluate):** S4 (Pass 2).
+- **Single instructional target selected (leverage + forward progress):** S5 (Pass 2).
+- **Learner modeling BEGINS:** S6 (Pass 3).
+- **Developmental reasoning BEGINS:** S6 (Pass 3).
+- **Explicit teaching occurs (reader-perspective):** S7 (Pass 3, steps 2–3).
+- **Dialogue generation occurs:** S7 (Pass 3).
 
 ---
 
 ## 7. Updated evaluator dimensions for Compare-Two-Runs
 
 Keep all existing v1 dimensions (constitutional preservation, anti-coauthoring, target defensibility, restraint, etc.) and ADD:
-- **Purpose-first ordering** — purpose established before diagnosis.
-- **Single-target discipline** — exactly one target addressed.
-- **Explicit teaching present** — concept taught (function + reader value) before the invitation; the 5-step pattern followed.
+- **Cognitive Substitution (CONSTITUTIONAL, gating).** Question: *"Could the learner submit the assignment after reading Compass's response without performing the intended cognitive work?"* If **yes**, the response **fails constitutional review** (hard fail, same severity as an anti-coauthoring violation). This guards the boundary between explicit *teaching* and doing the student's *thinking/writing*.
+- **Interpret-before-instruct ordering** — interpretation (S1–S4) precedes and is distinct from instruction (S5–S7); no teaching leaks into interpretation stages.
+- **Purpose-first ordering** — purpose established before diagnosis; assignment vs. student purpose distinguished.
+- **Single-target discipline** — exactly one target addressed; target preserves forward progress toward assignment completion.
+- **Explicit teaching present** — concept taught from the reader's perspective before the invitation; the 5-step pattern followed.
 - **Reader-centered framing** — instruction framed by what the reader needs.
 - **Function over form** — no rigid template imposed; alternative valid realizations respected.
-- **Transparency completeness** — all five transparency fields present + accurate.
-- **Prewriting-mode appropriateness** — entered only when warranted; not over-triggered.
-- **Latency** — total + per-stage timings.
+- **Transparency completeness** — all six transparency fields present + accurate (including `why_this_now`).
+- **Prewriting-mode appropriateness** — entered only for insufficient conceptual organization; never for weak prose alone; not over-triggered.
+- **Latency** — total + per-pass timings.
 
 **Promotion criteria:** constitutional preservation maintained (0 regressions, 0 anti-coauthoring violations) AND measurable improvement on clarity / explicit-teaching / transparency / latency vs. v1. NOT mere output matching (per the v1 precedent: judge governing behavior, not textual similarity).
 
@@ -210,6 +229,7 @@ Keep all existing v1 dimensions (constitutional preservation, anti-coauthoring, 
 - Honor stopping rules (independence requests / diminishing returns).
 - Answer-the-assignment / honor the teacher's stated purpose.
 - The student performs all revision and all cognitive work. **Explicit teaching is permitted but must not cross into doing the student's thinking or writing.**
+- **No cognitive substitution:** a learner must not be able to submit the assignment after reading Compass's response without performing the intended cognitive work. (Evaluated as a gating dimension — see §7.)
 
 ---
 
@@ -224,14 +244,15 @@ Keep all existing v1 dimensions (constitutional preservation, anti-coauthoring, 
 ---
 
 ## 10. Open implementation choices (for discussion — NOT decided here)
-1. **Call granularity:** one LLM call per stage (max control/inspectability, more latency) vs. batching (e.g., S1–S2 together, S3–S5 together, S6–S7 together). Latency vs. control tradeoff.
-2. Whether S1/S2 reuse the existing triage prompt or a new v2 purpose/unit prompt.
-3. Exact **prewriting-detection** signals at S4.
-4. **Purpose-confidence threshold** for the B1 branch.
+1. ~~Call granularity~~ — **DECIDED (see §1):** three batched passes (P1: S1–S3, P2: S4–S5, P3: S6–S7), preserving seven conceptual stages.
+2. Whether S1/S2 reuse the existing triage prompt or a new v2 Pass-1 prompt.
+3. Exact **prewriting-detection** signals at S4 (operationalizing "insufficient conceptual organization" vs. "weak prose").
+4. **Purpose-confidence / student-purpose-indeterminate threshold** for the B1 branch.
 5. Candidate-invitation count (keep 2 as in v1?).
-6. Where `transparency_state` is authored (within S7 vs a dedicated step).
-7. How much KB to inject per stage (token/latency management).
+6. Where `transparency_state` is authored (within S7/Pass 3 vs a dedicated step) and how `why_this_now` is phrased for students.
+7. How much KB to inject per pass (token/latency management).
 8. Whether B1/B2 produce a full 5-step teaching turn or an abbreviated clarification turn.
+9. How the `purpose_alignment` divergence (assignment vs. student purpose) should influence target selection when the two purposes diverge.
 
 ---
 
