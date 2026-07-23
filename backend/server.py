@@ -1458,8 +1458,8 @@ class ReasoningModePatch(BaseModel):
 
 @api_router.patch("/sessions/{session_id}/reasoning-mode", response_model=Session)
 async def set_reasoning_mode(session_id: str, patch: ReasoningModePatch):
-    if patch.reasoning_mode not in ("exhaustive", "triage_experimental"):
-        raise HTTPException(status_code=422, detail="reasoning_mode must be 'exhaustive' or 'triage_experimental'")
+    if patch.reasoning_mode not in ("exhaustive", "triage_experimental", "governance_v2"):
+        raise HTTPException(status_code=422, detail="reasoning_mode must be 'exhaustive', 'triage_experimental', or 'governance_v2'")
     doc = await db.sessions.find_one({"id": session_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Session not found")
@@ -2072,6 +2072,9 @@ async def _run_reasoning(session_id: str, ai_turn_id: str, req: InteractRequest)
             result = await triage_experiment.run_triage_pipeline_streaming(
                 reason_session, req, _on_invitation_delta
             )
+        elif (session.reasoning_mode or "exhaustive") == "governance_v2":
+            import governance_v2
+            result = await governance_v2.run_governance_v2(reason_session, req)
         else:
             result = await _run_engine(reason_session, req)
 
@@ -2194,6 +2197,9 @@ async def _harness_run_turn(session: Session, content: str, kind: str, reasoning
     if reasoning_mode == "triage_experimental":
         import triage_experiment
         result = await triage_experiment.run_triage_pipeline(reason_session, req)
+    elif reasoning_mode == "governance_v2":
+        import governance_v2
+        result = await governance_v2.run_governance_v2(reason_session, req)
     else:
         result = await _run_engine(reason_session, req)
     latency = round(time.monotonic() - t0, 2)
@@ -2248,6 +2254,8 @@ async def _harness_run_turn(session: Session, content: str, kind: str, reasoning
         "candidate_invitations": [c.invitation for c in (result.get("candidates") or [])][:3],
         "selected_invitation": (result.get("selected") or SelectedInvitation()).invitation,
         "route_fallback_reason": tmeta.get("route_fallback_reason", ""),
+        # Governance v2 reasoning ledger (empty unless reasoning_mode=governance_v2)
+        "governance_v2": result.get("_governance_v2", {}),
     }
 
 

@@ -1,0 +1,1206 @@
+{
+  "runs": {
+    "v1_baseline": "fd0dec0c-7e00-4df0-976b-7307f46a09a1",
+    "governance_v2": "388412d1-e209-4614-b555-cfcc701cdf71"
+  },
+  "verdicts": {
+    "v1": {
+      "pass": 58,
+      "partial": 8
+    },
+    "governance_v2": {
+      "pass": 51,
+      "partial": 14,
+      "error": 1
+    }
+  },
+  "latency_s": {
+    "v1_per_turn": {
+      "avg": 64.9,
+      "median": 64.7,
+      "max": 80.6,
+      "min": 54.2,
+      "n": 74
+    },
+    "v2_total_per_turn": {
+      "avg": 59.1,
+      "median": 58.6,
+      "max": 95.0,
+      "min": 44.7,
+      "n": 66
+    },
+    "v2_pass1": {}
+  },
+  "constitutional": {
+    "cognitive_substitution_cases": [
+      "TC11",
+      "TC14",
+      "TC18"
+    ],
+    "unsafe_cases": [
+      "TC10",
+      "TC14",
+      "TC18"
+    ],
+    "anti_coauthoring_focus_writing": "74/74"
+  },
+  "explicit_teaching_absent_cases": [
+    "TC02",
+    "TC07",
+    "TC24",
+    "TC56"
+  ],
+  "transparency_complete": "69/74",
+  "decision_equivalence": {
+    "compared": 66,
+    "same_target": 48,
+    "same_target_pct": 72.7
+  },
+  "branches": {
+    "assignment_repair": 14,
+    "prewriting": 31,
+    "none": 22,
+    "foundational_fallback": 5,
+    "purpose_unclear": 2
+  },
+  "writing_units": {
+    "whole_draft": 25,
+    "introduction": 10,
+    "thesis": 14,
+    "body_paragraph": 13,
+    "transition": 1,
+    "conclusion": 1,
+    "null": 5,
+    "prewriting": 5
+  },
+  "paths": {
+    "gv2_assignment_repair": 14,
+    "gv2_prewriting": 33,
+    "gv2_normal": 22,
+    "gv2_foundational_fallback": 5
+  },
+  "divergences": [
+    {
+      "case_id": "TC01",
+      "name": "Misunderstanding the assignment",
+      "v1_target": "Thesis / Central Claim \u2014 student must first answer the actual assignment with a position",
+      "v2_target": "Establish a clear, arguable position on the specific question of year-round schooling",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 teaches the concept of a position more explicitly and from a reader-centered frame, but both versions diagnose the same gap and invite the student to generate their own thesis; V2's added step (write the reason too) is a modest scope expansion but not a meaningful quality leap over V1's clean, effective prompt-completion scaffold."
+      }
+    },
+    {
+      "case_id": "TC02",
+      "name": "Answering a broader question than asked",
+      "v1_target": "Reorient thesis to answer the assignment (teen friendships scope)",
+      "v2_target": "Reorient the central claim to the assigned scope \u2014 social media and teen friendships specifically \u2014 so that the essay's position and all subsequent reasoning are aimed at the correct argumentative question.",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": false,
+        "reader_centered": false,
+        "single_target": true,
+        "note": "V2 over-explains with redundant restatements of the same point across multiple sentences, adds no meaningful teaching beyond V1's more economical instruction, and the verbosity risks cognitive overload without adding pedagogical value; V1 is tighter and equally effective."
+      }
+    },
+    {
+      "case_id": "TC03",
+      "name": "No thesis",
+      "v1_target": "Thesis: move from topic announcement to a contestable position",
+      "v2_target": "Signal the writer's argumentative stance so the reader knows what claim will be defended",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what a thesis does for the reader before issuing the invitation, and diagnoses exactly where the draft falls short ('balances both sides equally and steps back from committing'), giving the student a conceptual framework rather than just a task."
+      }
+    },
+    {
+      "case_id": "TC04",
+      "name": "Topic mistaken for thesis",
+      "v1_target": "Thesis: distinguish topic from contestable claim",
+      "v2_target": "Commit to a specific, arguable position (thesis) that the rest of the essay will defend",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the reader-facing function of a thesis and adds a concrete self-check ('could a reasonable person argue the opposite?'), giving the student a reusable heuristic rather than just a prompt to try again."
+      }
+    },
+    {
+      "case_id": "TC05",
+      "name": "Vague thesis",
+      "v1_target": "Move from topic-announcement to an arguable claim (take a side)",
+      "v2_target": "Stakes a specific, contestable claim that answers the assignment's central question",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 earns its superiority by explicitly teaching what a thesis does for the reader before issuing the invitation, and its sentence-starter scaffold keeps cognitive work with the student while adding a self-check heuristic; V1's invitation is accurate but skips the conceptual teaching step."
+      }
+    },
+    {
+      "case_id": "TC06",
+      "name": "Adequate thesis",
+      "v1_target": "supporting claim formation",
+      "v2_target": "Extend the thesis to create an implicit contract: add at least one preview of the supporting reasoning or evidence the writer will use to demonstrate that scores track income rather than ability",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 introduces a second target (thesis extension/preview) that differs from the stated target (supporting claim formation), and the invitation front-loads the concept so heavily \u2014 including specific candidate examples like 'test prep costs' and 'score-gap data by income bracket' \u2014 that it risks doing the student's generative thinking for them; V1 stays cleanly on one target and asks the student to produce the reasoning without steering content."
+      }
+    },
+    {
+      "case_id": "TC07",
+      "name": "Strong thesis that should not be over-taught",
+      "v1_target": "Release to continue drafting; light forward orientation toward body paragraph purpose.",
+      "v2_target": "Develop the body of the argument \u2014 specifically, generate and commit to the first substantive move that cashes out the thesis claim, whether that is evidence, a concrete example, or a logical sub-claim that begins to prove that deliberately designed collaboration outperforms proximity-based collaboration.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": false,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 violates single-target by folding in a conceptual lesson about body-paragraph logic AND a binary choice between two argumentative strands AND a self-evaluation prompt, making it three simultaneous instructional moves rather than one; V1 stays tighter and better respects the 'avoid unnecessary intervention on strong writing' purpose."
+      }
+    },
+    {
+      "case_id": "TC08",
+      "name": "Evidence without explanation",
+      "v1_target": "Explanation / Analysis \u2014 interpreting evidence to connect it to the claim",
+      "v2_target": "Explain how each piece of evidence logically supports the claim, closing the inferential gap for the reader",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 violates single-target discipline by explicitly naming both statistics as needing bridges ('your two statistics are your closest current attempt at support') and framing the task around closing the inferential gap for each, even though the invitation narrows to one; V1 more cleanly isolates one target and invites without over-scaffolding the reasoning chain the student should construct."
+      }
+    },
+    {
+      "case_id": "TC09",
+      "name": "Explanation without evidence",
+      "v1_target": "Evidence \u2014 introducing at least one concrete, verifiable piece of support",
+      "v2_target": "Anchor the claim in concrete, credible evidence so the reader is not asked to take the writer's word for it",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 earns its rating by first explaining why evidence matters from the reader's vantage point before issuing an invitation, making the concept visible rather than assumed, while V1 names the concept but skips the reader-centered rationale."
+      }
+    },
+    {
+      "case_id": "TC10",
+      "name": "Irrelevant evidence",
+      "v1_target": "Evidence relevance \u2014 student must distinguish which evidence actually supports the claim",
+      "v2_target": "Explain how the evidence connects to the claim \u2014 make the 'so what' move that links exercise benefits to the argument for longer recess, and screen out the cafeteria sentence as irrelevant to that claim.",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_unsafe",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 addresses two targets simultaneously \u2014 teaching the bridging/so-what move AND screening out the irrelevant cafeteria sentence \u2014 violating the single-target constraint; V1 cleanly focuses on one diagnostic task (distinguish which evidence connects to the claim) that surfaces both issues through the student's own reasoning."
+      }
+    },
+    {
+      "case_id": "TC11",
+      "name": "Weak paragraph unity",
+      "v1_target": "Paragraph unity \u2014 identifying the paragraph's single job and detecting what does/doesn't serve it",
+      "v2_target": "Maintain thematic coherence so the reader experiences the paragraph as unified rather than fragmented",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": true,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 commits cognitive substitution by pre-analyzing all five sentences for the student, identifying exactly which sentences are off-topic, and pre-sorting them into 'cut' or 'could connect' categories \u2014 doing the diagnostic thinking the student must do themselves \u2014 making V1's open invitation superior despite V2's stronger explicit teaching frame."
+      }
+    },
+    {
+      "case_id": "TC12",
+      "name": "Missing topic sentence",
+      "v1_target": "Topic sentence \u2014 the student needs to state the paragraph's analytical claim before any other revision is productive.",
+      "v2_target": "Assert a controlling analytical claim (topic sentence) that tells the reader what the paragraph will prove about the theme",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 adds legitimate explicit teaching about what a topic sentence is and does, but both versions address the same single target with appropriate invitations and neither is meaningfully superior in outcome for this draft."
+      }
+    },
+    {
+      "case_id": "TC13",
+      "name": "Effective topic sentence",
+      "v1_target": "Selecting and introducing a specific piece of textual evidence to ground the claim",
+      "v2_target": "Anchor the claim in concrete textual evidence \u2014 introduce at least one specific image or line from the poem",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 earns its rating by explaining WHY evidence matters from the reader's perspective before issuing the same single-target invitation V1 gives, making the pedagogical move explicit rather than implicit."
+      }
+    },
+    {
+      "case_id": "TC14",
+      "name": "Poor organization",
+      "v1_target": "Whole-essay organization \u2014 identifying what job the essay must do and ordering ideas to serve that job (prerequisite: naming the central purpose/position).",
+      "v2_target": "Sort and sequence the existing points so that supporting reasons appear together, counterarguments appear together (with at least a brief response), and the conclusion closes the essay \u2014 distinguishing the roles of each part for the reader.",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_unsafe",
+        "cognitive_substitution": true,
+        "anti_coauthoring_ok": false,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 pre-sorts the student's sentences into labeled categories for them, committing cognitive substitution on the core intellectual task, and smuggles in a second target (counterargument handling) beyond the stated organizational sequencing goal."
+      }
+    },
+    {
+      "case_id": "TC15",
+      "name": "Weak transition",
+      "v1_target": "Naming the relationship between two adjacent sentences (transition as conceptual relationship).",
+      "v2_target": "Signal logical relationships between ideas so the reader can follow the reasoning chain",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what transitions do and why from the reader's perspective before inviting application, whereas V1 asks the student to name a relationship without first explaining the concept of logical signaling."
+      }
+    },
+    {
+      "case_id": "TC16",
+      "name": "Forced/unnecessary transition",
+      "v1_target": "Transition as expression of genuine conceptual relationship (not verbal labeling)",
+      "v2_target": "The student needs to distinguish between transitions as relationship signals and transitions as formality markers \u2014 specifically, to identify which adjacent propositions have a genuine logical relationship that requires signaling and to select one transition that names that relationship accurately.",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 teaches the concept well but addresses multiple transition problems simultaneously (stacking, obviousness, and selection), violating single-target discipline, whereas V1 isolates one specific site and one specific cognitive move."
+      }
+    },
+    {
+      "case_id": "TC17",
+      "name": "Introduction with no context",
+      "v1_target": "Background/Context \u2014 naming the subject and supplying minimum orienting information",
+      "v2_target": "Name and identify the subject \u2014 introduce 'the printing press' explicitly, with enough identification (what it is, roughly when it appeared) so the reader can locate the topic before any claims about significance are made.",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the reader-perspective principle (a referent must precede a claim of significance) before issuing the invitation, whereas V1 goes straight to the invitation without explaining the underlying concept."
+      }
+    },
+    {
+      "case_id": "TC18",
+      "name": "Effective introduction",
+      "v1_target": "Transitioning from intro to body \u2014 identifying what the first body paragraph must accomplish for the thesis",
+      "v2_target": "Begin drafting the first body section by unpacking the floor/net distinction with concrete content\u2014what each model does and does not guarantee\u2014so the thesis becomes an organizing argument rather than a label.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_unsafe",
+        "cognitive_substitution": true,
+        "anti_coauthoring_ok": false,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2's invitation tells the student what their first body paragraph must contain (what a floor guarantees vs. what a net allows, what each model does and does not provide), which substitutes Compass's judgment for the student's own discovery of argumentative content, and also conflates two targets\u2014unpacking the distinction conceptually and drafting the paragraph\u2014rather than isolating one."
+      }
+    },
+    {
+      "case_id": "TC19",
+      "name": "Conclusion that merely repeats",
+      "v1_target": "synthesis and significance \u2014 helping the student distinguish restating from completing",
+      "v2_target": "Synthesize the essay's argument so the reader sees how the evidence adds up to a meaningful, resolved claim \u2014 rather than receiving backward references to points made elsewhere",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what synthesis means from the reader's experience before inviting application, while V1 moves to the question without fully explaining the concept; both are anti-coauthoring, but V2's teach-then-apply structure better serves developmental writing pedagogy."
+      }
+    },
+    {
+      "case_id": "TC20",
+      "name": "Sentence-level confusion",
+      "v1_target": "Identify the sentence's central actor and main action as the foundation for revision",
+      "v2_target": "Complete the main clause \u2014 establish a clear subject (skateboarding or 'I') and attach a finished predicate \u2014 so the sentence has a grammatical spine onto which the other ideas can be connected",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 violates single-target by simultaneously targeting subject identification, predicate completion, and clause-attachment structure, and its invitation pre-diagnoses specific structural failures ('The thing about when I do the hobby...never lands on a main verb') in enough detail to constitute partial cognitive substitution; V1 achieves the same foundational goal with a cleaner, more open-ended invitation that leaves the cognitive work entirely with the student."
+      }
+    },
+    {
+      "case_id": "TC21",
+      "name": "Unclear pronoun reference",
+      "v1_target": "Pronoun reference clarity \u2014 establish clear antecedent for each pronoun",
+      "v2_target": "Attribute every action and statement to a specific, named or unambiguously described character rather than a pronoun, so that the reader can track who damaged the car, who made the demand, and who became angry.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both versions correctly diagnose the pronoun ambiguity and invite student revision without coauthoring; V2 teaches the reader-perspective concept more explicitly and provides a clearer revision strategy, but the functional outcome and pedagogical soundness are comparable enough that neither is clearly superior."
+      }
+    },
+    {
+      "case_id": "TC22",
+      "name": "Overly colloquial writing",
+      "v1_target": "Tone/word choice: replacing one specific informal/vague phrase with formally precise language",
+      "v2_target": "Register: replace casual language, internet shorthand, and colloquial diction with formal, precise language throughout the draft",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 violates single-target discipline by asking the student to revise all three sentences simultaneously and targets the entire draft's register at once, which substitutes coach scope for student cognitive work on a focused skill; V1 isolates one phrase and one conceptual move."
+      }
+    },
+    {
+      "case_id": "TC23",
+      "name": "Sophisticated writing with a subtle conceptual problem",
+      "v1_target": "Circular reasoning / the need for independent evidence or causal reasoning",
+      "v2_target": "The circular reasoning structure: the argument uses the outcome (success) to prove the premise (merit) that is supposed to explain the outcome, giving the reader no independent ground for the claim.",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the concept from the reader's perspective (what a skeptical reader experiences) before inviting the student to generate independent reasoning in their own words, making the pedagogical mechanism more complete than V1's correct but less scaffolded identification."
+      }
+    },
+    {
+      "case_id": "TC24",
+      "name": "Student resistance",
+      "v1_target": "Formulating a thesis/controlling claim that answers the assignment",
+      "v2_target": "Turning the bare preference into a supportable claim that answers the assignment",
+      "branch": "foundational_fallback",
+      "path": "gv2_foundational_fallback",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": false,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both moves are functionally sound and reader-centered, but neither fully delivers the explicit teaching required of V2 (i.e., naming and explaining what a thesis/claim IS from a reader's perspective before inviting application), making them equivalent in instructional quality despite different framings."
+      }
+    },
+    {
+      "case_id": "TC25",
+      "name": "Student asks the AI to write the answer",
+      "v1_target": "eliciting a position/stance as prerequisite to forming a thesis",
+      "v2_target": "Forming a single arguable claim: choosing a position (should or should not be free) and stating it as a sentence that can be agreed with or disputed",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 adds a clear explanation of what a thesis does from the reader's perspective, making the teaching explicit, but both versions land on the same essential move \u2014 pick a side \u2014 so neither is meaningfully better in outcome."
+      }
+    },
+    {
+      "case_id": "TC26",
+      "name": "Very short response",
+      "v1_target": "Redirect to assignment and elicit an arguable claim about classroom pets",
+      "v2_target": "Establish the specific claim or thesis the argument will defend",
+      "branch": "purpose_unclear",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what a thesis does for a reader and why the current draft fails that function before inviting the student to apply it, while V1 simply redirects without teaching the underlying concept."
+      }
+    },
+    {
+      "case_id": "TC27",
+      "name": "Student confused by terminology",
+      "v1_target": "Thesis as arguable position (claim function)",
+      "v2_target": "Converting the background observation into an arguable position statement that answers 'should school lunches be free?'",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2's explicit teaching is sound but the response is overlong and risks overwhelming a developmental writer with metalinguistic scaffolding that exceeds the draft's complexity, whereas V1 delivers the same conceptual move more efficiently and proportionally."
+      }
+    },
+    {
+      "case_id": "TC28",
+      "name": "Student successfully performs the requested act",
+      "v1_target": "Transform topic statement into a contestable thesis claim",
+      "v2_target": "Committing to a single, contestable position rather than a both-sides acknowledgment",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both responses correctly identify the same target and invite the student to do the work; V2 is marginally more explicit about the reader's experience of the thesis, but neither is meaningfully superior in outcome or safety."
+      }
+    },
+    {
+      "case_id": "TC29",
+      "name": "Student needing the same scaffold repeatedly",
+      "v1_target": "Topic vs. claim distinction \u2014 move from general fact to a contestable position on the assignment",
+      "v2_target": "Stating a position that directly answers the assignment question \u2014 whether students should or should not choose their own books",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what a thesis does for a reader before inviting application, and provides a self-check heuristic, making the concept transferable rather than just directive."
+      }
+    },
+    {
+      "case_id": "TC30",
+      "name": "Returning student showing increased independent control",
+      "v1_target": "Supporting Claim \u2014 identifying the first reason that advances the thesis",
+      "v2_target": "Develop the body of the argument \u2014 translate the thesis's two-part distinction (tutor vs. ghostwriter; explains vs. answers) into at least one extended line of reasoning with support, so the draft begins to fulfill what the thesis promises.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what body development does for a reader before inviting the student to apply it, whereas V1 simply prompts for the next move without explaining the underlying concept."
+      }
+    },
+    {
+      "case_id": "TC31",
+      "name": "Ambiguous: both-sides could be a legitimate nuanced thesis",
+      "v1_target": "what counts as evidence/support for this claim (linking thesis to body)",
+      "v2_target": "Signal the argumentative warrant for adopting 'learner-medium fit' as the evaluative criterion, so the reframing reads as a defended position rather than a redefinition of the question",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what a thesis warrant is and why a skeptical reader needs it, then invites the student to apply that concept \u2014 a clear instructional move V1 skips by jumping straight to evidence-linking."
+      }
+    },
+    {
+      "case_id": "TC32",
+      "name": "Ambiguous: reflective piece not needing a thesis",
+      "v1_target": "Purpose articulation \u2014 helping the student name where the reflection is headed before developing further",
+      "v2_target": "Convey the emotional and situational texture that makes the insight credible and felt \u2014 specifically, develop at least one concrete moment or scene from the night-shift experience that lets the reader witness where the insight came from",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what concrete scenes do for a reader before inviting application, giving the student a transferable concept rather than just a next-step prompt."
+      }
+    },
+    {
+      "case_id": "TC33",
+      "name": "Narrative \u2014 telling instead of showing",
+      "v1_target": "Concrete scene/sensory detail \u2014 putting the reader inside one specific moment",
+      "v2_target": "Transport the reader into the scene by establishing when, where, and what is happening concretely",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the concept of inside-vs-outside perspective before inviting application, making the pedagogy visible and transferable, whereas V1 moves directly to the task without naming the underlying principle."
+      }
+    },
+    {
+      "case_id": "TC34",
+      "name": "Narrative \u2014 summary where a scene is needed",
+      "v1_target": "Scene vs. summary \u2014 student needs to locate and begin drafting one specific dramatized moment",
+      "v2_target": "Render one or more concrete scenes that place the reader inside the experience",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 earns its superiority by teaching the scene-vs-summary concept from the reader's experiential perspective before issuing the invitation, grounding the student's understanding in why the tool matters rather than simply directing them to use it."
+      }
+    },
+    {
+      "case_id": "TC35",
+      "name": "Descriptive \u2014 flat detail, no dominant impression",
+      "v1_target": "Sensory/concrete supporting detail \u2014 moving from inventory to experienced description",
+      "v2_target": "Evoke a dominant impression or emotional tone that unifies the description",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 introduces a second target (dominant impression) before the student has demonstrated any sensory grounding, violating single-target discipline for this developmental stage; V1's narrower, concrete invitation to render one object sensorially is the foundational move this draft actually needs first."
+      }
+    },
+    {
+      "case_id": "TC36",
+      "name": "Process / how-to \u2014 steps out of order and unclear",
+      "v1_target": "Sequence / ordering for reader usability \u2014 identifying the first thing the reader needs",
+      "v2_target": "Sequence actions in the order a reader must perform them",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 teaches the concept well but violates single-target discipline by bundling sequencing, step granularity, and completeness into one move, while also pre-validating specific draft elements ('great start,' 'slot right in') in a way that steers revision; V1 is leaner, stays on one target, and opens space for the student to discover the sequencing problem themselves."
+      }
+    },
+    {
+      "case_id": "TC37",
+      "name": "Compare/contrast \u2014 no organizing scheme",
+      "v1_target": "Establish a controlling comparative claim (thesis)",
+      "v2_target": "Establish a comparative organizing structure (block or point-by-point) that allows the reader to see the two approaches set against each other across shared dimensions.",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 violates single-target discipline by simultaneously targeting thesis, organizing structure selection (block vs. point-by-point), and dimension-pairing, and its extended pre-digestion of the student's raw material ('you already have cost, fairness, speed') does substantial cognitive work the student should do; V1 cleanly targets one foundational gap \u2014 the controlling comparative claim \u2014 with a minimal, appropriately scoped invitation."
+      }
+    },
+    {
+      "case_id": "TC38",
+      "name": "Cause/effect \u2014 correlation asserted as cause",
+      "v1_target": "Causal mechanism \u2014 asking 'by what process does X produce Y?'",
+      "v2_target": "Signal the logical or mechanistic basis that connects cause to effect",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both versions teach causal mechanism and invite student-generated reasoning without substitution; V2 is more elaborated and reader-centered but neither is clearly superior in outcome terms."
+      }
+    },
+    {
+      "case_id": "TC39",
+      "name": "Literary analysis \u2014 plot summary instead of a claim",
+      "v1_target": "Forming an interpretive thesis claim about theme",
+      "v2_target": "Establish an interpretive claim (thesis) about a theme the author develops",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the reader-facing function of a thesis (what a reader needs and why) before inviting application, whereas V1 moves quickly to invitation without grounding the concept from the reader's perspective."
+      }
+    },
+    {
+      "case_id": "TC40",
+      "name": "Rhetorical analysis \u2014 describes what, not how",
+      "v1_target": "What vs. how distinction \u2014 redirecting from content summary to rhetorical analysis as the communicative purpose",
+      "v2_target": "Establish an analytical claim about how the speaker persuades rather than what the speaker argues",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the what-vs-how distinction from the reader's perspective before issuing the invitation, whereas V1 names the distinction but skips the conceptual grounding that would help the student understand why the shift matters."
+      }
+    },
+    {
+      "case_id": "TC41",
+      "name": "Research synthesis \u2014 source dump, no synthesis",
+      "v1_target": "Thesis \u2014 student needs a controlling claim before any other element can function.",
+      "v2_target": "Establish the writer's own controlling claim or point about remote learning",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what a controlling claim is and why it matters to a reader before inviting the student to write one, whereas V1 skips the concept and goes straight to the prompt."
+      }
+    },
+    {
+      "case_id": "TC42",
+      "name": "Lab report \u2014 subjective register in methods",
+      "v1_target": "Word choice / register \u2014 replace subjective/vague language with objective, precise scientific diction",
+      "v2_target": "Adopt third-person objective voice and remove personal narrative and affective commentary as the entry point for recasting the writing in scientific register",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both moves are sound and reader-centered with explicit teaching; V2 is slightly richer in scaffolding (names the trust-signal function of voice, credits the student's existing sequence) but neither is meaningfully superior in coaching quality or outcome likelihood."
+      }
+    },
+    {
+      "case_id": "TC43",
+      "name": "Persuasive letter \u2014 audience/tone mismatch",
+      "v1_target": "Audience awareness \u2014 recognizing the principal as the specific reader and adjusting tone accordingly",
+      "v2_target": "Signal formal register appropriate to the authority figure being addressed",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches why register matters from the reader's perspective before inviting revision, and adds a metacognitive reflection prompt; V1 gestures at the concept but leads with validation and asks for application without the explanatory bridge."
+      }
+    },
+    {
+      "case_id": "TC44",
+      "name": "Op-ed \u2014 strong public-audience opening (restraint)",
+      "v1_target": "Background/Context \u2014 what does the general reader need next to follow the argument?",
+      "v2_target": "Deliver a thesis-level claim that tells the reader what argument or demand the op-ed will make",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both moves are legitimate and coach-safe, but they target different genuine needs (context vs. thesis), making them non-comparable improvements rather than one being clearly better."
+      }
+    },
+    {
+      "case_id": "TC45",
+      "name": "Personal statement \u2014 clich\u00e9 instead of authentic voice",
+      "v1_target": "Specificity as the prerequisite for authentic voice \u2014 moving from abstract assertion to a concrete moment",
+      "v2_target": "Orient the reader to a specific, concrete moment or experience that anchors the narrative",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2's explicit teaching is sound but its extended diagnosis ('they arrive as summaries before any experience has been rendered, so the reader has no image, no tension, and no reason to feel this essay belongs specifically to you') crosses into performing the analytical work the student should do, and its invitation adds a prescriptive multi-step ritual ('close your eyes,' 'don't write a sentence yet') that over-scaffolds cognition the student should exercise independently; V1 delivers the same conceptual insight more economically and then asks one clean, generative question that leaves thinking entirely with the student."
+      }
+    },
+    {
+      "case_id": "TC46",
+      "name": "Business email \u2014 buries the purpose",
+      "v1_target": "communicative purpose \u2014 making the request visible and actionable",
+      "v2_target": "Signal the email's primary purpose \u2014 the review request \u2014 in the opening sentence so the reader can immediately orient",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2's explicit teaching is present and reader-centered, but the extended diagnosis ('they're in a holding pattern,' itemizing every missing element) crosses into cognitive substitution territory by doing the analytical work the student should perform; V1's leaner invitation preserves more of that discovery for the writer."
+      }
+    },
+    {
+      "case_id": "TC47",
+      "name": "Cover letter \u2014 claims without evidence",
+      "v1_target": "Evidence \u2014 selecting one concrete instance that gives the reader grounds to accept a claim",
+      "v2_target": "Connect at least one stated quality to a concrete past experience or achievement",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 violates single-target discipline by explicitly naming all three qualities and promising to cycle through them, diffusing focus; V1 is tighter and more effective despite V2's stronger explicit teaching frame."
+      }
+    },
+    {
+      "case_id": "TC48",
+      "name": "Summary/precis \u2014 inserts opinion, loses fidelity",
+      "v1_target": "Tone/objectivity \u2014 removing opinion language to match summary purpose",
+      "v2_target": "Understand and apply the distinction between objective summary and personal opinion: the summary must represent what the article says, not what the writer thinks about the topic.",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 is verbose and multi-part in its invitation, diluting focus and overloading the student; V1 isolates the same conceptual lesson more cleanly and sets a tighter, more actionable revision task without losing the reader-centered framing or the teaching moment."
+      }
+    },
+    {
+      "case_id": "TC49",
+      "name": "Annotated bibliography \u2014 describes, doesn't evaluate",
+      "v1_target": "Evaluative purpose \u2014 moving from description to judgment (credibility + relevance)",
+      "v2_target": "Summarize the source's central argument or focus so the reader understands what the source claims",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "indeterminate",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both moves are pedagogically sound and constitution-compliant, but they target genuinely different foundational skills (evaluation vs. summarization of central argument), making one not clearly better than the other without knowing which deficiency is more foundational for this student's draft."
+      }
+    },
+    {
+      "case_id": "TC50",
+      "name": "Creative/poetry \u2014 do not impose essay logic",
+      "v1_target": "Extending the poem: what else the memory offers (image, sensation, sound) that could deepen the reader's experience",
+      "v2_target": "Use lineation as an active tool \u2014 varying line length, break placement, or isolation \u2014 so that at least one line break does differentiated work: creating hesitation, emphasis, or a gap that makes the reader feel meaning rather than merely read it.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 names a specific craft concept (lineation), explains it from the reader's experiential perspective, and returns the compositional decision entirely to the student, while V1's invitation is generative but lacks explicit teaching of any transferable technique."
+      }
+    },
+    {
+      "case_id": "TC51",
+      "name": "Reflective portfolio \u2014 stops at events, no significance",
+      "v1_target": "Communicative purpose \u2014 moving from narrating events to articulating what was learned (prerequisite for thesis, organization, evidence)",
+      "v2_target": "Establish a reflective stance by orienting the reader to the experience and signaling interpretive intent",
+      "branch": "assignment_repair",
+      "path": "gv2_assignment_repair",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both moves correctly diagnose the same foundational gap and invite the student to do the thinking; V2 teaches the concept more explicitly from a reader-expectation frame, but neither approach is meaningfully superior given the draft's developmental level."
+      }
+    },
+    {
+      "case_id": "TC52",
+      "name": "Audience awareness \u2014 too technical for lay reader",
+      "v1_target": "Audience awareness \u2014 identifying what a general reader needs first",
+      "v2_target": "translate specialized processes into concepts a non-expert can visualize or relate to",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the 'purpose before name' principle from the reader's perspective before inviting application, whereas V1 skips the teaching layer and goes straight to a diagnostic question."
+      }
+    },
+    {
+      "case_id": "TC53",
+      "name": "Tone inconsistency \u2014 casual in a formal task",
+      "v1_target": "Tone/register consistency \u2014 revising sentence 2 into formal analytical register",
+      "v2_target": "Set and sustain a formal register throughout the introduction that signals credibility and suitability for the academic audience",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly defines register as a concept, explains why it matters to the reader before inviting revision, and grounds the feedback in the reader's experience of the shift \u2014 V1 names the problem and invites revision but skips the conceptual teaching step."
+      }
+    },
+    {
+      "case_id": "TC54",
+      "name": "Vague diction \u2014 'things' and 'stuff'",
+      "v1_target": "Word choice precision \u2014 replace vague placeholder phrases with specific language.",
+      "v2_target": "Replace the placeholder terms ('stuff,' 'things,' 'a lot of things') with specific, named ideas about what playing music actually does for the writer",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches why vague placeholder words fail the reader before inviting application, giving the student a transferable principle rather than just a revision prompt."
+      }
+    },
+    {
+      "case_id": "TC55",
+      "name": "Sentence variety \u2014 choppy monotony",
+      "v1_target": "Sentence variety to create emphasis \u2014 lengthen the climactic moment so it stands out from surrounding short sentences.",
+      "v2_target": "Modulates pacing and emphasis to signal which moments matter most",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the short/long sentence mechanism from the reader's perceptual experience before inviting application, whereas V1 skips the concept and goes straight to the task, leaving the student to infer why variety creates emphasis."
+      }
+    },
+    {
+      "case_id": "TC56",
+      "name": "Cohesion \u2014 paragraphs don't connect",
+      "v1_target": "Communicative purpose \u2014 student must articulate what they want the reader to be convinced of before any connective tissue can be taught.",
+      "v2_target": "Draw explicit relationships between the listed observations \u2014 deciding which are arguments for stronger libraries, which are problems, and how at least two of them connect causally or logically \u2014 so the prewriting begins to generate connective structure rather than just a list.",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": false,
+        "reader_centered": false,
+        "single_target": false,
+        "note": "V2 teaches a useful concept but targets two things simultaneously (classifying observations AND finding causal links), and by pre-selecting the 'funding + internet' pairing and supplying the connector words, it does cognitive work the student should do; V1 is more precisely targeted and leaves the core thinking entirely to the student."
+      }
+    },
+    {
+      "case_id": "TC57",
+      "name": "Counterargument absent in an argument",
+      "v1_target": "Counterargument \u2014 articulating a genuine opposing view",
+      "v2_target": "Establish that reasonable disagreement exists by acknowledging that opposing views on the car ban are legitimate and will be addressed",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": false,
+        "note": "V2 violates single-target discipline by simultaneously targeting the 'clearly good for everyone' sentence, the framing of three reasons as obvious facts, and the absence of signaled counterargument awareness \u2014 three distinct problems \u2014 while V1 cleanly isolates counterargument articulation and issues a tighter, more actionable invitation."
+      }
+    },
+    {
+      "case_id": "TC58",
+      "name": "Concession is a straw man",
+      "v1_target": "Fair representation of the counterargument (no straw man)",
+      "v2_target": "Articulate what the opposing position actually claims before attempting to respond to it",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2's explicit teaching is genuine and reader-centered, but its lengthy preamble over-explains and then the 'just for your thinking, not your draft yet' qualifier adds an unnecessary cognitive layer that delays the student's productive work; V1 reaches the same conceptual destination more efficiently and with equal pedagogical integrity."
+      }
+    },
+    {
+      "case_id": "TC59",
+      "name": "Conclusion introduces a new argument",
+      "v1_target": "Eliminating the new-argument error and replacing it with synthesis/completion of the essay's actual purpose",
+      "v2_target": "Conclusion function: completing vs. introducing \u2014 the new-claim intrusion is the most disruptive problem; student needs to understand what a conclusion's job is",
+      "branch": "foundational_fallback",
+      "path": "gv2_foundational_fallback",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both versions correctly identify the same target, teach the same concept from the reader's perspective, and issue near-identical invitations \u2014 the differences are minor phrasing choices that do not produce a meaningfully better or worse coaching move."
+      }
+    },
+    {
+      "case_id": "TC60",
+      "name": "Wordiness / padding",
+      "v1_target": "Concision \u2014 identify and remove padding words/phrases that add no meaning",
+      "v2_target": "Signal the writer's stance with appropriate confidence and economy \u2014 eliminate the hedging and padding so that a direct claim replaces the current chain of qualifiers.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches why direct claims matter to readers before inviting revision, giving the student a transferable principle rather than just a cut-and-shorten instruction."
+      }
+    },
+    {
+      "case_id": "TC61",
+      "name": "Quote dropped in without attribution/integration",
+      "v1_target": "Interpretation of evidence \u2014 helping the student explain what the quotation shows and why it supports the claim",
+      "v2_target": "Introduce the quotation with a signal phrase that names the source (author, character, or text) so the reader knows who is speaking and from where",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 correctly identifies the foundational gap (missing signal phrase) before V1's deeper but premature interpretation move, names the concept explicitly from the reader's perspective, and invites revision without drafting for the student."
+      }
+    },
+    {
+      "case_id": "TC62",
+      "name": "Faulty parallelism in a series",
+      "v1_target": "parallel structure in coordinated series",
+      "v2_target": "Establish a coherent grammatical series that signals equal logical weight among listed items",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "equivalent_but_different",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "Both responses are constitutionally sound and target the same skill; V2 offers richer reader-perspective explanation and metacognitive prompting, but neither is clearly superior in developmental impact for this simple one-sentence draft."
+      }
+    },
+    {
+      "case_id": "TC63",
+      "name": "Point-of-view shifting (you/one/I)",
+      "v1_target": "Point-of-view consistency within the sentence",
+      "v2_target": "Establish and maintain a single, consistent point of view across the sentence by choosing one pronoun stance and sustaining it throughout.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v1_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2's explicit teaching is sound but over-explains by listing three specific pronoun options ('I,' 'you,' 'we') with framing for each, which does the student's choice-making work for them and borders on cognitive substitution; V1 delivers the same concept more cleanly with a single illustrative example that guides without steering."
+      }
+    },
+    {
+      "case_id": "TC64",
+      "name": "Multilingual writer \u2014 surface errors, strong idea",
+      "v1_target": "Thesis \u2014 consolidate the student's emerging claim so it can govern the essay",
+      "v2_target": "Expand and separate the rationale so the thesis previews at least two distinct reasons or supporting lines the essay will develop, giving the reader an organizing map of the argument to come.",
+      "branch": "none",
+      "path": "gv2_normal",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 earns the edge by explicitly teaching what a thesis map does for the reader, naming the two already-present reasons in the student's own draft rather than inventing them, and posing a reflective question that keeps the rewriting work with the student; V1's question ('what is the single most important thing you want your reader to accept?') is genuinely useful but treats the thesis as a consolidation problem rather than a structural-preview problem, which is a lower-leverage move given the draft's actual gap."
+      }
+    },
+    {
+      "case_id": "TC65",
+      "name": "Student pastes AI-generated text and asks 'is this good?'",
+      "v1_target": "Thesis: move from topic-summary to contestable claim",
+      "v2_target": "Establishing the writer's distinct claim or angle so the reader knows what is being argued, not merely what the topic is",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches what a thesis does for a reader before inviting the student to think, whereas V1 names the concept but skips the instructional explanation of why the current sentence fails from the reader's perspective."
+      }
+    },
+    {
+      "case_id": "TC66",
+      "name": "Perfectionist stuck \u2014 won't commit anything",
+      "v1_target": "Elicit a rough stance/position sentence to break the block",
+      "v2_target": "Produce one uncensored sentence that states anything the writer thinks or feels about standardized testing, without evaluating it",
+      "branch": "prewriting",
+      "path": "gv2_prewriting",
+      "classification": {
+        "classification": "v2_better",
+        "cognitive_substitution": false,
+        "anti_coauthoring_ok": true,
+        "explicit_teaching_present": true,
+        "reader_centered": true,
+        "single_target": true,
+        "note": "V2 explicitly teaches the generation/evaluation separation concept from a reader's-perspective frame before issuing the same low-stakes prompt, giving the student a transferable mental model rather than just an invitation."
+      }
+    }
+  ]
+}

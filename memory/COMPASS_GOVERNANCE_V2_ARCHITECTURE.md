@@ -243,16 +243,11 @@ Keep all existing v1 dimensions (constitutional preservation, anti-coauthoring, 
 
 ---
 
-## 10. Open implementation choices (for discussion — NOT decided here)
-1. ~~Call granularity~~ — **DECIDED (see §1):** three batched passes (P1: S1–S3, P2: S4–S5, P3: S6–S7), preserving seven conceptual stages.
-2. Whether S1/S2 reuse the existing triage prompt or a new v2 Pass-1 prompt.
-3. Exact **prewriting-detection** signals at S4 (operationalizing "insufficient conceptual organization" vs. "weak prose").
-4. **Purpose-confidence / student-purpose-indeterminate threshold** for the B1 branch.
-5. Candidate-invitation count (keep 2 as in v1?).
-6. Where `transparency_state` is authored (within S7/Pass 3 vs a dedicated step) and how `why_this_now` is phrased for students.
-7. How much KB to inject per pass (token/latency management).
-8. Whether B1/B2 produce a full 5-step teaching turn or an abbreviated clarification turn.
-9. How the `purpose_alignment` divergence (assignment vs. student purpose) should influence target selection when the two purposes diverge.
+## 10. Open implementation choices — RESOLVED
+1. ~~Call granularity~~ — **DECIDED (§1):** three batched passes (P1: S1–S3, P2: S4–S5, P3: S6–S7), seven conceptual stages preserved.
+2. **P1 prompt — DECIDED:** create a **dedicated Governance v2 P1 prompt**, designed around the new architecture (purpose/unit/functional-model as the foundation of v2 reasoning), NOT a reuse of the v1 triage pass. It may borrow ideas/components but must not be constrained by v1 triage assumptions.
+9. **Assignment vs. Student purpose divergence — DECIDED:** divergence is **observed, not an automatic branch**. Flow: determine Assignment Purpose → infer Student Purpose → compute `purpose_alignment` → record in the ledger. If alignment is good → continue normally. If partial/divergent → decide whether the divergence *prevents meaningful work on the current writing unit*: if the student has misunderstood the assignment so substantially that productive instruction cannot proceed, **briefly repair the student's understanding of the assignment first** (a bounded assignment-understanding repair, then continue); otherwise **retain the original instructional target while acknowledging the divergence**. Principle: preserve instructional momentum; intervene on assignment understanding only when it genuinely blocks progress. (This repair is a bounded action within S1/S5, NOT a new top-level branch, so not every misunderstanding derails the trajectory.)
+- Remaining genuinely-open (safe to settle in code): §10.3 prewriting signal operationalization, §10.4 purpose-confidence threshold, §10.5 candidate count (default keep 2), §10.6 `why_this_now` phrasing, §10.7 per-pass KB budget, §10.8 abbreviated vs full turn for B1/B2.
 
 ---
 
