@@ -279,3 +279,7 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - Files: backend/triage_experiment.py (streaming fns), backend/server.py (streaming wiring + guard), frontend App.js + StudentWorkspace.jsx + index.css (streaming render/caret). Full writeup: COMPASS_Latency_Triage_Report.md Part IV.
 - AWAITING user review of the Stage-2 decomposition design before implementing the refactor. Teacher-product build (Q3/Q4) still paused.
 
+
+## COMPASS Governance Architecture (2026-06, DONE — review gate before Stage-2 impl)
+- memory/COMPASS_GOVERNANCE_ARCHITECTURE.md: defines Compass as a 5-layer hierarchy of reasoning governance (1 Constitutional commitments, 2 Pedagogical policy, 3 Diagnostic reasoning, 4 Learner model, 5 Presentation contract). Each layer: purpose, always/conditional, persistent/reconstructed, rate of change, examples, dependencies + how they interact in one coaching turn. Authority top-down; latency lives only in how much of Layer 3 runs + Layer 5 delivery.
+- A/B/C/D from decomposition design maps: A->L1&L2, B->L3, C->L4, D->L5. STAGE-2 DECOMPOSITION IMPLEMENTATION GATED on approval of this architecture. Validation stays full 66-case Compare vs fd0dec0c (constitutional behavior, not textual similarity).
