@@ -1,13 +1,14 @@
 import { useState, useEffect } from "react";
 import { Toaster, toast } from "sonner";
 import { motion } from "framer-motion";
-import { Lock, ShieldCheck, Sparkles, ArrowRight, Loader2, Compass, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { Lock, ShieldCheck, Sparkles, ArrowRight, ArrowLeft, Loader2, Compass, AlertTriangle, CheckCircle2, Copy, Check } from "lucide-react";
 import {
   getConstitution, createTeacherConfig, updateTeacherConfig,
-  validateConfiguration, activateConfiguration, createSessionFromConfig, validateRequest,
+  validateConfiguration, activateConfiguration, validateRequest,
 } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
+const goHome = () => { window.location.search = "?teacher"; };
 const inputCls =
   "w-full bg-white border border-stone-300 rounded-sm px-3.5 py-2.5 text-[15px] text-stone-900 placeholder:text-stone-400 outline-none focus:ring-1 focus:ring-[#8C3A2A] focus:border-[#8C3A2A] transition-colors";
 
@@ -36,6 +37,7 @@ export default function TeacherConfig() {
   const [reqText, setReqText] = useState("");
   const [checking, setChecking] = useState(false);
   const [verdict, setVerdict] = useState(null);
+  const [created, setCreated] = useState(null);
 
   useEffect(() => { getConstitution().then(setConstitution).catch(() => {}); }, []);
 
@@ -77,15 +79,15 @@ export default function TeacherConfig() {
     try {
       const id = configId || (await persist());
       await updateTeacherConfig(id, c);
-      await activateConfiguration(id);
-      const session = await createSessionFromConfig(id);
-      localStorage.setItem(STORAGE_KEY, session.id);
-      toast.success("Assignment activated.");
-      window.location.href = `${window.location.pathname}?app`;
+      const cfg = await activateConfiguration(id);
+      // Teacher product: creating an assignment returns to the workspace with a
+      // shareable join code — it does NOT start a student session here.
+      setCreated(cfg);
+      toast.success("Assignment created.");
     } catch (e) {
       const detail = e?.response?.data?.detail;
-      if (detail && typeof detail === "object") { setValidation(detail); toast.error("Resolve the items below before activating."); }
-      else toast.error("Could not activate the assignment.");
+      if (detail && typeof detail === "object") { setValidation(detail); toast.error("Resolve the items below before creating."); }
+      else toast.error("Could not create the assignment.");
     } finally { setBusy(false); }
   };
 
@@ -118,27 +120,76 @@ export default function TeacherConfig() {
     </div>
   );
 
+  if (created) {
+    const code = created.code || "";
+    return (
+      <div className="min-h-screen paper-grain flex items-center justify-center px-6" data-testid="assignment-created">
+        <Toaster position="top-center" richColors />
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
+          className="max-w-lg w-full text-center">
+          <div className="inline-flex items-center justify-center h-14 w-14 rounded-full bg-emerald-50 border border-emerald-200 mb-6">
+            <CheckCircle2 className="h-7 w-7 text-emerald-600" />
+          </div>
+          <h1 className="font-serif-display text-3xl md:text-4xl tracking-tight text-stone-900">Assignment created</h1>
+          <p className="text-stone-600 mt-3 text-[15px] leading-relaxed">
+            “{created.assignment?.title || "Your assignment"}” is ready. Share the join code below — each student
+            starts their own writing session with it.
+          </p>
+          <div className="mt-7 border border-stone-300 rounded-md bg-white p-6">
+            <p className="font-mono-panel text-[11px] uppercase tracking-[0.18em] text-stone-400 mb-2">Student join code</p>
+            <button
+              data-testid="created-join-code"
+              onClick={async () => { try { await navigator.clipboard.writeText(code); toast.success(`Code ${code} copied.`); } catch { /* noop */ } }}
+              className="inline-flex items-center gap-3 font-mono text-3xl tracking-[0.3em] text-stone-900 hover:text-[#8C3A2A] transition-colors"
+              title="Copy code"
+            >
+              {code}
+              <Copy className="h-5 w-5 text-stone-400" />
+            </button>
+          </div>
+          <div className="flex items-center justify-center gap-3 mt-8">
+            <button data-testid="created-go-home" onClick={goHome}
+              className="inline-flex items-center gap-2 bg-[#8C3A2A] text-white text-[15px] px-5 py-3 rounded-sm hover:bg-[#6B2C20] transition-colors">
+              Go to workspace <ArrowRight className="h-4 w-4" />
+            </button>
+            <button data-testid="created-create-another"
+              onClick={() => { setCreated(null); setConfigId(null); setC(initial); setValidation(null); window.scrollTo(0, 0); }}
+              className="text-[14px] text-stone-600 hover:text-stone-900 border border-stone-300 hover:border-stone-900 rounded-sm px-4 py-3 transition-colors">
+              Create another
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen paper-grain">
       <Toaster position="top-center" richColors />
       <header className="flex items-center justify-between px-8 md:px-12 py-5 border-b border-stone-200 bg-[#faf9f6] sticky top-0 z-20">
-        <div className="flex items-center gap-2 font-serif-display text-xl text-stone-900"><Compass className="h-5 w-5 text-[#8C3A2A]" />Compass</div>
+        <div className="flex items-center gap-4">
+          <button onClick={goHome} data-testid="config-back-home"
+            className="inline-flex items-center gap-1.5 text-xs font-mono-panel uppercase tracking-[0.14em] text-stone-500 hover:text-stone-900 transition-colors">
+            <ArrowLeft className="h-3.5 w-3.5" /> Workspace
+          </button>
+          <div className="flex items-center gap-2 font-serif-display text-xl text-stone-900"><Compass className="h-5 w-5 text-[#8C3A2A]" />Compass</div>
+        </div>
         <div className="flex items-center gap-3">
           <button onClick={saveDraft} disabled={busy} data-testid="config-save-draft"
             className="text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-stone-900 border border-stone-300 hover:border-stone-900 rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40">Save draft</button>
           <button onClick={runValidation} disabled={busy} data-testid="config-validate"
-            className="text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-700 border border-stone-400 hover:border-stone-900 rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40">Validate</button>
+            className="text-xs font-mono-panel uppercase tracking-[0.15em] text-stone-700 border border-stone-400 hover:border-stone-900 rounded-sm px-3 py-1.5 transition-colors disabled:opacity-40">Check</button>
           <button onClick={activate} disabled={busy} data-testid="config-activate"
             className="inline-flex items-center gap-2 bg-[#8C3A2A] text-white text-sm px-4 py-1.5 rounded-sm hover:bg-[#6B2C20] transition-colors disabled:opacity-40">
-            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}Activate assignment</button>
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}Create assignment</button>
         </div>
       </header>
 
       <div className="max-w-6xl mx-auto px-8 md:px-12 py-12 grid grid-cols-1 lg:grid-cols-12 gap-12">
         <main className="lg:col-span-7 space-y-11" data-testid="config-form">
           <div>
-            <p className="font-mono-panel text-xs uppercase tracking-[0.2em] text-[#8C3A2A] mb-2">Teacher Configuration · Grade 9</p>
-            <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight text-stone-900 leading-tight">Configure Compass for your assignment.</h1>
+            <p className="font-mono-panel text-xs uppercase tracking-[0.2em] text-[#8C3A2A] mb-2">New assignment · Grade 9</p>
+            <h1 className="font-serif-display text-4xl md:text-5xl tracking-tight text-stone-900 leading-tight">Create an assignment.</h1>
             <p className="text-stone-600 mt-3 text-[15px] leading-relaxed max-w-xl">You decide <span className="text-stone-900 font-medium">what</span>, <span className="text-stone-900 font-medium">why</span>, and <span className="text-stone-900 font-medium">when</span> students learn — and how Compass is used. Compass keeps the developmental method intact.</p>
           </div>
 
@@ -211,7 +262,7 @@ export default function TeacherConfig() {
           {/* Review & Activate preview */}
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
             className="border border-stone-300 rounded-sm p-6 bg-white sticky top-24" data-testid="config-preview">
-            <p className="font-mono-panel text-[11px] uppercase tracking-[0.18em] text-[#8C3A2A] mb-3">Your Compass configuration</p>
+            <p className="font-mono-panel text-[11px] uppercase tracking-[0.18em] text-[#8C3A2A] mb-3">Assignment summary</p>
             <dl className="text-[14px] text-stone-700 space-y-1.5">
               <Row k="Class" v={`Grade ${c.classContext.gradeLevel} ${c.classContext.course}`} />
               <Row k="Assignment" v={c.assignment.title || "—"} />

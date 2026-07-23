@@ -1,0 +1,42 @@
+{
+  "summary": "Backend + frontend testing of teacher product Phase (i) Teacher Home and Phase (ii) merged Create-Assignment. Wrote pytest suite (8 tests, all pass) covering assignment listing shape, student join by code + counter increment, teacher-configs -> activate -> create-session linkage, per-assignment sessions endpoint, validation error path, and regression for legacy /api/sessions + /api/sessions/{id}/interact. Ran a Playwright flow across ?teacher and ?config: header create CTA, card status/title/join-code/copy-code, empty-required validation surfaces validation-error (no success screen), full create path renders assignment-created with created-join-code + created-go-home + created-create-another, does NOT auto-launch a student writing session, and created-go-home returns to ?teacher with the new card in the grid. Everything works. One minor invalid-HTML issue found: assignment card renders a <button> inside a <button>.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "TeacherHome / AssignmentCard",
+        "issue": "Invalid HTML: <button data-testid='assignment-card-{CODE}'> (motion.button) has a nested <button data-testid='copy-code-{CODE}'> inside it. React logs a hydration warning ('In HTML, <button> cannot be a descendant of <button>'). Functionally the copy button still works because of e.stopPropagation, but this is invalid a11y/HTML and will show up in every render.",
+        "selector": "[data-testid^='assignment-card-'] [data-testid^='copy-code-']",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_teacher_assignments.py",
+    "/app/test_reports/pytest/teacher_assignments_results.xml"
+  ],
+  "action_items": [
+    "(Optional / low) Refactor AssignmentCard so it is a <div role='button' tabIndex=0 onClick=...> or an <a>, not a <button>, so the CopyCode <button> child is valid HTML and the React hydration warning goes away."
+  ],
+  "critical_code_review_comments": [
+    "server.py `_assignment_summary` treats a session as 'active' if it has any interactions/turns. Sessions created by the join-by-code path start empty, so student_count increments but active_count stays 0 until the student writes something. That is consistent with the spec ('student/active counts') but worth being aware of when reading counters in tests.",
+    "server.py `create_session_from_config` uses `Optional[CreateSessionFromConfig] = None` and then reads `payload.student_name`; because the payload is required=false, an empty body still yields a defaulted model — works correctly.",
+    "TeacherConfig.jsx activate() surfaces server 422 detail into the same `validation-result` box used by client validation — good; test verified errors render as `validation-error` and no success screen appears.",
+    "TeacherHome.jsx AssignmentCard nests a <button> inside a <button> (see frontend_issues) — invalid HTML."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_teacher_assignments.py"
+  ],
+  "success_rate": {"backend": "100% (8/8)", "frontend": "100% (all acceptance criteria)"},
+  "test_credentials": "None required (single implicit local teacher, teacher_id='local-teacher').",
+  "seed_data_creation": "Tests create TEST_-prefixed configurations/sessions (TEST_Argue social media, TEST_UI Position Paper, TEST_Regression short, students named TEST_Student, TEST_ListSessionsStudent, Ada). Not cleaned up — teacher assignment count will grow on repeated runs; that is fine because tests query by id, not by count.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend suite at /app/backend/tests/test_teacher_assignments.py is idempotent (each run creates its own config and asserts by id). Use it as regression for the teacher product. Frontend flow uses ?teacher and ?config query params on REACT_APP_BACKEND_URL. Nested-button HTML issue is the only outstanding item and it is cosmetic; do NOT block on it.",
+  "rca of the issue": "N/A — no blocking bugs."
+}
