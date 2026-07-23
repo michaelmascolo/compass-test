@@ -66,9 +66,153 @@ function diffRuns(prev, next) {
       moved: (p?.status || "") !== (n?.status || ""),
       changed,
       explanation: n?.evaluation?.summary || "",
+      gov: n?.turns?.[0]?.governance_trace || null,
+      govNote: n?.governance_note || "",
+      path: n?.turns?.[0]?.reasoning_path || "",
     };
   });
 }
+
+const LensChips = ({ items, tone }) => (
+  <div className="flex flex-wrap gap-1">
+    {(items || []).length === 0 ? (
+      <span className="text-[11px] text-stone-600 italic">constitutional / policy core only</span>
+    ) : (
+      items.map((x, i) => (
+        <span
+          key={i}
+          className={`text-[10px] px-1.5 py-0.5 rounded border ${
+            tone === "active"
+              ? "border-emerald-800 bg-emerald-950/50 text-emerald-300"
+              : "border-stone-700 bg-stone-900 text-stone-500 line-through decoration-stone-600"
+          }`}
+        >
+          {x}
+        </span>
+      ))
+    )}
+  </div>
+);
+
+const GovernancePanel = ({ gov, govNote }) => {
+  if (!gov) {
+    return (
+      <div className="text-[11px] text-stone-500 italic">
+        No triage governance trace (baseline run is the exhaustive frozen engine).
+      </div>
+    );
+  }
+  const Row = ({ k, v }) => (
+    <div className="flex gap-2 text-[11px]">
+      <span className="text-stone-500 w-40 shrink-0">{k}</span>
+      <span className="text-stone-300">{v}</span>
+    </div>
+  );
+  return (
+    <div className="space-y-3" data-testid="governance-panel">
+      {govNote && (
+        <div className="text-[11px] text-amber-200 border border-amber-800/60 bg-amber-950/30 rounded px-2.5 py-2" data-testid="governance-note">
+          <span className="uppercase tracking-widest text-[9px] text-amber-400/80">Why triage better</span>
+          <div className="mt-1 leading-relaxed">{govNote}</div>
+        </div>
+      )}
+      <Row k="Triage route" v={<span className="text-sky-300">{gov.route || "—"}</span>} />
+      <Row k="Inside / outside" v={gov.inside_outside || "—"} />
+      <Row k="Triaged dimension" v={gov.dimension || "—"} />
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-1">L3 active lenses</div>
+        <LensChips items={gov.active_lenses} tone="active" />
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-1">L3 dormant lenses (held off)</div>
+        <LensChips items={gov.dormant_lenses} tone="dormant" />
+      </div>
+      <Row k="Permitted moves" v={(gov.permitted_moves || []).join(", ") || "—"} />
+      <Row k="May open new target" v={gov.may_select_new_target ? "yes" : "no — keep current"} />
+      <Row k="Consolidation / fading" v={`${gov.consolidation_allowed ? "consolidate" : "—"} / ${gov.fading_allowed ? "fade" : "—"}`} />
+      <Row
+        k="Fallback"
+        v={
+          gov.fallback_occurred ? (
+            <span className="text-rose-300">{gov.fallback_kind}{gov.fallback_reason ? ` — ${gov.fallback_reason}` : ""}</span>
+          ) : (
+            <span className="text-emerald-300">none (focused path)</span>
+          )
+        }
+      />
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-1">Candidate deliberation</div>
+        {(gov.candidate_invitations || []).length > 0 ? (
+          <ul className="space-y-1">
+            {gov.candidate_invitations.map((c, i) => (
+              <li key={i} className={`text-[11px] px-2 py-1 rounded border ${c === gov.selected_invitation ? "border-emerald-800 bg-emerald-950/40 text-emerald-200" : "border-stone-800 bg-stone-900 text-stone-400"}`}>
+                {c === gov.selected_invitation && <span className="text-[9px] uppercase tracking-widest text-emerald-400 mr-1">selected</span>}
+                {c}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <span className="text-[11px] text-stone-600 italic">Not captured in this run (available in runs recorded after Governance v1 tracing).</span>
+        )}
+      </div>
+      <div>
+        <div className="text-[10px] uppercase tracking-widest text-stone-500 mb-1">Governance layer trace</div>
+        <ol className="space-y-0.5">
+          {(gov.governance_layers || []).map((l, i) => (
+            <li key={i} className="text-[10px] text-stone-400 leading-relaxed">{l}</li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+};
+
+const CompareRow = ({ r }) => {
+  const [open, setOpen] = useState(false);
+  const hasGov = !!r.gov || !!r.govNote;
+  return (
+    <div
+      data-testid={`compare-row-${r.id}`}
+      className={`border-t border-stone-800 text-[12px] ${r.moved ? "bg-stone-900/60" : ""}`}
+    >
+      <div className="grid grid-cols-[70px_1fr_90px_90px_1.4fr_40px] gap-2 px-3 py-2.5 items-start">
+        <div className="text-stone-500">{r.id}</div>
+        <div className="text-stone-300 truncate">{r.name}</div>
+        <div><VBadge v={r.pv} /></div>
+        <div><VBadge v={r.nv} /></div>
+        <div className="text-stone-400">
+          {r.changed.length > 0 && (
+            <ul className="mb-1 space-y-0.5">
+              {r.changed.map((c, i) => (
+                <li key={i}>
+                  <span className="text-stone-500">{c.name}:</span>{" "}
+                  <span className="text-rose-300">{c.from}</span>→<span className="text-emerald-300">{c.to}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          <span className="text-stone-500">{r.explanation}</span>
+        </div>
+        <div>
+          <button
+            data-testid={`compare-gov-toggle-${r.id}`}
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className={`inline-flex items-center justify-center h-6 w-6 rounded border transition-colors ${hasGov ? "border-sky-800 text-sky-300 hover:bg-sky-950/40" : "border-stone-800 text-stone-600"}`}
+            title="Governance trace"
+          >
+            {open ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+          </button>
+        </div>
+      </div>
+      {open && (
+        <div className="px-3 pb-3 pt-1 border-t border-stone-800/60 bg-stone-950/40" data-testid={`compare-gov-detail-${r.id}`}>
+          <GovernancePanel gov={r.gov} govNote={r.govNote} />
+        </div>
+      )}
+    </div>
+  );
+};
 
 const CompareView = ({ runs }) => {
   const [aId, setAId] = useState("");
@@ -162,35 +306,11 @@ const CompareView = ({ runs }) => {
           </div>
 
           <div className="border border-stone-800 rounded-md overflow-hidden">
-            <div className="grid grid-cols-[70px_1fr_90px_90px_1.4fr] gap-2 px-3 py-2 bg-stone-900 text-[10px] uppercase tracking-widest text-stone-500">
-              <div>Case</div><div>Name</div><div>Prev</div><div>New</div><div>Changed criteria / explanation</div>
+            <div className="grid grid-cols-[70px_1fr_90px_90px_1.4fr_40px] gap-2 px-3 py-2 bg-stone-900 text-[10px] uppercase tracking-widest text-stone-500">
+              <div>Case</div><div>Name</div><div>Prev</div><div>New</div><div>Changed criteria / explanation</div><div>Gov</div>
             </div>
             {rows.map((r) => (
-              <div
-                key={r.id}
-                data-testid={`compare-row-${r.id}`}
-                className={`grid grid-cols-[70px_1fr_90px_90px_1.4fr] gap-2 px-3 py-2.5 border-t border-stone-800 text-[12px] ${
-                  r.moved ? "bg-stone-900/60" : ""
-                }`}
-              >
-                <div className="text-stone-500">{r.id}</div>
-                <div className="text-stone-300 truncate">{r.name}</div>
-                <div><VBadge v={r.pv} /></div>
-                <div><VBadge v={r.nv} /></div>
-                <div className="text-stone-400">
-                  {r.changed.length > 0 && (
-                    <ul className="mb-1 space-y-0.5">
-                      {r.changed.map((c, i) => (
-                        <li key={i}>
-                          <span className="text-stone-500">{c.name}:</span>{" "}
-                          <span className="text-rose-300">{c.from}</span>→<span className="text-emerald-300">{c.to}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                  <span className="text-stone-500">{r.explanation}</span>
-                </div>
-              </div>
+              <CompareRow key={r.id} r={r} />
             ))}
           </div>
         </>

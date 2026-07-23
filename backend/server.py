@@ -2138,6 +2138,68 @@ async def _harness_run_turn(session: Session, content: str, kind: str, reasoning
         "num_model_calls": tmeta.get("num_model_calls") or xmeta.get("num_model_calls"),
         "prompt_tokens": tmeta.get("prompt_tokens") or xmeta.get("prompt_tokens"),
         "output_tokens": tmeta.get("output_tokens") or xmeta.get("output_tokens"),
+        # governance inspectability (candidate deliberation + fallback reason)
+        "candidate_invitations": [c.invitation for c in (result.get("candidates") or [])][:3],
+        "selected_invitation": (result.get("selected") or SelectedInvitation()).invitation,
+        "route_fallback_reason": tmeta.get("route_fallback_reason", ""),
+    }
+
+
+# Curated, human-readable notes for the divergences judged "triage better" in the
+# Governance v1 Compare-Two-Runs (research inspectability, not debugging).
+GOVERNANCE_DIVERGENCE_NOTES = {
+    "TC15": "Weak transition, judged triage_better (inside-outside correction). Governed routing recognized the live edge as the student's intended logical RELATIONSHIP between ideas — clarifying the meaning the transition must carry — rather than treating it as surface connective wording. This inside-out clarification yields a more developmental invitation than the baseline's move.",
+    "TC35": "Descriptive 'dominant impression' task, judged triage_better (improved routing). Governed routing honored the teacher-named element and the descriptive communicative purpose — clarifying what feeling/impression the concrete details should serve — instead of defaulting to a generic thesis, so the target matches the assignment's actual instructional intent (W-D: honor teacher purpose).",
+    "TC65": "Pasted AI-generated text, judged triage_better (inside-outside correction). Governed routing treated authorship as the live constitutional edge — an inside-out clarification of the student's OWN thinking — rather than critiquing the pasted prose. Returning authorship to the student is the correct Compass move (L1 anti-coauthoring at the surface).",
+}
+
+
+def _governance_trace_for_turn(t: dict) -> dict:
+    """Derive the L1–L5 governance trace for a stored harness turn (triage runs).
+    Uses the SINGLE source of truth (triage_experiment.resolve_route_activation)
+    so the map is never duplicated. Returns {} for exhaustive turns."""
+    route = t.get("triage_route")
+    path = t.get("reasoning_path")
+    fallback = path in ("route_fallback_full", "foundational_fallback_full")
+    if not route and not fallback:
+        return {}  # exhaustive turn — no triage governance
+    try:
+        import triage_experiment as TX
+        triage = {"instructional_route": route or "",
+                  "highest_leverage_dimension": t.get("triage_dimension", ""),
+                  "prev_target_status": t.get("triage_prev_target_status", "") or "none",
+                  "relevant_instructional_objects": []}
+        act = TX.resolve_route_activation(triage, False)
+        active = [TX.LENS.get(c, c) for c in act["active_lenses"]]
+        dormant = [TX.LENS.get(c, c) for c in act["dormant_lenses"]]
+        moves = act.get("permitted_moves", [])
+        may_new = act.get("may_select_new_target")
+        consol = act.get("consolidation_allowed")
+        fade = act.get("fading_allowed")
+    except Exception:  # noqa: BLE001
+        active, dormant, moves, may_new, consol, fade = [], [], [], None, None, None
+    return {
+        "route": route,
+        "inside_outside": t.get("triage_inside_outside"),
+        "dimension": t.get("triage_dimension"),
+        "active_lenses": active,
+        "dormant_lenses": dormant,
+        "permitted_moves": moves,
+        "may_select_new_target": may_new,
+        "consolidation_allowed": consol,
+        "fading_allowed": fade,
+        "fallback_occurred": fallback,
+        "fallback_kind": path if fallback else "",
+        "fallback_reason": t.get("route_fallback_reason", ""),
+        "candidate_invitations": t.get("candidate_invitations", []),
+        "selected_invitation": t.get("selected_invitation", ""),
+        "governance_layers": [
+            "L1 Constitutional — ALWAYS governs (anti-coauthoring, one target, one invitation, restraint, no scores, stopping rules)",
+            "L2 Developmental Policy — ALWAYS governs (function-before-convention, honor teacher purpose, inside→outside, support-fading)",
+            f"L3 Diagnostic — CONDITIONAL this turn: active={active or ['constitutional/policy core only']}",
+            "L4 Learner Model — recorded incrementally (no fabricated growth)",
+            "L5 Presentation — exactly one learner-facing invitation, streamed",
+        ],
     }
 
 
@@ -2444,6 +2506,17 @@ async def get_test_run(run_id: str):
     doc = await db.test_runs.find_one({"id": run_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Test run not found")
+    # Attach the derived L1–L5 governance trace per turn (inspectability) and the
+    # curated divergence note per case. Non-destructive: computed on read.
+    is_triage = (doc.get("reasoning_mode") == "triage_experimental")
+    for r in doc.get("results", []):
+        for t in (r.get("turns") or []):
+            if "governance_trace" not in t:
+                gt = _governance_trace_for_turn(t)
+                if gt:
+                    t["governance_trace"] = gt
+        if is_triage and r.get("case_id") in GOVERNANCE_DIVERGENCE_NOTES:
+            r["governance_note"] = GOVERNANCE_DIVERGENCE_NOTES[r["case_id"]]
     return doc
 
 
