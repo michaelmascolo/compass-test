@@ -9,6 +9,7 @@ import PublicPreview from "@/components/PublicPreview";
 import Landing from "@/components/Landing";
 import PreviewBridge from "@/components/PreviewBridge";
 import TeacherConfig from "@/components/TeacherConfig";
+import TeacherHome from "@/components/TeacherHome";
 import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
@@ -38,6 +39,10 @@ function App() {
   // Preview → Real bridge (?bridge) — reachable standalone (product map S3).
   if (params.has("bridge")) {
     return <PreviewBridge sessionId={null} />;
+  }
+  // Teacher Home / workspace hub (?teacher) — S6: lists assignments + create CTA.
+  if (params.has("teacher")) {
+    return <TeacherHome />;
   }
   // Teacher Configuration (?config) — set up an assignment before using Compass.
   if (params.has("config")) {

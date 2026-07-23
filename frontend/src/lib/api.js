@@ -49,8 +49,28 @@ export const getGradeProfile = async (id) => {
   return data;
 };
 
-export const createSessionFromConfig = async (id) => {
-  const { data } = await axios.post(`${API}/teacher-configs/${id}/create-session`);
+export const createSessionFromConfig = async (id, studentName) => {
+  const { data } = await axios.post(`${API}/teacher-configs/${id}/create-session`, {
+    student_name: studentName || "",
+  });
+  return data;
+};
+
+// --- Teacher product: assignments (teacher -> assignment -> student sessions) ---
+export const listTeacherAssignments = async () => {
+  const { data } = await axios.get(`${API}/teacher/assignments`);
+  return data;
+};
+
+export const listAssignmentSessions = async (configId) => {
+  const { data } = await axios.get(`${API}/teacher/assignments/${configId}/sessions`);
+  return data;
+};
+
+export const startAssignmentByCode = async (code, studentName) => {
+  const { data } = await axios.post(`${API}/assignments/${code}/start`, {
+    student_name: studentName || "",
+  });
   return data;
 };
 

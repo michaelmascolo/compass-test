@@ -494,6 +494,11 @@ class Session(BaseModel):
     is_preview: bool = False
     preview_analytics: dict = Field(default_factory=dict)
     reasoning_mode: str = "exhaustive"  # exhaustive | triage_experimental (per-session; exhaustive is default, unchanged frozen path)
+    # Teacher-product linkage (teacher -> assignment(config) -> student session).
+    teacher_id: Optional[str] = ""
+    config_id: Optional[str] = ""
+    assignment_code: Optional[str] = ""
+    student_name: Optional[str] = ""
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
@@ -567,6 +572,8 @@ class TeacherConfiguration(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     configurationVersion: str = "1.0"
     status: str = "draft"  # draft | active
+    teacher_id: str = "local-teacher"   # implicit single local teacher (auth deferred)
+    code: str = ""                       # short shareable assignment code (students join with this)
     classContext: ClassContext = Field(default_factory=ClassContext)
     assignment: AssignmentCfg = Field(default_factory=AssignmentCfg)
     learning: LearningCfg = Field(default_factory=LearningCfg)
@@ -1516,10 +1523,24 @@ async def get_constitution():
     return COMPASS_CONSTITUTION
 
 
+LOCAL_TEACHER_ID = "local-teacher"
+
+
+async def _unique_assignment_code() -> str:
+    """Short, human-shareable assignment code (students join with it)."""
+    for _ in range(20):
+        code = uuid.uuid4().hex[:6].upper()
+        if not await db.teacher_configs.find_one({"code": code}, {"_id": 1}):
+            return code
+    return uuid.uuid4().hex[:8].upper()
+
+
 @api_router.post("/teacher-configs", response_model=TeacherConfiguration)
 async def create_teacher_config(payload: TeacherConfigInput):
     cfg = TeacherConfiguration()
     _apply_config_input(cfg, payload)
+    cfg.teacher_id = LOCAL_TEACHER_ID
+    cfg.code = await _unique_assignment_code()
     cfg.constitutionalRules = dict(SYSTEM_CONSTITUTIONAL_RULES)  # system-inserted, always
     await db.teacher_configs.insert_one(cfg.model_dump())
     return cfg
@@ -1695,8 +1716,12 @@ def _compile_teacher_notes(cfg: TeacherConfiguration, profile: Optional[dict]) -
     return " ".join(parts)
 
 
+class CreateSessionFromConfig(BaseModel):
+    student_name: Optional[str] = ""
+
+
 @api_router.post("/teacher-configs/{config_id}/create-session", response_model=Session)
-async def create_session_from_config(config_id: str):
+async def create_session_from_config(config_id: str, payload: Optional[CreateSessionFromConfig] = None):
     doc = await db.teacher_configs.find_one({"id": config_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Configuration not found")
@@ -1722,9 +1747,90 @@ async def create_session_from_config(config_id: str):
         teacher_notes=notes,
         assignment_prompt=cfg.assignment.directions or "",
         telos=telos,
+        teacher_id=cfg.teacher_id or LOCAL_TEACHER_ID,
+        config_id=cfg.id,
+        assignment_code=cfg.code,
+        student_name=(payload.student_name.strip() if payload and payload.student_name else ""),
     )
     await db.sessions.insert_one(session.model_dump())
     return session
+
+
+def _assignment_summary(cfg: dict, sessions: List[dict]) -> dict:
+    """Teacher-facing summary of one assignment (config) + its student activity."""
+    a = cfg.get("assignment", {}) or {}
+    real = [s for s in sessions if not s.get("is_preview")]
+    active = [s for s in real if (s.get("interactions") or s.get("turns"))]
+    last = max([s.get("updated_at", "") for s in real], default="")
+    return {
+        "id": cfg.get("id"),
+        "code": cfg.get("code", ""),
+        "status": cfg.get("status", "draft"),
+        "title": a.get("title") or a.get("directions", "")[:80] or "Untitled assignment",
+        "purpose": a.get("purpose", ""),
+        "genre": a.get("genre", ""),
+        "dueDate": a.get("dueDate", ""),
+        "gradeLevel": (cfg.get("classContext", {}) or {}).get("gradeLevel"),
+        "revisionCycles": a.get("revisionCycles"),
+        "student_count": len(real),
+        "active_count": len(active),
+        "last_activity": last,
+        "created_at": cfg.get("created_at", ""),
+        "updated_at": cfg.get("updated_at", ""),
+    }
+
+
+@api_router.get("/teacher/assignments")
+async def list_teacher_assignments():
+    """S6 Teacher Home data — the local teacher's assignments with student activity."""
+    cfgs = await db.teacher_configs.find(
+        {"teacher_id": LOCAL_TEACHER_ID}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    ids = [c["id"] for c in cfgs]
+    sessions = await db.sessions.find(
+        {"config_id": {"$in": ids}},
+        {"_id": 0, "config_id": 1, "is_preview": 1, "interactions": 1, "turns": 1, "updated_at": 1},
+    ).to_list(5000) if ids else []
+    by_cfg: dict = {}
+    for s in sessions:
+        by_cfg.setdefault(s.get("config_id"), []).append(s)
+    assignments = [_assignment_summary(c, by_cfg.get(c["id"], [])) for c in cfgs]
+    return {
+        "teacher_id": LOCAL_TEACHER_ID,
+        "assignment_count": len(assignments),
+        "student_total": sum(a["student_count"] for a in assignments),
+        "assignments": assignments,
+    }
+
+
+@api_router.get("/teacher/assignments/{config_id}/sessions")
+async def list_assignment_sessions(config_id: str):
+    """Student sessions for one assignment (feeds the upcoming Teacher Dashboard)."""
+    cfg = await db.teacher_configs.find_one({"id": config_id}, {"_id": 0})
+    if not cfg:
+        raise HTTPException(status_code=404, detail="Assignment not found")
+    docs = await db.sessions.find(
+        {"config_id": config_id, "is_preview": {"$ne": True}},
+        {"_id": 0, "id": 1, "student_name": 1, "created_at": 1, "updated_at": 1,
+         "interactions": 1, "turns": 1, "revision_history": 1, "developmental_profile": 1},
+    ).sort("updated_at", -1).to_list(2000)
+    students = [{
+        "session_id": d["id"],
+        "student_name": d.get("student_name") or "Unnamed student",
+        "turn_count": len(d.get("interactions") or d.get("turns") or []),
+        "revision_count": len(d.get("revision_history") or []),
+        "created_at": d.get("created_at", ""),
+        "last_activity": d.get("updated_at", ""),
+    } for d in docs]
+    return {"assignment": _assignment_summary(cfg, docs), "students": students}
+
+
+@api_router.post("/assignments/{code}/start", response_model=Session)
+async def start_session_by_code(code: str, payload: Optional[CreateSessionFromConfig] = None):
+    """Student join (S8): start a writing session from a shared assignment code."""
+    cfg = await db.teacher_configs.find_one({"code": code.strip().upper()}, {"_id": 0})
+    if not cfg:
+        raise HTTPException(status_code=404, detail="No assignment found for that code")
+    return await create_session_from_config(cfg["id"], payload)
 
 
 _CONSTITUTION_VALIDATOR_SYSTEM = """You are the constitutional guardrail for Compass, a developmental writing tutor. A teacher is requesting a feature or configuration. Your job is to classify the request and respond in the spirit of Compass — never a blunt refusal.
