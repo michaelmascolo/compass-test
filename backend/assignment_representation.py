@@ -441,7 +441,14 @@ async def operation(session_id: str, req: TextReq):
     sess.interactions.append(InteractionRecord(
         kind="operation", student_text=text, target_demand_id=target.id, evaluation=ev, created_at=_now_iso()))
 
-    if performed:
+    # Anti-trap: after repeated unsuccessful attempts at direct teaching, treat this
+    # demand as 'developing' (adequate FOR NOW, not permanently complete) and move on,
+    # rather than looping the same target forever.
+    stuck = (not performed) and target.scaffold_level >= 3 and target.scaffold_attempts >= 3
+    if stuck:
+        target.status = "developing"
+
+    if performed or stuck:
         await _advance_after_diagnosis(sess)
     else:
         # stay on the same target, but re-generate at the escalated level
