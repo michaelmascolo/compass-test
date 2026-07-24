@@ -68,16 +68,26 @@ export default function Landing() {
 
             {/* Primary action */}
             <motion.div {...rise(0.24)} className="mt-12 flex flex-col items-start">
-              <motion.button
-                whileHover={{ scale: 1.02 }}
-                transition={{ duration: 0.2 }}
-                onClick={() => go("preview")}
-                data-testid="landing-try-preview"
-                className="group inline-flex items-center gap-2 bg-[#8C3A2A] text-white px-8 py-4 rounded-sm font-medium tracking-wide hover:bg-[#6B2C20] transition-colors focus:ring-2 focus:ring-[#8C3A2A] focus:outline-none"
-              >
-                Try the Preview
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </motion.button>
+              <div className="flex flex-wrap items-center gap-4">
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  transition={{ duration: 0.2 }}
+                  onClick={() => go("preview")}
+                  data-testid="landing-try-preview"
+                  className="group inline-flex items-center gap-2 bg-[#8C3A2A] text-white px-8 py-4 rounded-sm font-medium tracking-wide hover:bg-[#6B2C20] transition-colors focus:ring-2 focus:ring-[#8C3A2A] focus:outline-none"
+                >
+                  Try the Preview
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </motion.button>
+                <button
+                  onClick={() => go("represent")}
+                  data-testid="landing-understand-assignment"
+                  className="group inline-flex items-center gap-2 rounded-sm border border-stone-300 px-6 py-4 font-medium tracking-wide text-stone-700 transition-colors hover:border-[#8C3A2A] hover:text-[#8C3A2A] focus:outline-none focus:ring-2 focus:ring-[#8C3A2A]"
+                >
+                  Understand an assignment
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
               <span className="font-mono-panel text-xs text-stone-500 mt-4 tracking-wide">
                 A 3-minute, in-character experience. No sign-up. You’ll be the writer.
               </span>

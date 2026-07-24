@@ -11,6 +11,7 @@ import PreviewBridge from "@/components/PreviewBridge";
 import TeacherConfig from "@/components/TeacherConfig";
 import TeacherHome from "@/components/TeacherHome";
 import MeaningWorkspace from "@/components/MeaningWorkspace";
+import AssignmentRepresentation from "@/components/AssignmentRepresentation";
 import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
@@ -36,6 +37,10 @@ function App() {
   // Public Preview (?preview) — the 3-5 min in-character entry experience.
   if (params.has("preview")) {
     return <PublicPreview />;
+  }
+  // Compass 2.0 · Sprint 1 — Assignment Representation (?represent).
+  if (params.has("represent")) {
+    return <AssignmentRepresentation />;
   }
   // Meaning Workspace (?meaning=<session_id>) — visual thinking canvas. Routing
   // is designed so more entry points can be added later without change here.

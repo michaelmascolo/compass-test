@@ -151,3 +151,38 @@ export const logMeaningEvents = async (mapId, events) => {
   });
   return data;
 };
+
+// --- Compass 2.0 · Sprint 1: Assignment Representation ---
+export const createAssignmentSession = async (assignmentText) => {
+  const { data } = await axios.post(`${API}/assignment/sessions`, {
+    assignment_text: assignmentText,
+  });
+  return data;
+};
+
+export const getAssignmentSession = async (id) => {
+  const { data } = await axios.get(`${API}/assignment/sessions/${id}`);
+  return data;
+};
+
+export const editAssignment = async (id, assignmentText) => {
+  const { data } = await axios.patch(`${API}/assignment/sessions/${id}`, {
+    assignment_text: assignmentText,
+  });
+  return data;
+};
+
+export const submitInterpretation = async (id, text) => {
+  const { data } = await axios.post(`${API}/assignment/sessions/${id}/interpret`, { text });
+  return data;
+};
+
+export const submitOperation = async (id, text) => {
+  const { data } = await axios.post(`${API}/assignment/sessions/${id}/operation`, { text });
+  return data;
+};
+
+export const submitRestatement = async (id, text) => {
+  const { data } = await axios.post(`${API}/assignment/sessions/${id}/restatement`, { text });
+  return data;
+};

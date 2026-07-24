@@ -2830,6 +2830,11 @@ async def log_meaning_events(map_id: str, payload: MeaningEventBatch):
 
 app.include_router(api_router)
 
+# Compass 2.0 — Sprint 1: Assignment Representation (self-contained slice).
+import assignment_representation as _asgrep
+_asgrep.init(db, EMERGENT_LLM_KEY, now_iso)
+app.include_router(_asgrep.router)
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
