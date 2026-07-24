@@ -54,7 +54,7 @@ const COLORS = [
   { name: "terracotta", bg: "#f4e3dd", ring: "#e0c6bd" },
   { name: "sage", bg: "#e7ede4", ring: "#cdd8c9" },
   { name: "sky", bg: "#e1e9ef", ring: "#c6d6e0" },
-  { name: "sand", bg: "#f1 ebde", ring: "#ded2bb" },
+  { name: "sand", bg: "#f1ebde", ring: "#ded2bb" },
 ].map((c) => ({ ...c, bg: c.bg.replace(" ", "") }));
 
 const EDGE_STROKE = "#a8a29e";
