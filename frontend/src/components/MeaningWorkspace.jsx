@@ -443,8 +443,17 @@ function fromBackend(map) {
   return { nodes: [...groupNodes, ...objNodes], edges };
 }
 
-let objCounter = 0;
-const newId = (p) => `${p}_${Date.now().toString(36)}_${(objCounter++).toString(36)}`;
+// Globally-unique, immutable-for-life IDs for semantic objects/groups/connections.
+// A readable prefix (obj_/grp_/edge_) is kept for legibility; the body is a UUID.
+// Contract: an id, once assigned, is NEVER regenerated or migrated — future
+// workspaces (Writing Plan, Draft, Revision, Teacher tools, analytics) reference
+// these ids and must not duplicate the semantic object. ("One semantic object,
+// many representations.") Existing legacy ids are preserved on load, never rewritten.
+const uuid = () =>
+  typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+const newId = (p) => `${p}_${uuid()}`;
 
 // ===========================================================================
 // Inner canvas (inside ReactFlowProvider).
@@ -591,7 +600,6 @@ function Flow({ sessionId }) {
         setNodes(n);
         setEdges(e);
         setObservations([...(map.coach_log || [])].reverse());
-        if (map.objects?.length) objCounter = map.objects.length + map.groups?.length || 0;
       })
       .catch(() => toast.error("Could not open the Meaning Workspace."))
       .finally(() => alive && setLoading(false));
