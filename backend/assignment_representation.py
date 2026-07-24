@@ -79,6 +79,9 @@ class InteractionRecord(BaseModel):
 class AssignmentSession(BaseModel):
     id: str = Field(default_factory=lambda: f"asg_{uuid.uuid4()}")
     assignment_text: str
+    title: str = ""                                                   # short title (analysis)
+    subject: str = ""                                                 # e.g. Biology (analysis, "if known")
+    educational_level: str = ""                                       # e.g. Grade 9 (analysis, "if known")
     demands: List[AssignmentDemand] = Field(default_factory=list)
     important_distinctions: List[str] = Field(default_factory=list)   # AI analysis: key distinctions the task hinges on
     ambiguities: List[str] = Field(default_factory=list)              # AI analysis: genuinely ambiguous points
@@ -90,9 +93,22 @@ class AssignmentSession(BaseModel):
     stage: str = "interpret"                 # interpret | mapping | restatement | adequate
     representation_adequate: bool = False
     restart_count: int = 0
-    developer_notes: str = ""                                        # PRIVATE — never shown to students
+    developer_notes: str = ""                                         # PRIVATE — never shown to students
+    developer_summary: str = ""                                       # PRIVATE — concise 2-4 sentence lesson from the session
+    sprint_recommendation: str = ""                                   # PRIVATE — one of SPRINT_RECOMMENDATIONS
     created_at: str = ""
     updated_at: str = ""
+
+
+SPRINT_RECOMMENDATIONS = [
+    "No change needed",
+    "Prompt revision",
+    "New scaffold",
+    "New developmental operation",
+    "Developmental Control Engine revision",
+    "UI revision",
+    "Other",
+]
 
 
 class CreateReq(BaseModel):
@@ -157,9 +173,13 @@ async def analyze_assignment(assignment_text: str, sid: str):
         "derivable_from_assignment (true if a careful reading of the assignment gives enough to discover this; "
         "false if it needs outside concept knowledge). Extract 3-6 demands. ALSO return important_distinctions "
         "(the key conceptual distinctions the task hinges on, e.g. 'learning process vs. learning outcome') and "
-        "ambiguities (genuinely unclear points a student could reasonably read more than one way). Return ONLY JSON: "
-        '{"demands":[{"label":"","description":"","source":"","supporting_wording":"","operation":"",'
-        '"concepts":[],"importance":"","derivable_from_assignment":true}],"important_distinctions":[],"ambiguities":[]}'
+        "ambiguities (genuinely unclear points a student could reasonably read more than one way). ALSO classify: "
+        "title (a concise 3-6 word title for the assignment), subject (e.g. 'Biology','History','Literature' — or "
+        "\"\" if unclear), educational_level (best guess e.g. 'Grade 4','Grade 8','Grade 12','College','Graduate' — "
+        "or \"\" if unclear). Return ONLY JSON: "
+        '{"title":"","subject":"","educational_level":"","demands":[{"label":"","description":"","source":"",'
+        '"supporting_wording":"","operation":"","concepts":[],"importance":"","derivable_from_assignment":true}],'
+        '"important_distinctions":[],"ambiguities":[]}'
     )
     data = await _llm(system, f"ASSIGNMENT:\n{assignment_text}", sid)
     out = []
@@ -174,7 +194,12 @@ async def analyze_assignment(assignment_text: str, sid: str):
             importance="supporting" if str(d.get("importance", "")).lower().startswith("support") else "essential",
             derivable_from_assignment=bool(d.get("derivable_from_assignment", True)),
         ))
-    return out, data.get("important_distinctions", []) or [], data.get("ambiguities", []) or []
+    meta = {
+        "title": (data.get("title") or "").strip(),
+        "subject": (data.get("subject") or "").strip(),
+        "educational_level": (data.get("educational_level") or "").strip(),
+    }
+    return out, data.get("important_distinctions", []) or [], data.get("ambiguities", []) or [], meta
 
 
 _STATUS = {"understood", "developing", "needs_attention", "unconfirmed"}
@@ -386,7 +411,10 @@ async def create_session(req: CreateReq):
     if not text:
         raise HTTPException(status_code=400, detail="Assignment text is required.")
     sess = AssignmentSession(assignment_text=text, created_at=_now_iso(), updated_at=_now_iso())
-    sess.demands, sess.important_distinctions, sess.ambiguities = await analyze_assignment(text, sess.id)
+    sess.demands, sess.important_distinctions, sess.ambiguities, _meta = await analyze_assignment(text, sess.id)
+    sess.title = _meta["title"]
+    sess.subject = _meta["subject"]
+    sess.educational_level = _meta["educational_level"]
     sess.stage = "interpret"
     await _save(sess)
     return sess
@@ -405,7 +433,10 @@ async def edit_assignment(session_id: str, req: CreateReq):
     if not text:
         raise HTTPException(status_code=400, detail="Assignment text is required.")
     sess.assignment_text = text
-    sess.demands, sess.important_distinctions, sess.ambiguities = await analyze_assignment(text, sess.id)
+    sess.demands, sess.important_distinctions, sess.ambiguities, _meta = await analyze_assignment(text, sess.id)
+    sess.title = _meta["title"]
+    sess.subject = _meta["subject"]
+    sess.educational_level = _meta["educational_level"]
     sess.interactions = []
     sess.student_interpretation = ""
     sess.active_target_id = ""
@@ -520,7 +551,9 @@ async def restatement(session_id: str, req: TextReq):
 # (Not analytics. Each session is a complete, human-analyzable research case.)
 # ---------------------------------------------------------------------------
 class NotesReq(BaseModel):
-    developer_notes: str = ""
+    developer_notes: Optional[str] = None
+    developer_summary: Optional[str] = None
+    sprint_recommendation: Optional[str] = None
 
 
 def _duration_seconds(sess: AssignmentSession):
@@ -608,6 +641,8 @@ def build_record(sess: AssignmentSession) -> dict:
             "stage": sess.stage,
         },
         "developer_notes": sess.developer_notes,
+        "developer_summary": sess.developer_summary,
+        "sprint_recommendation": sess.sprint_recommendation,
     }
 
 
@@ -642,6 +677,8 @@ def _record_markdown(r: dict) -> str:
           f"- 'I don't know' occurred: {m['i_dont_know_occurred']}",
           f"- Restart occurred: {m['restart_occurred']} (x{m['restart_count']})",
           f"- Representation adequate: {m['representation_adequate']}",
+          "", "## Developer Summary", r.get("developer_summary") or "_(none)_",
+          "", "## Sprint Recommendation", r.get("sprint_recommendation") or "_(none)_",
           "", "## Developer Notes", r["developer_notes"] or "_(none)_"]
     return "\n".join(L)
 
@@ -661,6 +698,46 @@ async def development_record(session_id: str, format: str = "json"):
 @router.patch("/sessions/{session_id}/developer-notes", response_model=AssignmentSession)
 async def set_developer_notes(session_id: str, req: NotesReq):
     sess = await _load(session_id)
-    sess.developer_notes = req.developer_notes or ""
+    if req.developer_notes is not None:
+        sess.developer_notes = req.developer_notes
+    if req.developer_summary is not None:
+        sess.developer_summary = req.developer_summary
+    if req.sprint_recommendation is not None:
+        sess.sprint_recommendation = req.sprint_recommendation
     await _save(sess)
     return sess
+
+
+@router.get("/recommendation-options")
+async def recommendation_options():
+    return {"options": SPRINT_RECOMMENDATIONS}
+
+
+@router.get("/library")
+async def session_library():
+    """Developer-only index of saved Development Sessions. NOT analytics —
+    just a list of cases with enough metadata to choose one to open."""
+    docs = await _db.assignment_sessions.find({}, {"_id": 0}).to_list(500)
+    items = []
+    for doc in docs:
+        sess = AssignmentSession(**doc)
+        ops = [i for i in sess.interactions if i.kind == "operation"]
+        items.append({
+            "id": sess.id,
+            "created_at": sess.created_at,
+            "updated_at": sess.updated_at,
+            "title": sess.title or (sess.assignment_text[:60] + ("…" if len(sess.assignment_text) > 60 else "")),
+            "subject": sess.subject,
+            "educational_level": sess.educational_level,
+            "assignment_first_line": sess.assignment_text.split("\n")[0][:120],
+            "session_length_seconds": _duration_seconds(sess),
+            "num_scaffold_attempts": len(ops),
+            "num_level3_interventions": sum(1 for i in ops if (i.scaffold or {}).get("level") == 3),
+            "has_developer_notes": bool(sess.developer_notes.strip()),
+            "has_developer_summary": bool(sess.developer_summary.strip()),
+            "sprint_recommendation": sess.sprint_recommendation,
+            "stage": sess.stage,
+            "representation_adequate": sess.representation_adequate,
+        })
+    items.sort(key=lambda x: x["updated_at"] or "", reverse=True)
+    return {"sessions": items}

@@ -13,6 +13,10 @@ import {
   Code2,
   Download,
   ChevronDown,
+  BookOpen,
+  X,
+  Clock,
+  Layers,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -31,11 +35,22 @@ import {
   submitInterpretation,
   submitOperation,
   submitRestatement,
-  setDeveloperNotes,
+  setDeveloperMeta,
+  getSessionLibrary,
   assignmentRecordUrl,
 } from "@/lib/api";
 
 const STORE = "compass_rep_session";
+
+const SPRINT_RECOMMENDATIONS = [
+  "No change needed",
+  "Prompt revision",
+  "New scaffold",
+  "New developmental operation",
+  "Developmental Control Engine revision",
+  "UI revision",
+  "Other",
+];
 
 const SAMPLE =
   "Compare fixed and growth mindsets. Explain how each mindset affects both the process and outcomes of learning. Use relevant examples to support your explanation.";
@@ -167,6 +182,18 @@ export default function AssignmentRepresentation() {
       new URLSearchParams(window.location.search).has("dev")
   );
   const [savingNotes, setSavingNotes] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+
+  const loadSessionById = useCallback((id) => {
+    localStorage.setItem(STORE, id);
+    prevStatus.current = {};
+    return getAssignmentSession(id).then((s) => {
+      (s.demands || []).forEach((d) => (prevStatus.current[d.id] = d.status));
+      setSession(s);
+      setKnowledge(false);
+      setLibraryOpen(false);
+    });
+  }, []);
 
   // Hidden Developer Mode toggle — Ctrl/Cmd + Shift + D. Never exposed to students.
   useEffect(() => {
@@ -184,12 +211,18 @@ export default function AssignmentRepresentation() {
   }, []);
 
   const saveNotes = useCallback(
-    async (notes) => {
+    async (patch) => {
       if (!session) return;
       setSavingNotes(true);
       try {
-        const s = await setDeveloperNotes(session.id, notes);
-        setSession((prev) => ({ ...prev, developer_notes: s.developer_notes }));
+        const s = await setDeveloperMeta(session.id, patch);
+        setSession((prev) => ({
+          ...prev,
+          developer_notes: s.developer_notes,
+          developer_summary: s.developer_summary,
+          sprint_recommendation: s.sprint_recommendation,
+        }));
+        toast.success("Saved.");
       } catch (e) {
         toast.error("Could not save developer notes.");
       } finally {
@@ -290,6 +323,11 @@ export default function AssignmentRepresentation() {
         <p className="font-serif-display text-2xl text-stone-400">Opening Compass…</p>
       </div>
     );
+  }
+
+  // ============ Developer-only: Development Session Library ============
+  if (devMode && libraryOpen) {
+    return <LibraryView onOpen={loadSessionById} onClose={() => setLibraryOpen(false)} />;
   }
 
   // ============ Knowledge placeholder (Sprint 2 stub) ============
@@ -427,7 +465,7 @@ export default function AssignmentRepresentation() {
           </div>
         </div>
         {devMode && (
-          <DeveloperPanel session={session} onSaveNotes={saveNotes} savingNotes={savingNotes} />
+          <DeveloperPanel session={session} onSaveNotes={saveNotes} savingNotes={savingNotes} onOpenLibrary={() => setLibraryOpen(true)} />
         )}
         <RestartDialog open={restartOpen} setOpen={setRestartOpen} confirm={confirmEdit} />
       </div>
@@ -589,18 +627,22 @@ export default function AssignmentRepresentation() {
         </div>
       </div>
       {devMode && (
-        <DeveloperPanel session={session} onSaveNotes={saveNotes} savingNotes={savingNotes} />
+        <DeveloperPanel session={session} onSaveNotes={saveNotes} savingNotes={savingNotes} onOpenLibrary={() => setLibraryOpen(true)} />
       )}
       <RestartDialog open={restartOpen} setOpen={setRestartOpen} confirm={confirmEdit} />
     </div>
   );
 }
 
-function DeveloperPanel({ session, onSaveNotes, savingNotes }) {
+function DeveloperPanel({ session, onSaveNotes, savingNotes, onOpenLibrary }) {
   const [open, setOpen] = useState(true);
   const [notes, setNotes] = useState(session.developer_notes || "");
+  const [summary, setSummary] = useState(session.developer_summary || "");
+  const [rec, setRec] = useState(session.sprint_recommendation || "");
   useEffect(() => {
     setNotes(session.developer_notes || "");
+    setSummary(session.developer_summary || "");
+    setRec(session.sprint_recommendation || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id]);
   const s = session.current_scaffold || {};
@@ -616,20 +658,34 @@ function DeveloperPanel({ session, onSaveNotes, savingNotes }) {
   return (
     <div
       data-testid="developer-panel"
-      className="fixed bottom-4 right-4 z-50 w-[380px] max-h-[78vh] overflow-auto rounded-sm border border-stone-700 bg-stone-900 text-stone-100 shadow-xl"
+      className="fixed bottom-4 right-4 z-50 w-[390px] max-h-[86vh] overflow-auto rounded-sm border border-stone-700 bg-stone-900 text-stone-100 shadow-xl"
     >
-      <button
-        onClick={() => setOpen((v) => !v)}
-        data-testid="developer-panel-toggle"
-        className="flex w-full items-center justify-between border-b border-stone-700 px-3 py-2"
-      >
-        <span className="flex items-center gap-1.5 font-mono-panel text-[10px] uppercase tracking-[0.2em] text-amber-400">
-          <Code2 className="h-3.5 w-3.5" /> Developer Mode · Control Engine
-        </span>
-        <ChevronDown className={`h-4 w-4 text-stone-400 transition-transform ${open ? "" : "-rotate-90"}`} />
-      </button>
+      <div className="flex items-center justify-between border-b border-stone-700 px-3 py-2">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          data-testid="developer-panel-toggle"
+          className="flex items-center gap-1.5 font-mono-panel text-[10px] uppercase tracking-[0.2em] text-amber-400"
+        >
+          <Code2 className="h-3.5 w-3.5" /> Developer Mode
+        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={onOpenLibrary}
+            data-testid="open-library-button"
+            className="inline-flex items-center gap-1 font-mono-panel text-[9px] uppercase tracking-[0.14em] text-stone-300 hover:text-amber-400"
+          >
+            <BookOpen className="h-3.5 w-3.5" /> Library
+          </button>
+          <button onClick={() => setOpen((v) => !v)}>
+            <ChevronDown className={`h-4 w-4 text-stone-400 transition-transform ${open ? "" : "-rotate-90"}`} />
+          </button>
+        </div>
+      </div>
       {open && (
         <div className="px-3 py-3">
+          <p className="mb-1 font-mono-panel text-[9px] uppercase tracking-[0.16em] text-stone-500">
+            Control Engine
+          </p>
           <Row k="Current Loop" v="Question Loop" />
           <Row k="Stage" v={session.stage} />
           <Row k="Dev. Operation" v={s.targetOperation} />
@@ -644,25 +700,60 @@ function DeveloperPanel({ session, onSaveNotes, savingNotes }) {
           <Row k="Requires Reconstr." v={s.requires_reconstruction ? "yes" : ""} />
 
           <div className="mt-3 border-t border-stone-700 pt-3">
-            <p className="mb-1 font-mono-panel text-[9px] uppercase tracking-[0.14em] text-stone-500">
+            <p className="mb-1 font-mono-panel text-[9px] uppercase tracking-[0.14em] text-amber-400">
+              Developer Summary (required)
+            </p>
+            <textarea
+              data-testid="developer-summary-input"
+              value={summary}
+              onChange={(e) => setSummary(e.target.value)}
+              rows={3}
+              placeholder="2–4 sentences: the major lesson from this session…"
+              className="w-full resize-none rounded-sm border border-stone-700 bg-stone-800 p-2 text-[12px] text-stone-100 outline-none placeholder:text-stone-500 focus:border-amber-500"
+            />
+
+            <p className="mb-1 mt-3 font-mono-panel text-[9px] uppercase tracking-[0.14em] text-stone-500">
+              Sprint Recommendation
+            </p>
+            <select
+              data-testid="sprint-recommendation-select"
+              value={rec}
+              onChange={(e) => setRec(e.target.value)}
+              className="w-full rounded-sm border border-stone-700 bg-stone-800 p-2 text-[12px] text-stone-100 outline-none focus:border-amber-500"
+            >
+              <option value="">— choose —</option>
+              {SPRINT_RECOMMENDATIONS.map((o) => (
+                <option key={o} value={o}>
+                  {o}
+                </option>
+              ))}
+            </select>
+
+            <p className="mb-1 mt-3 font-mono-panel text-[9px] uppercase tracking-[0.14em] text-stone-500">
               Developer Notes (private)
             </p>
             <textarea
               data-testid="developer-notes-input"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              placeholder="Observations after testing (e.g. 'AI identified the wrong target', 'over-scaffolded')…"
+              rows={3}
+              placeholder="Observations (e.g. 'AI identified the wrong target', 'over-scaffolded')…"
               className="w-full resize-none rounded-sm border border-stone-700 bg-stone-800 p-2 text-[12px] text-stone-100 outline-none placeholder:text-stone-500 focus:border-amber-500"
             />
             <div className="mt-2 flex items-center justify-between">
               <button
-                onClick={() => onSaveNotes(notes)}
+                onClick={() =>
+                  onSaveNotes({
+                    developer_notes: notes,
+                    developer_summary: summary,
+                    sprint_recommendation: rec,
+                  })
+                }
                 disabled={savingNotes}
                 data-testid="developer-notes-save"
                 className="rounded-sm bg-amber-500 px-3 py-1.5 text-[11px] font-medium text-stone-900 hover:bg-amber-400 disabled:opacity-50"
               >
-                {savingNotes ? "Saving…" : "Save notes"}
+                {savingNotes ? "Saving…" : "Save"}
               </button>
               <div className="flex items-center gap-3">
                 <a
@@ -688,6 +779,89 @@ function DeveloperPanel({ session, onSaveNotes, savingNotes }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function LibraryView({ onOpen, onClose }) {
+  const [rows, setRows] = useState(null);
+  useEffect(() => {
+    getSessionLibrary()
+      .then(setRows)
+      .catch(() => setRows([]));
+  }, []);
+  const mins = (secs) => (secs == null ? "—" : `${Math.max(1, Math.round(secs / 60))} min`);
+  const fmtDate = (iso) => {
+    try {
+      return new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
+    } catch {
+      return "";
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-stone-950 text-stone-100" data-testid="library-view">
+      <header className="flex items-center justify-between border-b border-stone-800 px-6 py-4">
+        <span className="flex items-center gap-2 font-serif-display text-lg text-stone-100">
+          <BookOpen className="h-5 w-5 text-amber-400" /> Development Session Library
+        </span>
+        <button
+          onClick={onClose}
+          data-testid="library-close-button"
+          className="inline-flex items-center gap-1.5 rounded-sm border border-stone-700 px-3 py-1.5 text-[11px] font-mono-panel uppercase tracking-[0.14em] text-stone-300 hover:text-amber-400"
+        >
+          <X className="h-3.5 w-3.5" /> Close
+        </button>
+      </header>
+      <div className="mx-auto max-w-3xl px-6 py-8">
+        {rows === null && <p className="text-stone-400">Loading sessions…</p>}
+        {rows && rows.length === 0 && (
+          <p className="text-stone-400">No Development Sessions yet.</p>
+        )}
+        <div className="space-y-3">
+          {rows?.map((r) => (
+            <div
+              key={r.id}
+              data-testid={`library-row-${r.id}`}
+              className="flex items-start justify-between gap-4 rounded-sm border border-stone-800 bg-stone-900 p-4"
+            >
+              <div className="min-w-0">
+                <p className="font-mono-panel text-[10px] uppercase tracking-[0.16em] text-stone-500">
+                  {fmtDate(r.created_at)}
+                  {(r.educational_level || r.subject) &&
+                    ` · ${[r.educational_level, r.subject].filter(Boolean).join(" ")}`}
+                </p>
+                <p className="mt-1 font-serif-display text-lg text-stone-100">
+                  {r.title || r.assignment_first_line}
+                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[12px] text-stone-400">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> {mins(r.session_length_seconds)}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Layers className="h-3 w-3" /> {r.num_scaffold_attempts} scaffolds
+                  </span>
+                  <span>{r.num_level3_interventions} Level-3</span>
+                  {r.has_developer_notes && <span className="text-amber-400">Notes ✓</span>}
+                  {r.has_developer_summary && <span className="text-amber-400">Summary ✓</span>}
+                  {r.sprint_recommendation && (
+                    <span className="rounded-sm border border-stone-700 px-1.5 py-px text-[10px] uppercase tracking-[0.1em] text-stone-300">
+                      {r.sprint_recommendation}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => onOpen(r.id)}
+                data-testid={`library-open-${r.id}`}
+                className="shrink-0 rounded-sm bg-amber-500 px-4 py-2 text-[11px] font-medium text-stone-900 hover:bg-amber-400"
+              >
+                Open
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

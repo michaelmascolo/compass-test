@@ -187,11 +187,14 @@ export const submitRestatement = async (id, text) => {
   return data;
 };
 
-export const setDeveloperNotes = async (id, notes) => {
-  const { data } = await axios.patch(`${API}/assignment/sessions/${id}/developer-notes`, {
-    developer_notes: notes,
-  });
+export const setDeveloperMeta = async (id, patch) => {
+  const { data } = await axios.patch(`${API}/assignment/sessions/${id}/developer-notes`, patch);
   return data;
+};
+
+export const getSessionLibrary = async () => {
+  const { data } = await axios.get(`${API}/assignment/library`);
+  return data.sessions;
 };
 
 export const assignmentRecordUrl = (id, format) =>
