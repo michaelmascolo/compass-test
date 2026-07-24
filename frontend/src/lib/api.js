@@ -125,3 +125,28 @@ export const listTestRuns = async () => {
 
 export const exportTestRunUrl = (runId, format) =>
   `${API}/tests/runs/${runId}/export?format=${format}`;
+
+// --- Meaning Workspace (visual thinking canvas) ---
+export const getMeaningMap = async (sessionId) => {
+  const { data } = await axios.get(`${API}/meaning-maps/by-session/${sessionId}`);
+  return data;
+};
+
+export const saveMeaningMap = async (mapId, payload) => {
+  const { data } = await axios.put(`${API}/meaning-maps/${mapId}`, payload);
+  return data;
+};
+
+export const coachMeaningMap = async (mapId, trigger) => {
+  const { data } = await axios.post(`${API}/meaning-maps/${mapId}/coach`, {
+    trigger: trigger || "on_demand",
+  });
+  return data;
+};
+
+export const logMeaningEvents = async (mapId, events) => {
+  const { data } = await axios.post(`${API}/meaning-maps/${mapId}/events`, {
+    events: events || [],
+  });
+  return data;
+};

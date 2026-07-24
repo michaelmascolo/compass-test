@@ -12,6 +12,7 @@ import {
   History,
   ChevronRight,
   CornerDownRight,
+  Waypoints,
 } from "lucide-react";
 
 const draftKey = (id) => `dws_draft_${id}`;
@@ -157,6 +158,15 @@ export default function StudentWorkspace({
               <RotateCcw className="h-3 w-3" />
             </button>
           )}
+          <button
+            onClick={() => (window.location.href = `?meaning=${session.id}`)}
+            data-testid="open-meaning-workspace-button"
+            className="inline-flex items-center gap-1.5 text-[10px] font-mono-panel uppercase tracking-[0.15em] text-stone-500 hover:text-[#8C3A2A] transition-colors border border-stone-300 rounded-sm px-2.5 py-1"
+            title="Open the Meaning Workspace — a visual space to think before you write"
+          >
+            <Waypoints className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Meaning Workspace</span>
+          </button>
           <button
             onClick={onOpenPanel}
             data-testid="open-dev-panel-button"

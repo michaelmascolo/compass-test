@@ -2674,6 +2674,9 @@ class MeaningMap(BaseModel):
     connections: List[dict] = Field(default_factory=list)
     groups: List[dict] = Field(default_factory=list)
     coach_log: List[dict] = Field(default_factory=list)
+    # Append-only record of every learner action (a rich trace of the thinking
+    # process — later usable for undo/history, analytics, adaptive scaffolding).
+    events: List[dict] = Field(default_factory=list)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
@@ -2686,6 +2689,10 @@ class MeaningMapSave(BaseModel):
 
 class CoachRequest(BaseModel):
     trigger: Optional[str] = "on_demand"  # on_demand | ambient
+
+
+class MeaningEventBatch(BaseModel):
+    events: List[dict] = Field(default_factory=list)
 
 
 @api_router.get("/meaning-maps/by-session/{session_id}", response_model=MeaningMap)
@@ -2764,6 +2771,26 @@ async def meaning_coach(map_id: str, payload: Optional[CoachRequest] = None):
             "trigger": (payload.trigger if payload else "on_demand"), "created_at": now_iso()}
     await db.meaning_maps.update_one({"id": map_id}, {"$push": {"coach_log": {"$each": [note], "$slice": -50}}})
     return note
+
+
+@api_router.post("/meaning-maps/{map_id}/events")
+async def log_meaning_events(map_id: str, payload: MeaningEventBatch):
+    """Append a batch of learner-action events to the map's thinking trace.
+    Every event is timestamped and associated with the session. Structural
+    edits still flow through PUT /meaning-maps/{map_id}; this is the audit trail."""
+    doc = await db.meaning_maps.find_one({"id": map_id}, {"_id": 0, "session_id": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Meaning map not found")
+    stamped = []
+    for e in (payload.events or []):
+        rec = dict(e) if isinstance(e, dict) else {"type": str(e)}
+        rec.setdefault("id", str(uuid.uuid4()))
+        rec["session_id"] = doc.get("session_id", "")
+        rec["logged_at"] = now_iso()
+        stamped.append(rec)
+    if stamped:
+        await db.meaning_maps.update_one({"id": map_id}, {"$push": {"events": {"$each": stamped}}})
+    return {"logged": len(stamped)}
 
 
 app.include_router(api_router)

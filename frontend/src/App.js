@@ -10,6 +10,7 @@ import Landing from "@/components/Landing";
 import PreviewBridge from "@/components/PreviewBridge";
 import TeacherConfig from "@/components/TeacherConfig";
 import TeacherHome from "@/components/TeacherHome";
+import MeaningWorkspace from "@/components/MeaningWorkspace";
 import { createSession, getSession, interact, editTelos } from "@/lib/api";
 
 const STORAGE_KEY = "dws_session_id";
@@ -35,6 +36,12 @@ function App() {
   // Public Preview (?preview) — the 3-5 min in-character entry experience.
   if (params.has("preview")) {
     return <PublicPreview />;
+  }
+  // Meaning Workspace (?meaning=<session_id>) — visual thinking canvas. Routing
+  // is designed so more entry points can be added later without change here.
+  if (params.has("meaning")) {
+    const sid = params.get("meaning") || localStorage.getItem(STORAGE_KEY);
+    return <MeaningWorkspace sessionId={sid} />;
   }
   // Preview → Real bridge (?bridge) — reachable standalone (product map S3).
   if (params.has("bridge")) {
