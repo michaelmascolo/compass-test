@@ -186,3 +186,13 @@ export const submitRestatement = async (id, text) => {
   const { data } = await axios.post(`${API}/assignment/sessions/${id}/restatement`, { text });
   return data;
 };
+
+export const setDeveloperNotes = async (id, notes) => {
+  const { data } = await axios.patch(`${API}/assignment/sessions/${id}/developer-notes`, {
+    developer_notes: notes,
+  });
+  return data;
+};
+
+export const assignmentRecordUrl = (id, format) =>
+  `${API}/assignment/sessions/${id}/record?format=${format}`;

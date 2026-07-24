@@ -10,6 +10,9 @@ import {
   Pencil,
   CornerDownRight,
   CircleDot,
+  Code2,
+  Download,
+  ChevronDown,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -28,6 +31,8 @@ import {
   submitInterpretation,
   submitOperation,
   submitRestatement,
+  setDeveloperNotes,
+  assignmentRecordUrl,
 } from "@/lib/api";
 
 const STORE = "compass_rep_session";
@@ -156,6 +161,43 @@ export default function AssignmentRepresentation() {
   const [knowledge, setKnowledge] = useState(false);
   const prevStatus = useRef({});
   const [flashIds, setFlashIds] = useState(new Set());
+  const [devMode, setDevMode] = useState(
+    () =>
+      localStorage.getItem("compass_dev_mode") === "1" ||
+      new URLSearchParams(window.location.search).has("dev")
+  );
+  const [savingNotes, setSavingNotes] = useState(false);
+
+  // Hidden Developer Mode toggle — Ctrl/Cmd + Shift + D. Never exposed to students.
+  useEffect(() => {
+    const onKey = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "D" || e.key === "d")) {
+        e.preventDefault();
+        setDevMode((v) => {
+          localStorage.setItem("compass_dev_mode", v ? "0" : "1");
+          return !v;
+        });
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const saveNotes = useCallback(
+    async (notes) => {
+      if (!session) return;
+      setSavingNotes(true);
+      try {
+        const s = await setDeveloperNotes(session.id, notes);
+        setSession((prev) => ({ ...prev, developer_notes: s.developer_notes }));
+      } catch (e) {
+        toast.error("Could not save developer notes.");
+      } finally {
+        setSavingNotes(false);
+      }
+    },
+    [session]
+  );
 
   // apply a session update and flash any demands whose status changed
   const applySession = useCallback((s) => {
@@ -384,6 +426,9 @@ export default function AssignmentRepresentation() {
             </div>
           </div>
         </div>
+        {devMode && (
+          <DeveloperPanel session={session} onSaveNotes={saveNotes} savingNotes={savingNotes} />
+        )}
         <RestartDialog open={restartOpen} setOpen={setRestartOpen} confirm={confirmEdit} />
       </div>
     );
@@ -543,7 +588,106 @@ export default function AssignmentRepresentation() {
           )}
         </div>
       </div>
+      {devMode && (
+        <DeveloperPanel session={session} onSaveNotes={saveNotes} savingNotes={savingNotes} />
+      )}
       <RestartDialog open={restartOpen} setOpen={setRestartOpen} confirm={confirmEdit} />
+    </div>
+  );
+}
+
+function DeveloperPanel({ session, onSaveNotes, savingNotes }) {
+  const [open, setOpen] = useState(true);
+  const [notes, setNotes] = useState(session.developer_notes || "");
+  useEffect(() => {
+    setNotes(session.developer_notes || "");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session.id]);
+  const s = session.current_scaffold || {};
+  const target = session.demands.find((d) => d.id === session.active_target_id);
+  const Row = ({ k, v }) =>
+    v ? (
+      <div className="grid grid-cols-[130px_1fr] gap-2 py-0.5">
+        <span className="font-mono-panel text-[9px] uppercase tracking-[0.14em] text-stone-500">{k}</span>
+        <span className="text-[12px] leading-snug text-stone-100">{v}</span>
+      </div>
+    ) : null;
+
+  return (
+    <div
+      data-testid="developer-panel"
+      className="fixed bottom-4 right-4 z-50 w-[380px] max-h-[78vh] overflow-auto rounded-sm border border-stone-700 bg-stone-900 text-stone-100 shadow-xl"
+    >
+      <button
+        onClick={() => setOpen((v) => !v)}
+        data-testid="developer-panel-toggle"
+        className="flex w-full items-center justify-between border-b border-stone-700 px-3 py-2"
+      >
+        <span className="flex items-center gap-1.5 font-mono-panel text-[10px] uppercase tracking-[0.2em] text-amber-400">
+          <Code2 className="h-3.5 w-3.5" /> Developer Mode · Control Engine
+        </span>
+        <ChevronDown className={`h-4 w-4 text-stone-400 transition-transform ${open ? "" : "-rotate-90"}`} />
+      </button>
+      {open && (
+        <div className="px-3 py-3">
+          <Row k="Current Loop" v="Question Loop" />
+          <Row k="Stage" v={session.stage} />
+          <Row k="Dev. Operation" v={s.targetOperation} />
+          <Row k="Target Demand" v={target ? target.label : "—"} />
+          <Row k="Scaffold Level" v={s.level != null ? String(s.level) : "—"} />
+          <Row k="Instruction Type" v={s.instructionType} />
+          <Row k="Concepts" v={(s.concepts || []).join(", ")} />
+          <Row k="Reason" v={session.active_target_reason} />
+          <Row k="Expected Evidence" v={s.expectedEvidence} />
+          <Row k="Next if Successful" v={s.nextIfSuccessful} />
+          <Row k="Next if Unsuccessful" v={s.nextIfUnsuccessful} />
+          <Row k="Requires Reconstr." v={s.requires_reconstruction ? "yes" : ""} />
+
+          <div className="mt-3 border-t border-stone-700 pt-3">
+            <p className="mb-1 font-mono-panel text-[9px] uppercase tracking-[0.14em] text-stone-500">
+              Developer Notes (private)
+            </p>
+            <textarea
+              data-testid="developer-notes-input"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+              placeholder="Observations after testing (e.g. 'AI identified the wrong target', 'over-scaffolded')…"
+              className="w-full resize-none rounded-sm border border-stone-700 bg-stone-800 p-2 text-[12px] text-stone-100 outline-none placeholder:text-stone-500 focus:border-amber-500"
+            />
+            <div className="mt-2 flex items-center justify-between">
+              <button
+                onClick={() => onSaveNotes(notes)}
+                disabled={savingNotes}
+                data-testid="developer-notes-save"
+                className="rounded-sm bg-amber-500 px-3 py-1.5 text-[11px] font-medium text-stone-900 hover:bg-amber-400 disabled:opacity-50"
+              >
+                {savingNotes ? "Saving…" : "Save notes"}
+              </button>
+              <div className="flex items-center gap-3">
+                <a
+                  href={assignmentRecordUrl(session.id, "json")}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid="download-record-json"
+                  className="inline-flex items-center gap-1 text-[10px] font-mono-panel uppercase tracking-[0.12em] text-stone-300 hover:text-amber-400"
+                >
+                  <Download className="h-3 w-3" /> JSON
+                </a>
+                <a
+                  href={assignmentRecordUrl(session.id, "markdown")}
+                  target="_blank"
+                  rel="noreferrer"
+                  data-testid="download-record-md"
+                  className="inline-flex items-center gap-1 text-[10px] font-mono-panel uppercase tracking-[0.12em] text-stone-300 hover:text-amber-400"
+                >
+                  <Download className="h-3 w-3" /> MD
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

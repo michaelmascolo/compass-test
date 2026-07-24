@@ -71,6 +71,7 @@ class InteractionRecord(BaseModel):
     kind: str                                # interpretation | operation | restatement
     student_text: str = ""
     target_demand_id: str = ""
+    scaffold: dict = Field(default_factory=dict)   # snapshot of the scaffold the student was responding to
     evaluation: dict = Field(default_factory=dict)
     created_at: str = ""
 
@@ -79,12 +80,17 @@ class AssignmentSession(BaseModel):
     id: str = Field(default_factory=lambda: f"asg_{uuid.uuid4()}")
     assignment_text: str
     demands: List[AssignmentDemand] = Field(default_factory=list)
+    important_distinctions: List[str] = Field(default_factory=list)   # AI analysis: key distinctions the task hinges on
+    ambiguities: List[str] = Field(default_factory=list)              # AI analysis: genuinely ambiguous points
     interactions: List[InteractionRecord] = Field(default_factory=list)
     student_interpretation: str = ""
     active_target_id: str = ""
+    active_target_reason: str = ""                                    # why this demand is the current target (dev-mode)
     current_scaffold: Optional[dict] = None
     stage: str = "interpret"                 # interpret | mapping | restatement | adequate
     representation_adequate: bool = False
+    restart_count: int = 0
+    developer_notes: str = ""                                        # PRIVATE — never shown to students
     created_at: str = ""
     updated_at: str = ""
 
@@ -140,7 +146,7 @@ async def _llm(system: str, user: str, sid: str) -> dict:
 # ---------------------------------------------------------------------------
 # Backend functions
 # ---------------------------------------------------------------------------
-async def analyze_assignment(assignment_text: str, sid: str) -> List[AssignmentDemand]:
+async def analyze_assignment(assignment_text: str, sid: str):
     system = (
         "You analyze an assignment to extract the DEMANDS it places on the student — the things the student "
         "must understand and DO to represent the task adequately. " + _BOUNDARY + " " + _TONE + "\n\n"
@@ -149,9 +155,11 @@ async def analyze_assignment(assignment_text: str, sid: str) -> List[AssignmentD
         "developmental operation the student must perform: e.g. Differentiate, Compare, Define, Explain, "
         "Exemplify, Relate, Analyze, Evaluate), concepts (1-3 key concepts), importance ('essential'|'supporting'), "
         "derivable_from_assignment (true if a careful reading of the assignment gives enough to discover this; "
-        "false if it needs outside concept knowledge). Extract 3-6 demands. Return ONLY JSON: "
+        "false if it needs outside concept knowledge). Extract 3-6 demands. ALSO return important_distinctions "
+        "(the key conceptual distinctions the task hinges on, e.g. 'learning process vs. learning outcome') and "
+        "ambiguities (genuinely unclear points a student could reasonably read more than one way). Return ONLY JSON: "
         '{"demands":[{"label":"","description":"","source":"","supporting_wording":"","operation":"",'
-        '"concepts":[],"importance":"","derivable_from_assignment":true}]}'
+        '"concepts":[],"importance":"","derivable_from_assignment":true}],"important_distinctions":[],"ambiguities":[]}'
     )
     data = await _llm(system, f"ASSIGNMENT:\n{assignment_text}", sid)
     out = []
@@ -166,7 +174,7 @@ async def analyze_assignment(assignment_text: str, sid: str) -> List[AssignmentD
             importance="supporting" if str(d.get("importance", "")).lower().startswith("support") else "essential",
             derivable_from_assignment=bool(d.get("derivable_from_assignment", True)),
         ))
-    return out
+    return out, data.get("important_distinctions", []) or [], data.get("ambiguities", []) or []
 
 
 _STATUS = {"understood", "developing", "needs_attention", "unconfirmed"}
@@ -323,6 +331,20 @@ def _demand_by_id(sess: AssignmentSession, did: str) -> Optional[AssignmentDeman
     return next((d for d in sess.demands if d.id == did), None)
 
 
+def _target_reason(d: AssignmentDemand) -> str:
+    if d.status == "needs_attention":
+        base = "Student addressed this but misunderstood it."
+    elif d.status == "unconfirmed":
+        base = "Student did not address this in their interpretation."
+    elif d.status == "developing":
+        base = "Student showed partial understanding; sharpening it."
+    else:
+        base = "Selected as the current developmental target."
+    if d.learner_evidence:
+        base += f" ({d.learner_evidence})"
+    return base
+
+
 async def _load(session_id: str) -> AssignmentSession:
     doc = await _db.assignment_sessions.find_one({"id": session_id}, {"_id": 0})
     if not doc:
@@ -350,6 +372,7 @@ async def _advance_after_diagnosis(sess: AssignmentSession):
     target.scaffold_level = move["level"]
     scaffold = await generate_scaffold(sess, target, move["level"])
     sess.active_target_id = target.id
+    sess.active_target_reason = _target_reason(target)
     sess.current_scaffold = scaffold.model_dump()
     sess.stage = "mapping"
 
@@ -363,7 +386,7 @@ async def create_session(req: CreateReq):
     if not text:
         raise HTTPException(status_code=400, detail="Assignment text is required.")
     sess = AssignmentSession(assignment_text=text, created_at=_now_iso(), updated_at=_now_iso())
-    sess.demands = await analyze_assignment(text, sess.id)
+    sess.demands, sess.important_distinctions, sess.ambiguities = await analyze_assignment(text, sess.id)
     sess.stage = "interpret"
     await _save(sess)
     return sess
@@ -382,12 +405,14 @@ async def edit_assignment(session_id: str, req: CreateReq):
     if not text:
         raise HTTPException(status_code=400, detail="Assignment text is required.")
     sess.assignment_text = text
-    sess.demands = await analyze_assignment(text, sess.id)
+    sess.demands, sess.important_distinctions, sess.ambiguities = await analyze_assignment(text, sess.id)
     sess.interactions = []
     sess.student_interpretation = ""
     sess.active_target_id = ""
+    sess.active_target_reason = ""
     sess.current_scaffold = None
     sess.representation_adequate = False
+    sess.restart_count += 1
     sess.stage = "interpret"
     await _save(sess)
     return sess
@@ -424,6 +449,7 @@ async def operation(session_id: str, req: TextReq):
     if not target or not sess.current_scaffold:
         raise HTTPException(status_code=409, detail="No active developmental target.")
     ev = await evaluate_operation(sess, target, sess.current_scaffold, text)
+    scaffold_snapshot = dict(sess.current_scaffold or {})
     target.scaffold_attempts += 1
     performed = bool(ev.get("performed"))
     if performed:
@@ -439,7 +465,8 @@ async def operation(session_id: str, req: TextReq):
     target.learner_evidence = ev.get("learner_evidence", target.learner_evidence)
     target.confidence = float(ev.get("confidence", target.confidence) or 0.0)
     sess.interactions.append(InteractionRecord(
-        kind="operation", student_text=text, target_demand_id=target.id, evaluation=ev, created_at=_now_iso()))
+        kind="operation", student_text=text, target_demand_id=target.id,
+        scaffold=scaffold_snapshot, evaluation=ev, created_at=_now_iso()))
 
     # Anti-trap: after repeated unsuccessful attempts at direct teaching, treat this
     # demand as 'developing' (adequate FOR NOW, not permanently complete) and move on,
@@ -452,6 +479,7 @@ async def operation(session_id: str, req: TextReq):
         await _advance_after_diagnosis(sess)
     else:
         # stay on the same target, but re-generate at the escalated level
+        sess.active_target_reason = "Learner could not yet perform the operation; escalating support."
         scaffold = await generate_scaffold(sess, target, target.scaffold_level)
         sess.current_scaffold = scaffold.model_dump()
         sess.stage = "mapping"
@@ -482,5 +510,157 @@ async def restatement(session_id: str, req: TextReq):
     else:
         # not adequate yet — return to scaffolding the highest-leverage remaining demand
         await _advance_after_diagnosis(sess)
+    await _save(sess)
+    return sess
+
+
+
+# ---------------------------------------------------------------------------
+# Developer instruments — Development Session record + private notes.
+# (Not analytics. Each session is a complete, human-analyzable research case.)
+# ---------------------------------------------------------------------------
+class NotesReq(BaseModel):
+    developer_notes: str = ""
+
+
+def _duration_seconds(sess: AssignmentSession):
+    try:
+        from datetime import datetime
+        a = datetime.fromisoformat(sess.created_at.replace("Z", "+00:00"))
+        b = datetime.fromisoformat(sess.updated_at.replace("Z", "+00:00"))
+        return max(0, int((b - a).total_seconds()))
+    except Exception:
+        return None
+
+
+def build_record(sess: AssignmentSession) -> dict:
+    explicit = [d for d in sess.demands if d.source == "explicit"]
+    inferred = [d for d in sess.demands if d.source == "inferred"]
+
+    def dbrief(d: AssignmentDemand):
+        return {"label": d.label, "description": d.description, "operation": d.operation,
+                "concepts": d.concepts, "importance": d.importance,
+                "supporting_wording": d.supporting_wording, "status": d.status,
+                "learner_evidence": d.learner_evidence}
+
+    ops = [i for i in sess.interactions if i.kind == "operation"]
+    dev_history = []
+    for i in ops:
+        dem = _demand_by_id(sess, i.target_demand_id)
+        sc = i.scaffold or {}
+        ev = i.evaluation or {}
+        dev_history.append({
+            "target_demand": dem.label if dem else i.target_demand_id,
+            "target_operation": sc.get("targetOperation") or (dem.operation if dem else ""),
+            "scaffold_level": sc.get("level"),
+            "instruction_type": sc.get("instructionType"),
+            "student_response": i.student_text,
+            "performed": bool(ev.get("performed")),
+            "reason": ev.get("reason", ""),
+            "final_demand_status": dem.status if dem else "",
+        })
+
+    responses = [{"kind": i.kind, "text": i.student_text} for i in sess.interactions if i.student_text]
+    final_restatement = next(
+        (i.student_text for i in reversed(sess.interactions) if i.kind == "restatement"), "")
+
+    idk = any(
+        (i.evaluation or {}).get("reason") == "no_attempt"
+        or "don't know" in (i.student_text or "").lower()
+        or "dont know" in (i.student_text or "").lower()
+        or "do not know" in (i.student_text or "").lower()
+        for i in ops
+    )
+    num_level3 = sum(1 for i in ops if (i.scaffold or {}).get("level") == 3)
+
+    return {
+        "session_id": sess.id,
+        "assignment": {"original": sess.assignment_text},
+        "ai_analysis": {
+            "explicit_demands": [dbrief(d) for d in explicit],
+            "inferred_demands": [dbrief(d) for d in inferred],
+            "important_distinctions": sess.important_distinctions,
+            "ambiguities": sess.ambiguities,
+        },
+        "student": {
+            "initial_interpretation": sess.student_interpretation,
+            "responses": responses,
+            "final_integrated_restatement": final_restatement,
+        },
+        "developmental_history": dev_history,
+        "final_question_map": [
+            {"label": d.label, "source": d.source, "operation": d.operation,
+             "importance": d.importance, "status": d.status,
+             "scaffold_level": d.scaffold_level, "scaffold_attempts": d.scaffold_attempts}
+            for d in sess.demands
+        ],
+        "metadata": {
+            "created_at": sess.created_at,
+            "updated_at": sess.updated_at,
+            "session_length_seconds": _duration_seconds(sess),
+            "num_scaffold_attempts": len(ops),
+            "num_scaffold_targets": len({i.target_demand_id for i in ops}),
+            "num_level3_interventions": num_level3,
+            "i_dont_know_occurred": idk,
+            "restart_occurred": sess.restart_count > 0,
+            "restart_count": sess.restart_count,
+            "representation_adequate": sess.representation_adequate,
+            "stage": sess.stage,
+        },
+        "developer_notes": sess.developer_notes,
+    }
+
+
+def _record_markdown(r: dict) -> str:
+    L = ["# Development Session", "", f"_Session {r['session_id']}_", "",
+         "## Assignment", r["assignment"]["original"], "", "## AI Analysis", "", "### Explicit demands"]
+    for d in r["ai_analysis"]["explicit_demands"]:
+        L.append(f"- **{d['label']}** ({d['operation']}) — {d['description']}  \n  wording: “{d['supporting_wording']}”  \n  final status: {d['status']}")
+    L += ["", "### Inferred demands"]
+    for d in r["ai_analysis"]["inferred_demands"]:
+        L.append(f"- **{d['label']}** ({d['operation']}) — {d['description']}  \n  final status: {d['status']}")
+    L += ["", "### Important distinctions"] + [f"- {x}" for x in r["ai_analysis"]["important_distinctions"]]
+    L += ["", "### Ambiguities"] + [f"- {x}" for x in r["ai_analysis"]["ambiguities"]]
+    L += ["", "## Student", "", "**Initial interpretation:** " + (r["student"]["initial_interpretation"] or "—"), "", "**Responses:**"]
+    for resp in r["student"]["responses"]:
+        L.append(f"- _{resp['kind']}_: {resp['text']}")
+    L += ["", "**Final integrated restatement:** " + (r["student"]["final_integrated_restatement"] or "—"),
+          "", "## Developmental history"]
+    for h in r["developmental_history"]:
+        L.append(f"- **{h['target_demand']}** · op={h['target_operation']} · level={h['scaffold_level']} "
+                 f"· {'performed' if h['performed'] else 'not performed'} ({h['reason']}) → status {h['final_demand_status']}")
+    L += ["", "## Final Question Map"]
+    for d in r["final_question_map"]:
+        L.append(f"- [{d['source']}/{d['importance']}] **{d['label']}** ({d['operation']}) — {d['status']} "
+                 f"(level {d['scaffold_level']}, {d['scaffold_attempts']} attempts)")
+    m = r["metadata"]
+    L += ["", "## Metadata",
+          f"- Created: {m['created_at']}",
+          f"- Length: {m['session_length_seconds']}s",
+          f"- Scaffold attempts: {m['num_scaffold_attempts']} across {m['num_scaffold_targets']} demands",
+          f"- Level-3 interventions: {m['num_level3_interventions']}",
+          f"- 'I don't know' occurred: {m['i_dont_know_occurred']}",
+          f"- Restart occurred: {m['restart_occurred']} (x{m['restart_count']})",
+          f"- Representation adequate: {m['representation_adequate']}",
+          "", "## Developer Notes", r["developer_notes"] or "_(none)_"]
+    return "\n".join(L)
+
+
+@router.get("/sessions/{session_id}/record")
+async def development_record(session_id: str, format: str = "json"):
+    from fastapi import Response
+    sess = await _load(session_id)
+    r = build_record(sess)
+    if format == "markdown":
+        return Response(_record_markdown(r), media_type="text/markdown",
+                        headers={"Content-Disposition": f'attachment; filename="dev_session_{session_id[:12]}.md"'})
+    return Response(json.dumps(r, indent=2, default=str), media_type="application/json",
+                    headers={"Content-Disposition": f'attachment; filename="dev_session_{session_id[:12]}.json"'})
+
+
+@router.patch("/sessions/{session_id}/developer-notes", response_model=AssignmentSession)
+async def set_developer_notes(session_id: str, req: NotesReq):
+    sess = await _load(session_id)
+    sess.developer_notes = req.developer_notes or ""
     await _save(sess)
     return sess
