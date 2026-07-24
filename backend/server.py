@@ -2658,6 +2658,114 @@ async def export_session(session_id: str, format: str = Query("json")):
                     headers=_download_headers(f"session_{session_id[:8]}.json"))
 
 
+
+# ===========================================================================
+# MEANING WORKSPACE (V1) — visual thinking environment tied to a session.
+# The learner performs ALL organizational work. The coach OBSERVES and QUESTIONS
+# only; it has NO endpoint that can mutate objects/connections/groups. Objects,
+# connections and groups are stored as flexible dicts (React Flow friendly);
+# the schema stays open so the map can later feed a Writing Plan unchanged.
+# ===========================================================================
+class MeaningMap(BaseModel):
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    session_id: str
+    teacher_config_id: Optional[str] = ""
+    objects: List[dict] = Field(default_factory=list)
+    connections: List[dict] = Field(default_factory=list)
+    groups: List[dict] = Field(default_factory=list)
+    coach_log: List[dict] = Field(default_factory=list)
+    created_at: str = Field(default_factory=now_iso)
+    updated_at: str = Field(default_factory=now_iso)
+
+
+class MeaningMapSave(BaseModel):
+    objects: List[dict] = Field(default_factory=list)
+    connections: List[dict] = Field(default_factory=list)
+    groups: List[dict] = Field(default_factory=list)
+
+
+class CoachRequest(BaseModel):
+    trigger: Optional[str] = "on_demand"  # on_demand | ambient
+
+
+@api_router.get("/meaning-maps/by-session/{session_id}", response_model=MeaningMap)
+async def get_or_create_meaning_map(session_id: str):
+    doc = await db.meaning_maps.find_one({"session_id": session_id}, {"_id": 0})
+    if doc:
+        return MeaningMap(**doc)
+    session = await db.sessions.find_one({"id": session_id}, {"_id": 0, "config_id": 1})
+    m = MeaningMap(session_id=session_id, teacher_config_id=(session or {}).get("config_id", ""))
+    await db.meaning_maps.insert_one(m.model_dump())
+    return m
+
+
+@api_router.put("/meaning-maps/{map_id}", response_model=MeaningMap)
+async def save_meaning_map(map_id: str, payload: MeaningMapSave):
+    doc = await db.meaning_maps.find_one({"id": map_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Meaning map not found")
+    upd = {"objects": payload.objects, "connections": payload.connections,
+           "groups": payload.groups, "updated_at": now_iso()}
+    await db.meaning_maps.update_one({"id": map_id}, {"$set": upd})
+    doc.update(upd)
+    return MeaningMap(**doc)
+
+
+def _meaning_snapshot(m: dict) -> str:
+    objs = {o.get("id"): (o.get("text") or "").strip() for o in m.get("objects", [])}
+    groups = {g.get("id"): (g.get("label") or "").strip() for g in m.get("groups", [])}
+    lines = [f"OBJECTS ({len(objs)}):"]
+    for o in m.get("objects", []):
+        g = groups.get(o.get("group_id"))
+        gtag = f"  [in group: {g or 'unnamed'}]" if o.get("group_id") else ""
+        lines.append(f"  - \"{(o.get('text') or '').strip() or '(empty)'}\"{gtag}"
+                     + (f"  (note: {o['notes'].strip()})" if o.get("notes") else ""))
+    lines.append(f"\nGROUPS ({len(groups)}): " + (", ".join(v or 'unnamed' for v in groups.values()) or "none"))
+    conns = m.get("connections", [])
+    lines.append(f"\nCONNECTIONS ({len(conns)}):")
+    for c in conns:
+        arrow = "->" if c.get("directed") else "--"
+        lbl = f" [{c['label'].strip()}]" if c.get("label") else ""
+        lines.append(f"  - \"{objs.get(c.get('from_id'), '?')}\" {arrow} \"{objs.get(c.get('to_id'), '?')}\"{lbl}")
+    return "\n".join(lines)
+
+
+_COACH_SYSTEM = (
+    "You are a developmental thinking coach inside Compass's Meaning Workspace — a visual space where a LEARNER "
+    "externalizes and organizes their own ideas before writing. Your role is to help the learner THINK, never to "
+    "think for them. You may ONLY observe patterns and ask reflective questions. You must NEVER organize, group, "
+    "outline, rename, rewrite, or tell the learner where to put things or what to write. Do not propose a structure. "
+    "Do not summarize their argument for them. Respond with ONE short, tentative, dismissible remark (1-2 sentences) "
+    "in the spirit of: 'I notice these ideas seem related.' / 'I see several examples but no central claim yet.' / "
+    "'What relationship do you see between these two ideas?' Warm, curious, brief. Return ONLY the remark text."
+)
+
+
+@api_router.post("/meaning-maps/{map_id}/coach")
+async def meaning_coach(map_id: str, payload: Optional[CoachRequest] = None):
+    doc = await db.meaning_maps.find_one({"id": map_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Meaning map not found")
+    if not doc.get("objects"):
+        text = "Your canvas is open. Try putting one idea you're wrestling with into a meaning object to start."
+        kind = "observation"
+    else:
+        trigger = (payload.trigger if payload else "on_demand") or "on_demand"
+        ask = ("The learner asked for help thinking. Offer one reflective observation or question about their "
+               "current map." if trigger == "on_demand" else
+               "The map changed. If (and only if) you notice something genuinely worth reflecting on, offer one "
+               "brief, tentative observation or question. Otherwise still respond with a single gentle nudge.")
+        chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"meaning-{map_id}",
+                       system_message=_COACH_SYSTEM).with_model("anthropic", "claude-sonnet-4-6")
+        raw = await chat.send_message(UserMessage(text=f"{ask}\n\nCURRENT MEANING MAP:\n{_meaning_snapshot(doc)}"))
+        text = (raw or "").strip().strip('"')
+        kind = "question" if text.endswith("?") else "observation"
+    note = {"id": str(uuid.uuid4()), "kind": kind, "text": text,
+            "trigger": (payload.trigger if payload else "on_demand"), "created_at": now_iso()}
+    await db.meaning_maps.update_one({"id": map_id}, {"$push": {"coach_log": {"$each": [note], "$slice": -50}}})
+    return note
+
+
 app.include_router(api_router)
 
 app.add_middleware(
