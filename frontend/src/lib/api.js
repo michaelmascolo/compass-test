@@ -137,9 +137,10 @@ export const saveMeaningMap = async (mapId, payload) => {
   return data;
 };
 
-export const coachMeaningMap = async (mapId, trigger) => {
+export const coachMeaningMap = async (mapId, trigger, message) => {
   const { data } = await axios.post(`${API}/meaning-maps/${mapId}/coach`, {
     trigger: trigger || "on_demand",
+    message: message || "",
   });
   return data;
 };

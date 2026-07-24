@@ -86,16 +86,22 @@ function MeaningObjectNode({ id, data, selected }) {
   return (
     <div
       data-testid={`meaning-object-${id}`}
-      className="group/obj relative"
-      style={{ width: OBJ_W }}
+      className="group/obj relative h-full w-full"
     >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={150}
+        minHeight={70}
+        lineClassName="!border-[#8C3A2A]/40"
+        handleClassName="!h-2 !w-2 !bg-white !border !border-[#8C3A2A]/60"
+      />
       <Handle
         type="target"
         position={Position.Left}
-        className="!h-2 !w-2 !bg-stone-300 !border-white opacity-0 group-hover/obj:opacity-100 transition-opacity"
+        className="!h-3 !w-3 !border-2 !border-stone-400 !bg-white !opacity-70 transition hover:!border-[#8C3A2A] hover:!opacity-100"
       />
       <div
-        className="rounded-md px-3 py-2.5 transition-shadow"
+        className="flex h-full flex-col overflow-y-auto nowheel rounded-md px-3 py-2.5 transition-shadow"
         style={{
           background: color,
           border: `1px solid ${selected ? "#8C3A2A" : "#e7e5e4"}`,
@@ -203,7 +209,7 @@ function MeaningObjectNode({ id, data, selected }) {
       <Handle
         type="source"
         position={Position.Right}
-        className="!h-2 !w-2 !bg-stone-300 !border-white opacity-0 group-hover/obj:opacity-100 transition-opacity"
+        className="!h-3 !w-3 !border-2 !border-stone-400 !bg-white !opacity-70 transition hover:!border-[#8C3A2A] hover:!opacity-100"
       />
     </div>
   );
@@ -390,6 +396,8 @@ function toBackend(nodes, edges) {
         height: parseFloat(n.style?.height) || n.height || n.measured?.height || 180,
       });
     } else {
+      const w = parseFloat(n.style?.width) || n.width || n.measured?.width || OBJ_W;
+      const h = parseFloat(n.style?.height) || n.height || n.measured?.height || 0;
       objects.push({
         id: n.id,
         text: n.data?.text || "",
@@ -398,6 +406,8 @@ function toBackend(nodes, edges) {
         group_id: n.data?.group_id || "",
         x: n.position.x,
         y: n.position.y,
+        width: w,
+        ...(h ? { height: h } : {}),
       });
     }
   }
@@ -430,6 +440,7 @@ function fromBackend(map) {
       color: o.color || "#ffffff",
       group_id: o.group_id || "",
     },
+    style: { width: o.width || OBJ_W, ...(o.height ? { height: o.height } : {}) },
     zIndex: 1,
   }));
   const edges = (map.connections || []).map((c) => ({
@@ -471,6 +482,8 @@ function Flow({ sessionId }) {
   const [dismissed, setDismissed] = useState(new Set());
   const [coachOpen, setCoachOpen] = useState(true);
   const [coachBusy, setCoachBusy] = useState(false);
+  const [replyText, setReplyText] = useState("");
+  const threadEndRef = useRef(null);
 
   // Refs for cadence + queues
   const mapIdRef = useRef(null);
@@ -599,7 +612,7 @@ function Flow({ sessionId }) {
         const { nodes: n, edges: e } = fromBackend(map);
         setNodes(n);
         setEdges(e);
-        setObservations([...(map.coach_log || [])].reverse());
+        setObservations([...(map.coach_log || [])]);
       })
       .catch(() => toast.error("Could not open the Meaning Workspace."))
       .finally(() => alive && setLoading(false));
@@ -621,7 +634,7 @@ function Flow({ sessionId }) {
         await flushEvents();
         await saveNow(); // ensure the snapshot the coach reads is current
         const note = await coachMeaningMap(mapIdRef.current, trigger);
-        setObservations((o) => [note, ...o]);
+        setObservations((o) => [...o, note]);
         logEvent("coach_observation_received", { trigger, note_id: note.id, kind: note.kind });
       } catch (e) {
         if (trigger === "on_demand") toast.error("The coach couldn't respond just now.");
@@ -631,6 +644,40 @@ function Flow({ sessionId }) {
     },
     [coachBusy, logEvent, flushEvents, saveNow]
   );
+
+  // ---- learner engages the coach (reply) ----
+  const sendReply = useCallback(async () => {
+    const msg = replyText.trim();
+    if (!msg || !mapIdRef.current || coachBusy) return;
+    setReplyText("");
+    lastCoachAt.current = Date.now();
+    const localId = `local_${uuid()}`;
+    // optimistic learner bubble
+    setObservations((o) => [
+      ...o,
+      { id: localId, kind: "learner", text: msg, trigger: "reply", created_at: new Date().toISOString() },
+    ]);
+    logEvent("answered_coach", {});
+    setCoachBusy(true);
+    try {
+      await flushEvents();
+      await saveNow();
+      const note = await coachMeaningMap(mapIdRef.current, "reply", msg);
+      setObservations((o) => {
+        // replace the optimistic learner bubble with the server-persisted one, then add the coach reply
+        const arr = o.filter((x) => x.id !== localId);
+        if (note.learner_note) arr.push(note.learner_note);
+        else arr.push({ id: localId, kind: "learner", text: msg, trigger: "reply", created_at: new Date().toISOString() });
+        arr.push(note);
+        return arr;
+      });
+      logEvent("coach_observation_received", { trigger: "reply", note_id: note.id, kind: note.kind });
+    } catch (e) {
+      toast.error("The coach couldn't respond just now.");
+    } finally {
+      setCoachBusy(false);
+    }
+  }, [replyText, coachBusy, logEvent, flushEvents, saveNow]);
 
   // ---- ambient cadence loop ----
   useEffect(() => {
@@ -657,6 +704,11 @@ function Flow({ sessionId }) {
     };
   }, [flushEvents]);
 
+  // auto-scroll the coach thread to the newest message
+  useEffect(() => {
+    threadEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [observations, coachBusy]);
+
   // ---- canvas interactions ----
   const onConnect = useCallback(
     (params) => {
@@ -682,6 +734,7 @@ function Flow({ sessionId }) {
         type: "meaningObject",
         position: flowPos,
         data: { text: "", notes: "", color: "#ffffff", group_id: "" },
+        style: { width: OBJ_W },
         zIndex: 1,
       };
       setNodes((ns) => [...ns, node]);
@@ -969,48 +1022,96 @@ function Flow({ sessionId }) {
               className="flex-1 space-y-3 overflow-y-auto px-4 py-4 custom-scroll"
               data-testid="meaning-coach-observations"
             >
-              {coachBusy && (
-                <div className="flex items-center gap-2 text-xs text-stone-400">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#8C3A2A]" /> Looking at your
-                  map…
-                </div>
-              )}
               {visibleObs.length === 0 && !coachBusy && (
                 <p className="text-xs italic leading-relaxed text-stone-400">
-                  Observations will appear here as your map grows — or ask me anytime with “Help me
-                  think.”
+                  Observations will appear here as your map grows — ask me anytime with “Help me
+                  think,” and reply below to think it through together.
                 </p>
               )}
-              {visibleObs.map((o, i) => (
-                <div
-                  key={o.id || i}
-                  data-testid={`meaning-observation-${i}`}
-                  className="group/obs rounded-sm border-l-2 border-[#8C3A2A]/50 bg-[#faf9f6] py-2 pl-3 pr-2"
-                >
-                  <div className="mb-1 flex items-center justify-between">
-                    <span className="text-[9px] font-mono-panel uppercase tracking-[0.16em] text-stone-400">
-                      {o.kind === "question" ? "Question" : "Observation"}
-                      {o.trigger === "on_demand" ? " · on request" : ""}
-                      {" · "}
+              {visibleObs.map((o, i) =>
+                o.kind === "learner" ? (
+                  <div
+                    key={o.id || i}
+                    data-testid={`meaning-learner-message-${i}`}
+                    className="ml-8 rounded-sm bg-stone-900 px-3 py-2 text-[13px] leading-relaxed text-stone-50"
+                  >
+                    {o.text}
+                    <div className="mt-1 text-right text-[9px] font-mono-panel uppercase tracking-[0.14em] text-stone-400">
+                      You
                       {o.created_at
-                        ? new Date(o.created_at).toLocaleTimeString([], {
+                        ? " · " +
+                          new Date(o.created_at).toLocaleTimeString([], {
                             hour: "2-digit",
                             minute: "2-digit",
                           })
                         : ""}
-                    </span>
-                    <button
-                      data-testid={`meaning-observation-dismiss-${i}`}
-                      onClick={() => dismissObservation(o.id)}
-                      className="text-stone-300 opacity-0 transition-opacity hover:text-stone-600 group-hover/obs:opacity-100"
-                      title="Set aside (kept in history)"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
+                    </div>
                   </div>
-                  <p className="text-[13px] leading-relaxed text-stone-700">{o.text}</p>
+                ) : (
+                  <div
+                    key={o.id || i}
+                    data-testid={`meaning-observation-${i}`}
+                    className="group/obs mr-4 rounded-sm border-l-2 border-[#8C3A2A]/50 bg-[#faf9f6] py-2 pl-3 pr-2"
+                  >
+                    <div className="mb-1 flex items-center justify-between">
+                      <span className="text-[9px] font-mono-panel uppercase tracking-[0.16em] text-stone-400">
+                        {o.kind === "question" ? "Question" : "Observation"}
+                        {o.trigger === "on_demand" ? " · on request" : ""}
+                        {" · "}
+                        {o.created_at
+                          ? new Date(o.created_at).toLocaleTimeString([], {
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })
+                          : ""}
+                      </span>
+                      <button
+                        data-testid={`meaning-observation-dismiss-${i}`}
+                        onClick={() => dismissObservation(o.id)}
+                        className="text-stone-300 opacity-0 transition-opacity hover:text-stone-600 group-hover/obs:opacity-100"
+                        title="Set aside (kept in history)"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                    <p className="text-[13px] leading-relaxed text-stone-700">{o.text}</p>
+                  </div>
+                )
+              )}
+              {coachBusy && (
+                <div className="flex items-center gap-2 text-xs text-stone-400">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-[#8C3A2A]" /> Thinking with you…
                 </div>
-              ))}
+              )}
+              <div ref={threadEndRef} />
+            </div>
+
+            {/* Reply — think it through with the coach. Never mutates the map. */}
+            <div className="border-t border-stone-200 p-3">
+              <div className="flex items-end gap-2">
+                <textarea
+                  data-testid="meaning-coach-reply-input"
+                  value={replyText}
+                  onChange={(e) => setReplyText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      sendReply();
+                    }
+                  }}
+                  rows={2}
+                  placeholder="Reply to your coach / think aloud…"
+                  className="flex-1 resize-none rounded-sm border border-stone-300 bg-[#faf9f6] px-2.5 py-1.5 text-[13px] text-stone-900 outline-none placeholder:text-stone-400 focus:border-[#8C3A2A]"
+                />
+                <button
+                  data-testid="meaning-coach-reply-send"
+                  onClick={sendReply}
+                  disabled={!replyText.trim() || coachBusy}
+                  className="shrink-0 rounded-sm bg-stone-900 px-3 py-2 text-xs text-white transition-colors hover:bg-stone-700 disabled:opacity-40"
+                >
+                  Send
+                </button>
+              </div>
             </div>
           </div>
         </div>

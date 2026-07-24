@@ -2688,7 +2688,8 @@ class MeaningMapSave(BaseModel):
 
 
 class CoachRequest(BaseModel):
-    trigger: Optional[str] = "on_demand"  # on_demand | ambient
+    trigger: Optional[str] = "on_demand"  # on_demand | ambient | reply
+    message: Optional[str] = ""            # the learner's reply, when engaging the coach
 
 
 class MeaningEventBatch(BaseModel):
@@ -2742,10 +2743,24 @@ _COACH_SYSTEM = (
     "externalizes and organizes their own ideas before writing. Your role is to help the learner THINK, never to "
     "think for them. You may ONLY observe patterns and ask reflective questions. You must NEVER organize, group, "
     "outline, rename, rewrite, or tell the learner where to put things or what to write. Do not propose a structure. "
-    "Do not summarize their argument for them. Respond with ONE short, tentative, dismissible remark (1-2 sentences) "
-    "in the spirit of: 'I notice these ideas seem related.' / 'I see several examples but no central claim yet.' / "
-    "'What relationship do you see between these two ideas?' Warm, curious, brief. Return ONLY the remark text."
+    "Do not summarize their argument for them. When the learner replies to you, acknowledge their thinking briefly "
+    "and warmly, then ask ONE further reflective question (or offer one tentative observation) that helps them go "
+    "deeper — still WITHOUT giving them content, structure, or the answer. Respond with ONE short, tentative, "
+    "dismissible remark (1-2 sentences) in the spirit of: 'I notice these ideas seem related.' / 'I see several "
+    "examples but no central claim yet.' / 'What relationship do you see between these two ideas?' Warm, curious, "
+    "brief. Return ONLY the remark text."
 )
+
+
+def _coach_recent_dialogue(doc: dict, limit: int = 6) -> str:
+    log = (doc.get("coach_log") or [])[-limit:]
+    if not log:
+        return ""
+    lines = []
+    for n in log:
+        who = "LEARNER" if n.get("kind") == "learner" else "COACH"
+        lines.append(f"  {who}: {(n.get('text') or '').strip()}")
+    return "\nRECENT EXCHANGE:\n" + "\n".join(lines)
 
 
 @api_router.post("/meaning-maps/{map_id}/coach")
@@ -2753,23 +2768,43 @@ async def meaning_coach(map_id: str, payload: Optional[CoachRequest] = None):
     doc = await db.meaning_maps.find_one({"id": map_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Meaning map not found")
-    if not doc.get("objects"):
+    trigger = (payload.trigger if payload else "on_demand") or "on_demand"
+    message = ((payload.message if payload else "") or "").strip()
+
+    # Persist the learner's reply first so it appears in history and context.
+    learner_note = None
+    if message:
+        learner_note = {"id": str(uuid.uuid4()), "kind": "learner", "text": message,
+                        "trigger": "reply", "created_at": now_iso()}
+        await db.meaning_maps.update_one(
+            {"id": map_id}, {"$push": {"coach_log": {"$each": [learner_note], "$slice": -50}}})
+        doc.setdefault("coach_log", []).append(learner_note)
+
+    if not doc.get("objects") and not message:
         text = "Your canvas is open. Try putting one idea you're wrestling with into a meaning object to start."
         kind = "observation"
     else:
-        trigger = (payload.trigger if payload else "on_demand") or "on_demand"
-        ask = ("The learner asked for help thinking. Offer one reflective observation or question about their "
-               "current map." if trigger == "on_demand" else
-               "The map changed. If (and only if) you notice something genuinely worth reflecting on, offer one "
-               "brief, tentative observation or question. Otherwise still respond with a single gentle nudge.")
+        if message:
+            ask = (f'The learner replied to you: "{message}". Acknowledge their thinking briefly, then ask ONE '
+                   "further reflective question (or a tentative observation) that helps them think more deeply. "
+                   "Never give them content, structure, or the answer.")
+        elif trigger == "on_demand":
+            ask = ("The learner asked for help thinking. Offer one reflective observation or question about their "
+                   "current map.")
+        else:
+            ask = ("The map changed. If (and only if) you notice something genuinely worth reflecting on, offer one "
+                   "brief, tentative observation or question. Otherwise still respond with a single gentle nudge.")
         chat = LlmChat(api_key=EMERGENT_LLM_KEY, session_id=f"meaning-{map_id}",
                        system_message=_COACH_SYSTEM).with_model("anthropic", "claude-sonnet-4-6")
-        raw = await chat.send_message(UserMessage(text=f"{ask}\n\nCURRENT MEANING MAP:\n{_meaning_snapshot(doc)}"))
+        raw = await chat.send_message(UserMessage(
+            text=f"{ask}\n\nCURRENT MEANING MAP:\n{_meaning_snapshot(doc)}{_coach_recent_dialogue(doc)}"))
         text = (raw or "").strip().strip('"')
         kind = "question" if text.endswith("?") else "observation"
     note = {"id": str(uuid.uuid4()), "kind": kind, "text": text,
-            "trigger": (payload.trigger if payload else "on_demand"), "created_at": now_iso()}
+            "trigger": trigger, "created_at": now_iso()}
     await db.meaning_maps.update_one({"id": map_id}, {"$push": {"coach_log": {"$each": [note], "$slice": -50}}})
+    if learner_note:
+        note = {**note, "learner_note": learner_note}
     return note
 
 
