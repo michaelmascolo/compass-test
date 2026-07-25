@@ -139,11 +139,27 @@ _TONE = (
 )
 
 _BOUNDARY = (
-    "BOUNDARY: Lead with the assignment's demands and the intellectual operations they require. Use the "
-    "student's words diagnostically. Do NOT write the assignment response, a thesis, an outline, an essay, "
-    "or a polished answer. Distinguish EXPLICIT requirements (stated in the assignment — quote the wording) "
-    "from INFERRED requirements (implied by the task). Scaffold ONE high-leverage demand at a time. Require "
-    "the student to PERFORM the target operation. Compass teaches developmental OPERATIONS, not just demands."
+    "BOUNDARY — TASK REQUIREMENTS, NOT ANSWER CONTENT: Compass helps the learner build an adequate "
+    "REPRESENTATION of what the assignment requires. Work ONLY at the level of TASK REQUIREMENTS: what the "
+    "assignment asks for, what unstated work is necessary, which intellectual operations must be performed, "
+    "and what must be established before later work can succeed. You MUST NOT supply the substantive content "
+    "of the answer. "
+    "Distinguish EXPLICIT requirements (stated in the assignment — quote the wording) from INFERRED "
+    "requirements (implied by the task). Scaffold ONE high-leverage requirement at a time and require the "
+    "learner to PERFORM the operation. "
+    "ALLOWED example: 'To compare two ideas meaningfully, a reader first needs to understand what each idea "
+    "is. What additional work does that imply for this assignment?' "
+    "NOT ALLOWED example: 'A fixed mindset is the belief that abilities cannot change.' "
+    "You MAY identify, explain, and REQUEST the required work; you MAY NOT perform the substantive "
+    "intellectual work for the learner. Once the learner has inferred that (for example) a definition is "
+    "necessary, you MAY ask the learner to provide that definition — the LEARNER performs the work, never "
+    "you. Do NOT write the assignment response, a thesis, an outline, an essay, or a polished answer."
+)
+
+_REGISTER = (
+    "REGISTER (fixed): Calibrate ALL language to one fixed level — a competent high-school graduate entering "
+    "college or skilled work (Grade 10-12 / College). Do NOT simplify for young learners and do NOT adapt to "
+    "any detected grade level. Use precise, plain academic language at this fixed register."
 )
 
 
@@ -174,8 +190,10 @@ async def _llm(system: str, user: str, sid: str) -> dict:
 # ---------------------------------------------------------------------------
 async def analyze_assignment(assignment_text: str, sid: str):
     system = (
-        "You analyze an assignment to extract the DEMANDS it places on the student — the things the student "
-        "must understand and DO to represent the task adequately. " + _BOUNDARY + " " + _TONE + "\n\n"
+        "You analyze an assignment to extract the DEMANDS it places on the student — the TASK REQUIREMENTS the "
+        "student must recognize and DO to represent the task adequately. These are requirements about the WORK "
+        "(operations, distinctions, unstated prerequisites), never the substantive answer content. "
+        + _BOUNDARY + " " + _REGISTER + " " + _TONE + "\n\n"
         "For EACH demand return: label (short), description (one sentence), source ('explicit'|'inferred'), "
         "supporting_wording (exact quote from the assignment if explicit, else \"\"), operation (the single "
         "developmental operation the student must perform: e.g. Differentiate, Compare, Define, Explain, "
@@ -252,16 +270,22 @@ async def compare_interpretation(sess: AssignmentSession, interpretation: str) -
 
 async def generate_scaffold(sess: AssignmentSession, demand: AssignmentDemand, level: int) -> Scaffold:
     ladder = (
-        "SCAFFOLD LADDER (escalates the learner's OPPORTUNITY TO PERFORM, not just the amount of instruction):\n"
-        "0 Independent performance — minimal prompt; simply ask the student to perform the operation.\n"
-        "1 Attention-directing cue — focus the student's attention on the relevant distinction/wording; do NOT teach.\n"
-        "2 Guided construction — provide just enough structure (a frame, a contrast, a partial scaffold) for the "
-        "student to perform the operation themselves.\n"
-        "3 Direct teaching — teach the concept explicitly and briefly, THEN require the student to reconstruct it "
-        "in their OWN WORDS (this reconstruction is MANDATORY; set requires_reconstruction=true)."
+        "SCAFFOLD LADDER — EVERY level scaffolds TASK INTERPRETATION and INFERENCE, never answer content:\n"
+        "0 Independent task representation — ask the learner to identify what the assignment requires.\n"
+        "1 Attention cue — direct the learner's attention to important wording, relationships, or omitted / "
+        "unstated parts of the task; do NOT teach.\n"
+        "2 Guided task inference — help the learner infer an unstated requirement WITHOUT supplying answer "
+        "content (offer a frame or contrast about the WORK to be done, never about the concept itself).\n"
+        "3 Direct teaching of the TASK PRINCIPLE — explicitly teach how the assignment or the intellectual "
+        "operation works (e.g. 'To compare two ideas, you first establish what each one is, then identify "
+        "meaningful similarities or differences'). This teaches HOW THE TASK WORKS, NEVER the substantive "
+        "concept. THEN require the learner to reconstruct the TASK REQUIREMENT in their own words "
+        "(set requires_reconstruction=true). Do NOT require reconstruction of conceptual content Compass has "
+        "not taught (and Compass never teaches concept content)."
     )
     system = (
-        "Produce ONE developmental scaffold for the TARGET demand at the given LEVEL. " + _BOUNDARY + " " + _TONE + "\n\n"
+        "Produce ONE developmental scaffold for the TARGET demand at the given LEVEL. " + _BOUNDARY + " "
+        + _REGISTER + " " + _TONE + "\n\n"
         + ladder + "\n\n"
         "Every scaffold MUST name the developmental operation being taught and execute a developmental MOVE — not "
         "a free-form chat. Return ONLY JSON with EXACTLY these fields: "
@@ -269,15 +293,15 @@ async def generate_scaffold(sess: AssignmentSession, demand: AssignmentDemand, l
         '"concepts":[],"relevant_wording":"the assignment wording this points at","studentTask":"what the student '
         'must DO now (must require performing the operation)","expectedEvidence":"what a successful performance '
         'shows","nextIfSuccessful":"","nextIfUnsuccessful":"","requires_reconstruction":false}. '
-        "studentTask is the message shown to the student: it may briefly set up the concept (more at higher levels) "
-        "but MUST end by asking the student to perform the operation. At level 3 you TEACH then require reconstruction. "
-        "Keep it short."
+        "studentTask is the message shown to the student: it names or points at the required WORK (more explicitly "
+        "at higher levels) but MUST end by asking the student to perform an operation — EITHER identifying / "
+        "inferring a task requirement, OR performing required work they have already recognized is necessary "
+        "(e.g. providing a definition they themselves inferred was needed). At level 3 you TEACH the TASK "
+        "PRINCIPLE, then require the learner to reconstruct the TASK REQUIREMENT in their own words. NEVER supply "
+        "the substantive answer content or perform the work for them. Keep it short."
     )
     user = (f"ASSIGNMENT:\n{sess.assignment_text}\n\nTARGET DEMAND:\n"
             f"{json.dumps({'label': demand.label, 'description': demand.description, 'operation': demand.operation, 'concepts': demand.concepts, 'source': demand.source, 'supporting_wording': demand.supporting_wording, 'status': demand.status, 'learner_evidence': demand.learner_evidence, 'derivable_from_assignment': demand.derivable_from_assignment})}\n\n"
-            f"LEARNER EDUCATIONAL LEVEL: {sess.educational_level or 'unknown'} — calibrate vocabulary, sentence "
-            f"complexity, and examples to this level (simple and concrete for young learners; more precise for "
-            f"advanced learners).\n"
             f"SCAFFOLD LEVEL: {level}\n"
             f"PRIOR ATTEMPTS ON THIS DEMAND: {demand.scaffold_attempts}")
     data = await _llm(system, user, sess.id)
@@ -301,10 +325,15 @@ async def evaluate_operation(sess: AssignmentSession, demand: AssignmentDemand, 
     other = [{"id": d.id, "label": d.label, "operation": d.operation}
              for d in sess.demands if d.id != demand.id and d.category in SCAFFOLDABLE]
     system = (
-        "Determine whether the student PERFORMED the target developmental operation. Diagnose only; do NOT reveal "
-        "the answer or write it for them. " + _BOUNDARY + "\n\n"
-        "Report TWO things separately: operation_performed (did they perform the operation / show the understanding, "
-        "regardless of wording) and reconstruction_present (did they restate it in their OWN WORDS). "
+        "Determine whether the student PERFORMED the target operation — EITHER correctly identifying / inferring "
+        "the TASK REQUIREMENT, OR performing required work they recognized is necessary (e.g. producing a "
+        "definition they inferred was needed). Diagnose only; do NOT reveal or supply the answer, and do NOT "
+        "perform the work for them. " + _BOUNDARY + "\n\n"
+        "Report TWO things separately: operation_performed (did they perform the operation / show the required "
+        "understanding of the TASK, regardless of wording) and reconstruction_present (did they restate the TASK "
+        "REQUIREMENT or task-reading principle in their OWN WORDS). ACCEPT reconstruction whenever the learner "
+        "demonstrates the underlying requirement accurately in their own language — NEVER fail them for mere "
+        "wording differences. "
         "reason: 'no_attempt' (e.g. 'I don't know' / no real attempt), 'misconception' (attempted but wrong/confused), "
         "'partial', or 'success'. status is the resulting status for THIS demand "
         "(understood|developing|needs_attention). "
@@ -593,8 +622,8 @@ async def operation(session_id: str, req: TextReq):
             demand_id=target.id, level=target.scaffold_level, instructionType="reconstruction_check",
             targetOperation=target.operation, concepts=target.concepts,
             relevant_wording=scaffold_snapshot.get("relevant_wording", ""),
-            studentTask="You've got the idea. Now say it back in your own words, in one sentence.",
-            expectedEvidence="An accurate restatement of the concept in the learner's own words.",
+            studentTask="Good. Now, in one sentence, say in your own words what this means you'll need to DO in this assignment.",
+            expectedEvidence="An accurate own-words restatement of the task requirement.",
             nextIfSuccessful="Move on.", nextIfUnsuccessful="Accept the demonstrated understanding and move on.",
             requires_reconstruction=True,
         )

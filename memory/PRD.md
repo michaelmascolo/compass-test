@@ -412,3 +412,13 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - Backward compatible: all 36 existing sessions load through the new model (defaults fill new fields); old records still build.
 - Files: backend assignment_representation.py; frontend AssignmentRepresentation.jsx (category chips + expanded DeveloperPanel).
 - STOP: Sprint 1.1 to be re-validated with more Development Sessions (esp. Grade 4/8, restatement-reaching, 'I don't know') before any Sprint 2 planning.
+
+## Compass 2.0 · Sprint 1.1 (cont.) — Task-Requirement vs Answer-Content Boundary (2026-06, DONE)
+- Refined the Question Loop so it scaffolds ONLY inferential TASK REQUIREMENTS (what work must be done) and NEVER inferential ANSWER CONTENT (the substantive knowledge). No new instructional modules; Sprint 2 / Knowledge Loop still NOT started.
+- AGE CALIBRATION FROZEN (1a): removed age-adaptive scaffold generation; scaffolds now use a fixed Grade 10-12/College register (`_REGISTER` constant). `educational_level` is still detected and kept on the model (for dev records / testing / future adaptation) but no longer drives scaffold vocabulary.
+- BOUNDARY REWRITE (`_BOUNDARY`): Compass MAY identify, explain, and REQUEST required work; it MAY NOT perform the substantive work. Once a learner infers a definition is needed, Compass may ask the learner to provide it (learner performs the work). Applied across analyze_assignment, generate_scaffold, evaluate_operation.
+- SCAFFOLD LADDER REWORKED (3b): all 4 levels scaffold task interpretation/inference — L0 independent task representation · L1 attention cue (wording/omitted parts) · L2 guided task inference (frame about the WORK, not the concept) · L3 direct teaching of the TASK PRINCIPLE (e.g. what "differ" requires) then reconstruct the TASK REQUIREMENT in own words. Never teaches concept content.
+- RECONSTRUCTION re-scoped to verify the learner grasps the task requirement/task-reading principle; accepted on own-language demonstration, requested once, credited if shown elsewhere.
+- ACCEPTANCE TEST PASSED (backend, external assignment "How do fixed and growth mindsets differ? How do they affect learning?"): learner infers must define→differentiate→relate; AI never defined a mindset; learner-provided definition evaluated (reason=success) without AI generating it. Test driver: /app/backend/tests/acceptance_sprint11.py.
+- Files: backend assignment_representation.py only (prompts + reconstruction scaffold text). Frontend unchanged.
+- STOP: Sprint 1.1 complete. Do NOT begin Sprint 2 / Knowledge Loop.
