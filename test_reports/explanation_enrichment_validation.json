@@ -1,0 +1,54 @@
+{
+  "before": {
+    "S1_no_explanation": {
+      "first_invitation": "You've brought in a strong quotation from Lady Macbeth's invocation speech. Here's a writing principle that will deepen this: evidence in literary analysis doesn't speak for itself \u2014 the writer has to tell the reader what the words actually show. Right now you've said the quotation shows ambition, but the reader needs to see your reasoning: what does 'unsex me here' or 'direst cruelty' actually reveal about how Lady Macbeth thinks about power and what she's willing to do to get it? In a sentence or two, can you explain what those specific words show \u2014 not just that she's ambitious, but how her language reveals the nature of that ambition?",
+      "primary_target": "Interpretation/explanation of evidence \u2014 making the 'because' visible between quotation and claim",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Explanation / Analysis",
+      "primary_developmental_tension": "The interpretive step is entirely missing; claim and quotation sit adjacent with no reasoning bridge",
+      "next_student_act": "Explain in their own words what specific words in the quotation show about the nature or quality of Lady Macbeth's ambition"
+    },
+    "S2_restatement_not_reasoning": {
+      "first_invitation": "You've identified something real: the press made books faster and more numerous. But your explanation is missing a step your reader needs \u2014 the mechanism connecting faster books to ideas actually spreading. Try writing one sentence that explains the process: because books became faster and cheaper to produce, what could now happen that couldn't before, and how did that lead to ideas reaching more people in Europe?",
+      "primary_target": "Causal mechanism \u2014 explain the intermediate process between 'more books faster' and 'ideas spread'",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Cause-and-Effect Explanation",
+      "primary_developmental_tension": "Causation is asserted ('so the printing press meant...') but the mechanism \u2014 the process connecting print volume to idea-spread \u2014 is never stated.",
+      "next_student_act": "Write one sentence that names the intermediate process: what did more/cheaper books make possible, and how did that allow ideas to reach more people?"
+    },
+    "S3_missing_warrant_causal": {
+      "first_invitation": "You've staked out a position \u2014 that's the right instinct for this assignment. Here's a key question for building a defensible claim: a reader could push back and say, 'higher test scores just mean students got better at taking tests, not that they actually learned more.' Right now your claim and your reason are using almost the same words ('standardized testing improves learning' \u2192 'students learn more'), so they circle back to each other rather than building. What is the real reason you believe standardized testing leads to genuine learning \u2014 and could a thoughtful person dispute that reason?",
+      "primary_target": "Circular claim \u2014 student needs to distinguish the claim from its evidence and produce a genuinely defensible (disputable) assertion",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Central Claim",
+      "primary_developmental_tension": "Claim and evidence are the same idea \u2014 student has not yet separated what they assert from why it is true",
+      "next_student_act": "Identify a real reason (distinct from 'test scores go up') that supports the claim \u2014 one a thoughtful person could challenge"
+    }
+  },
+  "after": {
+    "S1_no_explanation": {
+      "first_invitation": "You've chosen a powerful quotation \u2014 Lady Macbeth asking to be 'unsex'd' and filled with 'direst cruelty' is a striking moment. Right now your writing tells us the quotation 'shows she is very ambitious,' but that's the conclusion, not the reasoning. Here's the key question to work through: what do those specific words \u2014 'unsex me,' 'fill me,' 'direst cruelty' \u2014 actually reveal about her ambition, and why? Try writing one or two sentences that explain what those word choices show, in your own words.",
+      "primary_target": "Explanation/Analysis \u2014 the 'because' between quotation and claim is absent",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Explanation / Analysis",
+      "primary_developmental_tension": "Interpretive step entirely absent; claim is restated rather than earned through reasoning about the language",
+      "next_student_act": "Write one or two sentences explaining what the specific words ('unsex me,' 'fill,' 'direst cruelty') reveal and why that shows ambition"
+    },
+    "S2_restatement_not_reasoning": {
+      "first_invitation": "You've connected the press to faster book production \u2014 that's the starting point for a causal explanation. Here's a distinction worth knowing: saying the press 'meant books could be produced quickly' tells us the outcome, but a causal explanation also shows the reader the mechanism \u2014 the actual process by which that outcome leads to ideas spreading. Try writing one sentence that answers: by what process did producing more books cause ideas to reach more people?",
+      "primary_target": "Causal mechanism \u2014 the explanatory step from 'more books produced' to 'ideas spread to more people'",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Cause-and-Effect Explanation",
+      "primary_developmental_tension": "Causation is asserted ('so the press meant books could be produced quickly') but the process by which increased book production led to idea-spread is never explained.",
+      "next_student_act": "Write one sentence that states the intermediate process \u2014 by what pathway did producing more books cause ideas to reach more people."
+    },
+    "S3_missing_warrant_causal": {
+      "first_invitation": "You've got a clear stance \u2014 standardized testing improves learning \u2014 and that's a strong starting point. Here's the challenge, though: right now the support says schools that use frequent tests report higher test scores, but your claim is about learning more. A careful reader would ask: is scoring higher on tests the same thing as learning more? That's exactly the gap worth exploring. What do you actually want your reader to accept \u2014 that testing raises scores, that it produces deeper understanding, or something more specific? Try stating your central claim in one sentence that a thoughtful person could genuinely push back on.",
+      "primary_target": "Central Claim / Thesis \u2014 make the position genuinely contestable and escape the scores-equals-learning equivocation",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Thesis / Central Claim",
+      "primary_developmental_tension": "The claim is circular: 'testing improves learning' is supported only by 'scores go up,' but scores and learning are not distinguished \u2014 no genuine contestable position yet exists",
+      "next_student_act": "State in one sentence what they want the reader to accept \u2014 a position a thoughtful person could genuinely dispute \u2014 that distinguishes 'higher scores' from 'deeper learning' or makes a specific, defensible claim about one of them"
+    }
+  }
+}
