@@ -1,0 +1,60 @@
+{
+  "before": {
+    "S1_weak_credibility": {
+      "first_invitation": "You've taken a clear position \u2014 homework causes stress without improving learning \u2014 and that's a real start. Here's something worth knowing: a claim works for a reader when it's something a thoughtful person could actually dispute and when you can back it up with trustworthy grounds. Right now your two pieces of support \u2014 a blog post and friends' feelings \u2014 give a skeptical reader reasons to push back on the evidence rather than engage your position. Without changing your claim, can you tell me: what would make a skeptic take your evidence seriously? What kind of information would actually give someone a reason to believe homework hurts elementary students?",
+      "primary_target": "Evidence credibility and its relationship to the central claim",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Evidence",
+      "primary_developmental_tension": "Evidence is present but not credible or connected \u2014 a reader has grounds to dismiss the evidence rather than engage the argument.",
+      "next_student_act": "Identify what kind of information would actually give a skeptical reader reason to believe the claim.",
+      "selected_io": "Central Claim"
+    },
+    "S2_relevance_mismatch": {
+      "first_invitation": "You've opened with a clear position \u2014 the New Deal significantly reduced unemployment through federal job-creation. Here's one thing to notice: your evidence (the 1929 crash and bank failures) describes the problem, not the solution. A reader trying to accept your claim needs information that shows what the New Deal actually *did* to employment \u2014 not how bad things got before it. What specific outcome, program result, or employment change could you point to that would give a reader a reason to believe the New Deal made a real difference?",
+      "primary_target": "Evidence function \u2014 the student needs to select evidence that actually bears on the claim",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Evidence",
+      "primary_developmental_tension": "The student is selecting contextual/background information as if it were outcome evidence \u2014 the evidence does not give the reader a reason to accept the specific claim being made.",
+      "next_student_act": "Identify specific information (program results, employment figures, outcomes) that would give a reader a reason to believe the New Deal reduced unemployment.",
+      "selected_io": "Central Claim"
+    },
+    "S3_insufficient_anecdote": {
+      "first_invitation": "You've made a real claim \u2014 that heavy social media use increases anxiety through social comparison \u2014 and backed it with a personal example. Here's the writing challenge: a single friend's one night on Instagram is a very thin foundation for a reader who might reasonably ask, 'Does this prove anything beyond one person's mood?' A claim works when it tells the reader what kind of evidence would support it and invites them to accept something genuinely contestable. So: what would a skeptical reader need to believe your claim \u2014 and is your current example the kind of support that gives them a real reason?",
+      "primary_target": "Evidence quality / evidence-interpretation relationship \u2014 the student calls a single anecdote 'proof,' which is the most immediate barrier to a credible argument",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Evidence",
+      "primary_developmental_tension": "Student labels a single personal anecdote 'proof' for a claim about 'many teenagers' \u2014 conflates illustration with sufficient support",
+      "next_student_act": "Articulate what a skeptical reader would need to believe the claim, and assess whether the current example provides it",
+      "selected_io": "Central Claim"
+    }
+  },
+  "after": {
+    "S1_weak_credibility": {
+      "first_invitation": "You've taken a clear position \u2014 'homework causes stress without improving learning' \u2014 and that gives your essay a real spine to build from. Here's one thing worth knowing about claims: a claim does its best work when a reader can ask 'how do you know?' and your evidence gives them a convincing answer. Right now your two pieces of support are a blog post and kids you know \u2014 a doubting reader would likely question whether those sources are enough to trust the claim. Before we look at anything else: in your own words, what would a skeptical reader need to see or hear to actually believe that homework causes stress without improving learning?",
+      "primary_target": "Evidence credibility \u2014 the student's support actively weakens rather than strengthens the claim for a reader",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Evidence",
+      "primary_developmental_tension": "Credibility: the student chose sources (anonymous blog, peer anecdote) that a doubting reader would dismiss, undermining the otherwise workable claim.",
+      "next_student_act": "Articulate what a skeptical reader would need to trust the claim \u2014 this surfaces the concept of credibility from the student's own reasoning.",
+      "selected_io": "Central Claim"
+    },
+    "S2_relevance_mismatch": {
+      "first_invitation": "You've made a clear opening move: a claim about the New Deal reducing unemployment through specific programs, followed by evidence. Here's the issue \u2014 the evidence you offer (stock market crash, bank failures) shows the depression was severe, but your claim is that the New Deal *reduced* unemployment. A reader asking 'did those programs actually work?' still has no grounds to believe your claim. What specific information would give a doubting reader a reason to believe the New Deal's job programs actually lowered unemployment \u2014 rather than just that the crisis existed?",
+      "primary_target": "Evidence relevance \u2014 the evidence does not bear on the claim it is meant to support",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Evidence",
+      "primary_developmental_tension": "Evidence relevance failure: student offers background/context (crisis severity) where outcome evidence (program impact on unemployment) is needed.",
+      "next_student_act": "Identify what kind of information would actually give a reader grounds to believe the New Deal lowered unemployment \u2014 i.e., name the proposition the evidence needs to establish.",
+      "selected_io": "Thesis"
+    },
+    "S3_insufficient_anecdote": {
+      "first_invitation": "Your opening claim \u2014 that heavy social media use fuels anxiety through constant social comparison \u2014 gives the essay a real, arguable direction. Right now the only support is one friend's experience on Instagram, which a skeptical reader would likely see as a single case rather than grounds for the broader claim. Here's the key distinction: a personal anecdote can *illustrate* a point vividly, but it doesn't by itself *prove* that heavy use broadly causes anxiety. What would you say is the difference between your friend's story illustrating your claim versus actually proving it \u2014 and what kind of evidence would a doubting reader need to believe the broader claim?",
+      "primary_target": "Evidence sufficiency \u2014 illustration vs. proof distinction",
+      "instructional_mode": "explicit_instruction",
+      "active_instructional_element": "Evidence",
+      "primary_developmental_tension": "Single anecdote is labelled 'proof' for a broad causal claim \u2014 sufficiency failure and illustration/proof conflation.",
+      "next_student_act": "Articulate the difference between a story that illustrates a point and evidence that proves it, then identify what kind of evidence would give a skeptical reader actual grounds.",
+      "selected_io": "Central Claim"
+    }
+  }
+}
