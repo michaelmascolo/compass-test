@@ -1,0 +1,54 @@
+{
+  "before": {
+    "S1_hook_disconnected": {
+      "first_invitation": "Your thesis already does real work \u2014 it names a clear position and three reasons a reader could actually dispute. Here's the writing principle you've applied: a thesis works when it makes a contestable claim (someone could reasonably argue cities should NOT invest) and signals the essay's direction. One thing to consider: your opening sentence about dinosaurs doesn't yet connect to public transit or the essay's argument. What work do you want that first sentence to do for your reader before they reach your thesis?",
+      "primary_target": "Coherence of the opening sentence relative to the thesis and assignment",
+      "instructional_mode": "consolidation then developmental_question",
+      "active_instructional_element": "Opening / Introduction (with Thesis consolidated)",
+      "primary_developmental_tension": "The opening sentence performs no function for this essay's communicative purpose \u2014 it orients the reader toward the wrong subject entirely.",
+      "next_student_act": "Identify what communicative work they want the first sentence to do for the reader before the thesis arrives."
+    },
+    "S2_no_reader_orientation": {
+      "first_invitation": "You've named three causes and begun to show how the fiscal crisis set events in motion \u2014 that's real explanatory work. The next move is to help your reader see the mechanism: the fiscal crisis didn't just happen alongside the Revolution, it *produced* something that made the Revolution possible. Can you explain, in one or two sentences, exactly how the fiscal crisis led to the Estates-General being called, and why that moment mattered?",
+      "primary_target": "Causal mechanism \u2014 explain HOW fiscal crisis produced the Estates-General",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Cause-and-Effect Explanation",
+      "primary_developmental_tension": "Causation is asserted ('forced', 'set in motion') but the mechanism \u2014 the actual process by which fiscal crisis produced the Estates-General call \u2014 is absent",
+      "next_student_act": "Explain in 1\u20132 sentences how the fiscal crisis caused the king to call the Estates-General and why that moment opened the door to revolution"
+    },
+    "S3_background_buried_thesis": {
+      "first_invitation": "You've already written the most important sentence in your draft \u2014 'Fitzgerald uses the decaying Valley of Ashes and the glittering mansion parties to build a mood of hollow excess beneath the surface glamour.' That sentence does real analytical work: it names two specific settings and connects them to a mood. Now here's the key test for a thesis in an analytical essay: a reader should be able to look at it and know exactly what your essay is going to prove. Right now, what does 'hollow excess beneath the surface glamour' mean \u2014 and how does each of those two settings contribute to it differently? Try writing one sentence that sharpens that relationship so a reader knows precisely what your essay will show.",
+      "primary_target": "Thesis precision \u2014 sharpening the interpretive relationship between the two settings and the specific mood so the reader knows exactly what the essay will prove",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Thesis",
+      "primary_developmental_tension": "The thesis moves from topic toward interpretation but stops at an evocative phrase ('hollow excess beneath the surface glamour') rather than a precise claim about HOW the two settings each contribute to that mood. It is not yet specific enough to organize the body or tell the reader what to expect.",
+      "next_student_act": "Articulate in one sentence what the essay will prove about how the Valley of Ashes and the mansion parties each/together produce the specific mood \u2014 making the interpretive relationship explicit."
+    }
+  },
+  "after": {
+    "S1_hook_disconnected": {
+      "first_invitation": "Your thesis does real work: it takes a clear position and names three reasons a reader could actually weigh. One thing to notice is that your opening sentence \u2014 about dinosaurs \u2014 doesn't connect to that argument; a reader would wonder what it has to do with cities and transit. What could you put in that opening sentence that would actually lead your reader toward your claim about public transit?",
+      "primary_target": "Opening / hook connection to thesis",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Hook / Opening Move",
+      "primary_developmental_tension": "Hook is decorative/generic \u2014 no connection to transit, cities, or the argument; reader is actively misled.",
+      "next_student_act": "Replace or redirect the opening sentence so it leads the reader toward the transit/cities claim rather than away from it."
+    },
+    "S2_no_reader_orientation": {
+      "first_invitation": "You've named three causes and signaled which one you think mattered most \u2014 that's a strong start for an explanation essay. The next move is to help your reader see *how* each cause actually produced the Revolution, not just that it contributed. Pick one of your three causes right now and write a sentence or two explaining the mechanism: what did that cause *do*, step by step, that pushed France toward revolution?",
+      "primary_target": "Cause-and-Effect Explanation: explaining the mechanism for at least one cause",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Cause-and-Effect Explanation",
+      "primary_developmental_tension": "Causes are asserted without mechanism \u2014 reader is told what happened but not how or why it produced the outcome.",
+      "next_student_act": "Write 1\u20132 sentences explaining the step-by-step mechanism for one chosen cause."
+    },
+    "S3_background_buried_thesis": {
+      "first_invitation": "Your last sentence does real work \u2014 it names two specific settings and connects them to a mood. That sentence is doing what a thesis does: making a claim the essay will need to earn. The sentences before it, though, mostly report facts a reader already knows. Here's the question to sit with: what does your reader need to understand *before* that final claim will make sense? Try writing one or two sentences \u2014 not facts about the book, but the idea that sets up why the relationship between setting and mood matters in Gatsby specifically.",
+      "primary_target": "Background/Context \u2014 helping the student see what a reader needs before the thesis will land",
+      "instructional_mode": "developmental_question",
+      "active_instructional_element": "Background / Context",
+      "primary_developmental_tension": "The student treats background as factual reporting rather than as analytical framing that orients the reader toward the thesis.",
+      "next_student_act": "Write one or two sentences that frame the interpretive problem \u2014 not list facts, but explain what the reader needs to understand before the thesis makes sense."
+    }
+  }
+}
