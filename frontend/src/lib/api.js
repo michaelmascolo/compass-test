@@ -208,5 +208,26 @@ export const beginWorkingFromRepresentation = async (payload) => {
   return data;
 };
 
+// --- Knowledge Loop (Stage-1 Orientation extension) ---
+export const assessKnowledge = async (assignmentSessionId) => {
+  const { data } = await axios.post(`${API}/assignment/sessions/${assignmentSessionId}/knowledge/assess`);
+  return data;
+};
+
+export const knowledgeRespond = async (assignmentSessionId, text) => {
+  const { data } = await axios.post(`${API}/assignment/sessions/${assignmentSessionId}/knowledge/respond`, { text });
+  return data;
+};
+
+export const getKnowledge = async (assignmentSessionId) => {
+  const { data } = await axios.get(`${API}/assignment/sessions/${assignmentSessionId}/knowledge`);
+  return data;
+};
+
+export const knowledgeSkip = async (assignmentSessionId) => {
+  const { data } = await axios.post(`${API}/assignment/sessions/${assignmentSessionId}/knowledge/skip`);
+  return data;
+};
+
 export const assignmentRecordUrl = (id, format) =>
   `${API}/assignment/sessions/${id}/record?format=${format}`;

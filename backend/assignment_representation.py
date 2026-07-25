@@ -85,6 +85,23 @@ class InteractionRecord(BaseModel):
     created_at: str = ""
 
 
+class KnowledgeState(BaseModel):
+    """TRANSIENT conceptual-readiness state for the Knowledge Loop (Stage-1 Orientation
+    extension). Tracks ONLY what supports writing — never a comprehensive concept map."""
+    status: str = "unassessed"                                # unassessed | not_needed | active | ready
+    limiting_concept: str = ""                                # the prerequisite/idea blocking productive writing
+    reason: str = ""                                          # why activated / bypassed (dev-facing)
+    current_prompt: str = ""                                  # the coach's current developmental prompt shown now
+    concepts_understood: List[str] = Field(default_factory=list)
+    concepts_uncertain: List[str] = Field(default_factory=list)
+    misconceptions: List[str] = Field(default_factory=list)
+    unresolved_questions: List[str] = Field(default_factory=list)
+    relationships: List[str] = Field(default_factory=list)
+    learner_explanations: List[dict] = Field(default_factory=list)   # [{concept, text}] — learner's OWN words
+    turns: List[dict] = Field(default_factory=list)                  # [{role: coach|learner, text, created_at}]
+    turn_count: int = 0
+
+
 class AssignmentSession(BaseModel):
     id: str = Field(default_factory=lambda: f"asg_{uuid.uuid4()}")
     assignment_text: str
@@ -107,6 +124,7 @@ class AssignmentSession(BaseModel):
     developer_summary: str = ""                                       # PRIVATE — concise 2-4 sentence lesson from the session
     sprint_recommendation: str = ""                                   # PRIVATE — one of SPRINT_RECOMMENDATIONS
     writing_session_id: str = ""                                      # BRIDGE — the Milestone-engine writing session spawned from this representation (resume, no dupe)
+    knowledge_state: KnowledgeState = Field(default_factory=KnowledgeState)   # KNOWLEDGE LOOP — transient conceptual-readiness state (Stage-1 Orientation)
     created_at: str = ""
     updated_at: str = ""
 
@@ -800,6 +818,17 @@ def build_handoff(sess: "AssignmentSession", learner_goal: str = "",
          "provenance": "explicit_teacher" if d.source == "explicit" else "inferred_by_compass"}
         for d in sess.demands if d.category in ("constraint", "formatting", "resource")
     ]
+    ks = sess.knowledge_state
+    # Learner-owned understanding built in the Knowledge Loop — context only, never answer content.
+    knowledge_clarified = None
+    if ks and ks.status in ("active", "ready") and (ks.learner_explanations or ks.concepts_understood):
+        knowledge_clarified = {
+            "concepts_understood": list(ks.concepts_understood or []),
+            "learner_explanations": [e.get("text", "") for e in (ks.learner_explanations or []) if e.get("text")],
+            "provenance": "explicit_student",
+        }
+    ks_unresolved = list((ks.unresolved_questions if ks else []) or [])
+    all_unresolved = list(sess.ambiguities or []) + [q for q in ks_unresolved if q not in (sess.ambiguities or [])]
     return {
         "assignment_prompt": {"value": sess.assignment_text, "provenance": "explicit_teacher"},
         "current_task_representation": {
@@ -811,7 +840,8 @@ def build_handoff(sess: "AssignmentSession", learner_goal: str = "",
             "value": sess.subject or "",
             "provenance": "inferred_by_compass" if sess.subject else "unresolved"},
         "important_constraints": constraints,
-        "unresolved_questions": [{"value": a, "provenance": "unresolved"} for a in (sess.ambiguities or [])],
+        "unresolved_questions": [{"value": a, "provenance": "unresolved"} for a in all_unresolved],
+        "knowledge_clarified": knowledge_clarified,
         "learner_selected_goal": ({"value": learner_goal.strip(), "provenance": "explicit_student"}
                                   if learner_goal and learner_goal.strip() else None),
         "teacher_selected_goal": ({"value": teacher_goal.strip(), "provenance": "explicit_teacher"}
@@ -846,6 +876,208 @@ async def handoff_preview(session_id: str):
         "writing_session_id": sess.writing_session_id or "",
         "handoff": build_handoff(sess),
     }
+
+
+# ---------------------------------------------------------------------------
+# KNOWLEDGE LOOP — Stage-1 (Orientation) EXTENSION ONLY.
+#
+# NOT an instructional engine, NOT a parallel workflow, NOT a second persistence
+# model, NOT a new knowledge base. It lives entirely inside Orientation: when
+# conceptual understanding is the limiting factor for productive writing, it
+# helps the learner build JUST ENOUGH understanding, then control returns to the
+# existing bridge → Milestone engine, exactly as before. The learner always does
+# the intellectual work (same boundary philosophy as the Question Loop).
+# ---------------------------------------------------------------------------
+_KNOWLEDGE_MAX_TURNS = 4  # avoid long conceptual detours (readiness, not mastery)
+
+_KNOWLEDGE_BOUNDARY = (
+    "KNOWLEDGE-LOOP BOUNDARY: Your ONLY goal is to help the learner develop ENOUGH conceptual understanding to "
+    "write productively — readiness, NOT mastery, NOT tutoring for its own sake. The LEARNER does the intellectual "
+    "work. You MAY ask questions, compare ideas, help organize concepts, reveal misconceptions, request explanations, "
+    "encourage examples, and prompt reflection. You MUST NOT: complete the learner's explanation, provide the "
+    "assignment answer, DEFINE any concept the assignment asks the learner to define (see DO_NOT_DEFINE), write any "
+    "part of the paper, or lecture by default. If a genuine PREREQUISITE obstacle blocks understanding, give only the "
+    "MINIMUM support needed to clear it — never more. Keep every exchange short."
+)
+_KNOWLEDGE_RECONNECT = (
+    "Keep an explicit tie to the writing task: how will this help the reader, how does it relate to the purpose, "
+    "and which part of the paper will use this idea? Avoid long conceptual conversations detached from writing."
+)
+
+
+def _do_not_define(sess: "AssignmentSession") -> list:
+    """Concepts the assignment asks the LEARNER to define/explain — Compass must never define these."""
+    concepts = []
+    for d in sess.demands:
+        if d.category == "conceptual":
+            concepts.extend(d.concepts or [])
+            if d.label:
+                concepts.append(d.label)
+    # de-dupe, keep order
+    seen, out = set(), []
+    for c in concepts:
+        k = c.strip().lower()
+        if k and k not in seen:
+            seen.add(k)
+            out.append(c)
+    return out
+
+
+def _knowledge_signals(sess: "AssignmentSession") -> str:
+    recent = []
+    for i in sess.interactions[-6:]:
+        if i.student_text:
+            recent.append(f"[{i.kind}] {i.student_text}")
+    return "\n".join(recent) or "(no learner responses yet)"
+
+
+async def assess_knowledge_need(sess: "AssignmentSession") -> dict:
+    """GATE: is conceptual understanding the LIMITING factor for productive writing?
+    Activate ONLY for a genuine understanding gap — never for a mere factual question,
+    and never if the learner already shows adequate working understanding."""
+    system = (
+        "You decide ONE thing: is the learner's CONCEPTUAL UNDERSTANDING the limiting factor that would prevent "
+        "them from beginning productive writing on this task RIGHT NOW? " + _KNOWLEDGE_BOUNDARY + " " + _KNOWLEDGE_RECONNECT + "\n\n"
+        "STRONG DEFAULT = BYPASS (needed=false). The writing engine itself develops and refines understanding as the "
+        "learner writes, so activate ONLY when the learner genuinely CANNOT start productive writing due to a "
+        "conceptual gap. If the learner can already list the relevant ideas, take a rough position, or produce even a "
+        "weak first attempt, they are READY — bypass. This is readiness, NOT mastery: imperfect, incomplete, or "
+        "roughly-articulated understanding is ENOUGH to begin. Do NOT activate to polish a mechanism, sharpen wording, "
+        "deepen an already-present idea, or because an explanation is shallow — those are the writing engine's job. "
+        "Activate (needed=true) ONLY when at least one is CLEARLY true and blocking: the learner explicitly says they "
+        "don't understand and shows no working grasp; the learner cannot name or explain the central idea at all; the "
+        "learner holds a clear MISCONCEPTION that would derail the writing; or a required PREREQUISITE idea is simply "
+        "absent. DO NOT activate for a mere factual question. "
+        "If needed, write ONE short opening developmental prompt that starts building understanding by asking the "
+        "LEARNER to explain/compare/organize in their own words — never define anything for them — and tie it to the "
+        "writing task. Return ONLY JSON: "
+        '{"needed":false,"limiting_concept":"","reason":"","opening_prompt":""}'
+    )
+    user = (
+        f"ASSIGNMENT:\n{sess.assignment_text}\n\n"
+        f"DO_NOT_DEFINE (assigned to the learner): {json.dumps(_do_not_define(sess))}\n\n"
+        f"TASK DEMANDS: {json.dumps([{'label': d.label, 'operation': d.operation, 'concepts': d.concepts, 'category': d.category, 'status': d.status, 'learner_evidence': d.learner_evidence} for d in sess.demands])}\n\n"
+        f"IMPORTANT DISTINCTIONS: {json.dumps(sess.important_distinctions)}\n"
+        f"AMBIGUITIES: {json.dumps(sess.ambiguities)}\n\n"
+        f"LEARNER'S OWN WORDS SO FAR:\n{_knowledge_signals(sess)}"
+    )
+    return await _llm(system, user, sess.id)
+
+
+async def evaluate_knowledge_turn(sess: "AssignmentSession", text: str) -> dict:
+    """Interpret the learner's explanation, update understanding, and decide whether they now
+    have ENOUGH understanding to perform the writing task (readiness, not mastery)."""
+    ks = sess.knowledge_state
+    system = (
+        "You are running the Knowledge Loop: help the learner build JUST ENOUGH understanding to write, then hand "
+        "back to writing. " + _KNOWLEDGE_BOUNDARY + " " + _KNOWLEDGE_RECONNECT + "\n\n"
+        "Interpret what the learner actually demonstrated (diagnosis, not grading, no scores). Decide ready=true when "
+        "the learner has ENOUGH working understanding to perform the current writing task — NOT perfect mastery. If "
+        "not ready, write ONE short next developmental prompt that moves them forward by doing the work themselves "
+        "(explain/compare/organize/give an example), never by you defining or completing it. When ready, write a "
+        "brief consolidation that names what they now grasp and points to using it in the draft. "
+        "capture the learner's OWN best explanation (their words) in captured_explanation. Return ONLY JSON: "
+        '{"ready":false,"reason":"","coach_prompt":"","concepts_understood":[],"concepts_uncertain":[],'
+        '"misconceptions":[],"unresolved_questions":[],"relationships":[],"captured_explanation":""}'
+    )
+    user = (
+        f"ASSIGNMENT:\n{sess.assignment_text}\n\n"
+        f"DO_NOT_DEFINE (assigned to the learner): {json.dumps(_do_not_define(sess))}\n"
+        f"LIMITING CONCEPT: {ks.limiting_concept}\n\n"
+        f"DIALOGUE SO FAR: {json.dumps(ks.turns[-6:])}\n\n"
+        f"LEARNER'S NEW RESPONSE:\n{text}"
+    )
+    return await _llm(system, user, sess.id)
+
+
+@router.get("/sessions/{session_id}/knowledge")
+async def get_knowledge(session_id: str):
+    """Current transient conceptual-readiness state (resume-safe)."""
+    sess = await _load(session_id)
+    return sess.knowledge_state.model_dump()
+
+
+@router.post("/sessions/{session_id}/knowledge/assess")
+async def knowledge_assess(session_id: str):
+    """Decide whether the Knowledge Loop should activate. Idempotent: if already active/ready,
+    returns current state without re-gating (supports resume)."""
+    sess = await _load(session_id)
+    ks = sess.knowledge_state
+    if ks.status in ("active", "ready"):
+        return ks.model_dump()
+    try:
+        data = await assess_knowledge_need(sess)
+    except Exception:  # noqa: BLE001 — LLM/parse hiccup: fail OPEN to writing, never trap the learner
+        data = {"needed": False, "reason": "assessment unavailable — proceeding to writing"}
+    if data.get("needed"):
+        ks.status = "active"
+        ks.limiting_concept = data.get("limiting_concept", "")
+        ks.reason = data.get("reason", "")
+        ks.current_prompt = data.get("opening_prompt", "") or "Tell me, in your own words, what this idea means to you so far."
+        ks.turns.append({"role": "coach", "text": ks.current_prompt, "created_at": _now_iso()})
+    else:
+        ks.status = "not_needed"
+        ks.reason = data.get("reason", "")
+    await _save(sess)
+    return ks.model_dump()
+
+
+@router.post("/sessions/{session_id}/knowledge/respond")
+async def knowledge_respond(session_id: str, body: TextReq):
+    """Learner performs conceptual work; Compass interprets and decides continue vs. ready.
+    A hard turn cap forces readiness to prevent long conceptual detours."""
+    sess = await _load(session_id)
+    ks = sess.knowledge_state
+    if ks.status != "active":
+        raise HTTPException(status_code=400, detail="Knowledge Loop is not active for this session")
+    text = (body.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Empty response")
+    ks.turns.append({"role": "learner", "text": text, "created_at": _now_iso()})
+    ks.turn_count += 1
+
+    try:
+        data = await evaluate_knowledge_turn(sess, text)
+    except Exception:  # noqa: BLE001 — LLM/parse hiccup: hold the boundary, don't break the flow
+        data = {"ready": False,
+                "coach_prompt": "Stay with your own thinking for a moment — in your own words, what do you understand about this so far, and where does it get fuzzy?"}
+    # merge understanding (de-dupe, keep only what supports writing)
+    def _merge(field, new):
+        cur = getattr(ks, field)
+        for x in (new or []):
+            if x and x not in cur:
+                cur.append(x)
+    _merge("concepts_understood", data.get("concepts_understood"))
+    _merge("concepts_uncertain", data.get("concepts_uncertain"))
+    _merge("misconceptions", data.get("misconceptions"))
+    _merge("unresolved_questions", data.get("unresolved_questions"))
+    _merge("relationships", data.get("relationships"))
+    cap = (data.get("captured_explanation") or "").strip()
+    if cap:
+        ks.learner_explanations.append({"concept": ks.limiting_concept, "text": cap})
+
+    forced = ks.turn_count >= _KNOWLEDGE_MAX_TURNS
+    if data.get("ready") or forced:
+        ks.status = "ready"
+        ks.current_prompt = data.get("coach_prompt", "") or "You've got enough to start — let's put this to work in your draft."
+        ks.reason = ("turn cap reached — enough to begin" if forced and not data.get("ready") else data.get("reason", ""))
+        ks.turns.append({"role": "coach", "text": ks.current_prompt, "created_at": _now_iso()})
+    else:
+        ks.current_prompt = data.get("coach_prompt", "") or "Say a little more — what else do you notice?"
+        ks.turns.append({"role": "coach", "text": ks.current_prompt, "created_at": _now_iso()})
+    await _save(sess)
+    return ks.model_dump()
+
+
+@router.post("/sessions/{session_id}/knowledge/skip")
+async def knowledge_skip(session_id: str):
+    """Learner chooses to start writing now (learner-initiated exit)."""
+    sess = await _load(session_id)
+    ks = sess.knowledge_state
+    ks.status = "ready"
+    ks.reason = "learner chose to begin writing"
+    await _save(sess)
+    return ks.model_dump()
 
 
 # ---------------------------------------------------------------------------

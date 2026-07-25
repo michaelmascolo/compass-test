@@ -40,6 +40,9 @@ import {
   assignmentRecordUrl,
   getHandoff,
   beginWorkingFromRepresentation,
+  assessKnowledge,
+  knowledgeRespond,
+  knowledgeSkip,
 } from "@/lib/api";
 
 const STORE = "compass_rep_session";
@@ -207,6 +210,12 @@ export default function AssignmentRepresentation() {
   const [chosenGoal, setChosenGoal] = useState("");   // learner-selected component label (optional)
   const [editedRep, setEditedRep] = useState("");     // learner-edited task representation
 
+  // Knowledge Loop (Stage-1 Orientation extension)
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+  const [knowledgeState, setKnowledgeState] = useState(null);
+  const [klInput, setKlInput] = useState("");
+  const [klBusy, setKlBusy] = useState(false);
+
   // Refresh handoff readiness whenever the representation changes (post-analysis).
   useEffect(() => {
     if (!session?.id || session.stage === "interpret") { setHandoff(null); return; }
@@ -217,11 +226,62 @@ export default function AssignmentRepresentation() {
     return () => { cancelled = true; };
   }, [session?.id, session?.stage, session?.interactions?.length]);
 
-  const openBegin = () => {
+  const openBeginSummary = () => {
     const rep = handoff?.handoff?.current_task_representation?.value || session?.student_interpretation || "";
     setEditedRep(rep);
     setChosenGoal("");
     setBeginOpen(true);
+  };
+
+  const openBegin = async () => {
+    if (!session) return;
+    setBeginBusy(true);
+    try {
+      // Stage-1 gate: does the learner need to build conceptual understanding first?
+      const ks = await assessKnowledge(session.id);
+      if (ks.status === "active") {
+        setKnowledgeState(ks);
+        setKlInput("");
+        setKnowledgeOpen(true);
+        return;
+      }
+    } catch (e) {
+      // fail open — proceed to the writing summary
+    } finally {
+      setBeginBusy(false);
+    }
+    openBeginSummary();
+  };
+
+  const submitKnowledge = async () => {
+    if (!session || !klInput.trim()) return;
+    setKlBusy(true);
+    try {
+      const ks = await knowledgeRespond(session.id, klInput.trim());
+      setKnowledgeState(ks);
+      setKlInput("");
+    } catch (e) {
+      toast.error("Something went wrong. Try again.");
+    } finally {
+      setKlBusy(false);
+    }
+  };
+
+  const skipKnowledge = async () => {
+    if (!session) return;
+    setKlBusy(true);
+    try {
+      await knowledgeSkip(session.id);
+      setKnowledgeOpen(false);
+      openBeginSummary();
+    } finally {
+      setKlBusy(false);
+    }
+  };
+
+  const proceedFromKnowledge = () => {
+    setKnowledgeOpen(false);
+    openBeginSummary();
   };
 
   const confirmBegin = async () => {
@@ -730,6 +790,17 @@ export default function AssignmentRepresentation() {
         busy={beginBusy}
         onConfirm={confirmBegin}
       />
+      <KnowledgeLoopModal
+        open={knowledgeOpen}
+        onClose={() => setKnowledgeOpen(false)}
+        knowledge={knowledgeState}
+        input={klInput}
+        setInput={setKlInput}
+        busy={klBusy}
+        onRespond={submitKnowledge}
+        onSkip={skipKnowledge}
+        onProceed={proceedFromKnowledge}
+      />
       <RestartDialog open={restartOpen} setOpen={setRestartOpen} confirm={confirmEdit} />
     </div>
   );
@@ -827,6 +898,92 @@ function BeginWorkingModal({ open, onClose, handoff, editedRep, setEditedRep, ch
     </div>
   );
 }
+
+// Knowledge Loop — a brief, boundary-safe conceptual-readiness dialogue that runs ONLY
+// when understanding is the limiting factor, then returns the learner to writing.
+function KnowledgeLoopModal({ open, onClose, knowledge, input, setInput, busy, onRespond, onSkip, onProceed }) {
+  if (!open || !knowledge) return null;
+  const ready = knowledge.status === "ready";
+  const turns = knowledge.turns || [];
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" data-testid="knowledge-loop-modal">
+      <div className="flex max-h-[86vh] w-full max-w-lg flex-col rounded-sm border border-stone-200 bg-[#faf9f6] shadow-xl">
+        <div className="flex items-start justify-between border-b border-stone-200 p-6 pb-4">
+          <div>
+            <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-stone-400">Before you write</p>
+            <h3 className="mt-1 font-serif-display text-xl text-stone-900">
+              {ready ? "You're ready — let's use this" : "Let's make sure one idea is clear"}
+            </h3>
+          </div>
+          <button onClick={onClose} data-testid="knowledge-close" className="text-stone-400 hover:text-stone-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-3 overflow-y-auto px-6 py-4" data-testid="knowledge-dialogue">
+          {turns.map((t, i) => (
+            <div
+              key={i}
+              data-testid={`knowledge-turn-${t.role}-${i}`}
+              className={t.role === "coach"
+                ? "rounded-sm border-l-2 border-[#8C3A2A] bg-white px-3 py-2.5"
+                : "ml-6 rounded-sm border border-stone-200 bg-[#f2efe9] px-3 py-2.5"}
+            >
+              <p className="font-mono-panel text-[9px] uppercase tracking-[0.16em] text-stone-400">
+                {t.role === "coach" ? "Compass" : "You"}
+              </p>
+              <p className="mt-0.5 whitespace-pre-wrap text-[14px] leading-relaxed text-stone-800">{t.text}</p>
+            </div>
+          ))}
+        </div>
+
+        <div className="border-t border-stone-200 p-6 pt-4">
+          {ready ? (
+            <button
+              onClick={onProceed}
+              data-testid="knowledge-proceed-button"
+              className="group inline-flex w-full items-center justify-center gap-2 rounded-sm bg-[#8C3A2A] px-5 py-3 font-medium text-white transition-colors hover:bg-[#6B2C20]"
+            >
+              Now let's use this in your draft
+              <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          ) : (
+            <>
+              <textarea
+                data-testid="knowledge-input"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                rows={3}
+                placeholder="Answer in your own words…"
+                className="w-full resize-none rounded-sm border border-stone-300 bg-white p-3 text-[15px] leading-relaxed text-stone-900 outline-none focus:border-[#8C3A2A]"
+              />
+              <div className="mt-3 flex items-center justify-between gap-4">
+                <button
+                  onClick={onSkip}
+                  disabled={busy}
+                  data-testid="knowledge-skip-button"
+                  className="text-sm text-stone-500 hover:text-stone-800 disabled:opacity-50"
+                >
+                  I'm ready to write
+                </button>
+                <button
+                  onClick={onRespond}
+                  disabled={busy || !input.trim()}
+                  data-testid="knowledge-respond-button"
+                  className="inline-flex items-center gap-2 rounded-sm bg-[#8C3A2A] px-5 py-2.5 font-medium text-white transition-colors hover:bg-[#6B2C20] disabled:opacity-40"
+                >
+                  {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                  Respond
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function DeveloperPanel({ session, onSaveNotes, savingNotes, onOpenLibrary }) {
   const [open, setOpen] = useState(true);

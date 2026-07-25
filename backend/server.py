@@ -1867,6 +1867,11 @@ def _compile_representation_notes(handoff: dict, component: dict, profile_id: st
     if uq:
         P.append("Unresolved (non-blocking) questions carried forward — do NOT interrogate; surface only if they "
                  "block the focal work: " + "; ".join(q["value"] for q in uq) + ".")
+    kc = handoff.get("knowledge_clarified")
+    if kc and (kc.get("learner_explanations") or kc.get("concepts_understood")):
+        bits = list(kc.get("concepts_understood") or []) + list(kc.get("learner_explanations") or [])
+        P.append("Learner's OWN clarified understanding from a pre-writing knowledge step (explicit_student, "
+                 "CONTEXT only — not answer content, do not treat as taught fact): " + "; ".join(b for b in bits if b) + ".")
     P.append(f"SUGGESTED starting component (soft — you still select the single highest-leverage target from the "
              f"student's actual participation; do NOT force it): {component.get('name','')} "
              f"[broad area: {component['kb'].get('domain','')}; element: {component['kb'].get('element','')}].")
