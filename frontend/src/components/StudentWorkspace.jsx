@@ -83,13 +83,17 @@ export default function StudentWorkspace({
   }, [streamingTurn?.id]);
 
   // A newly completed coaching that did NOT stream surfaces marker-first; a
-  // streamed one stays open through completion (same turn id).
+  // streamed one stays open through completion (same turn id). Exception: the
+  // very FIRST invitation (e.g. right after a handoff from the Question Loop)
+  // auto-opens so the learner sees it without hunting for the marker.
   useEffect(() => {
     if (activeCoaching && !streaming) {
       setMarkerOpen(true);
-      setOpenCoachingId((prev) => (prev === activeCoaching.id ? prev : null));
+      const isFirstInvitation = completedAi.length === 1;
+      setOpenCoachingId((prev) =>
+        prev === activeCoaching.id ? prev : (isFirstInvitation ? activeCoaching.id : null));
     }
-  }, [activeCoaching?.id, streaming]);
+  }, [activeCoaching?.id, streaming, completedAi.length]);
 
   const wordCount = draft.trim() ? draft.trim().split(/\s+/).length : 0;
   const dirty = started
