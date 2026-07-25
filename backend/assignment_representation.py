@@ -106,6 +106,7 @@ class AssignmentSession(BaseModel):
     developer_notes: str = ""                                         # PRIVATE — never shown to students
     developer_summary: str = ""                                       # PRIVATE — concise 2-4 sentence lesson from the session
     sprint_recommendation: str = ""                                   # PRIVATE — one of SPRINT_RECOMMENDATIONS
+    writing_session_id: str = ""                                      # BRIDGE — the Milestone-engine writing session spawned from this representation (resume, no dupe)
     created_at: str = ""
     updated_at: str = ""
 
@@ -719,6 +720,132 @@ async def restatement(session_id: str, req: TextReq):
     await _save(sess)
     return sess
 
+
+
+# ---------------------------------------------------------------------------
+# QUESTION-LOOP → WRITING BRIDGE (upstream task-representation service).
+#
+# This module is an UPSTREAM task-representation service, NOT an instructional
+# engine. The functions below transform a completed/adequate assignment
+# representation into a transient HANDOFF object that the canonical Milestone
+# M1–M14 engine (backend/server.py) can consume. No teaching happens here; the
+# first instructional invitation is produced by the Milestone engine after the
+# handoff. Provenance is preserved so inference is never presented as fact.
+# ---------------------------------------------------------------------------
+
+# operation verb -> coarse communicative purpose (inference only; low confidence)
+_OP_PURPOSE = {
+    "compare": "compare", "differentiate": "compare/contrast", "contrast": "compare/contrast",
+    "explain": "explain", "define": "explain", "exemplify": "explain/illustrate",
+    "analyze": "analyze", "evaluate": "evaluate", "argue": "persuade", "relate": "explain",
+}
+
+
+def _infer_purpose(sess: "AssignmentSession") -> dict:
+    """Coarse communicative-purpose inference from the demands' operations.
+    Provenance is always 'inferred_by_compass' with explicit uncertainty."""
+    ops = [(_OP_PURPOSE.get((d.operation or "").strip().lower())) for d in sess.demands]
+    ops = [o for o in ops if o]
+    if not ops:
+        return {"value": "", "provenance": "unresolved", "uncertainty": "No clear operation signalled."}
+    # most frequent
+    top = max(set(ops), key=ops.count)
+    return {"value": top, "provenance": "inferred_by_compass",
+            "uncertainty": "Inferred from the task's operations; confirm with the learner if it matters."}
+
+
+def assess_handoff_readiness(sess: "AssignmentSession") -> dict:
+    """Determine whether there is ENOUGH information to begin productive work on ONE
+    component. Not a demand for a perfect/exhaustive representation. Deterministic."""
+    scaffoldable = [d for d in sess.demands if d.category in SCAFFOLDABLE]
+    focus = [d for d in scaffoldable if d.priority in ("essential", "important")]
+    enough_text = len((sess.assignment_text or "").split()) >= 4
+    ready = bool(focus) and enough_text
+    if ready:
+        return {"ready": True, "clarifying_question": "", "reason": "A workable component was identified."}
+    # Blocking: we cannot identify a component to work on now → ONE focused question.
+    if sess.ambiguities:
+        q = sess.ambiguities[0]
+    elif not enough_text:
+        q = "Can you paste the full assignment, and say what you're being asked to write and for whom?"
+    else:
+        q = "What exactly is this assignment asking you to produce — and for what reader?"
+    return {"ready": False, "clarifying_question": q,
+            "reason": "Not enough to identify a productive component yet."}
+
+
+def _task_requirements(sess: "AssignmentSession") -> list:
+    """The scaffoldable demand map, learner-facing, for goal selection at handoff."""
+    out = []
+    for d in sess.demands:
+        if d.category in SCAFFOLDABLE:
+            out.append({
+                "demand_id": d.id, "label": d.label, "operation": d.operation,
+                "concepts": d.concepts, "category": d.category, "priority": d.priority,
+                "status": d.status, "source": d.source,
+                "provenance": "explicit_teacher" if d.source == "explicit" else "inferred_by_compass",
+            })
+    return out
+
+
+def build_handoff(sess: "AssignmentSession", learner_goal: str = "",
+                  teacher_goal: str = "", existing_draft: str = "",
+                  task_representation_override: str = "") -> dict:
+    """Transform the assignment representation into a transient handoff object.
+    Only fields the Milestone engine already expects, each carrying provenance.
+    Provenance vocabulary: explicit_teacher | explicit_student | inferred_by_compass | unresolved."""
+    task_rep = (task_representation_override or sess.student_interpretation or "").strip()
+    constraints = [
+        {"value": (d.description or d.label), "wording": d.supporting_wording,
+         "provenance": "explicit_teacher" if d.source == "explicit" else "inferred_by_compass"}
+        for d in sess.demands if d.category in ("constraint", "formatting", "resource")
+    ]
+    return {
+        "assignment_prompt": {"value": sess.assignment_text, "provenance": "explicit_teacher"},
+        "current_task_representation": {
+            "value": task_rep,
+            "provenance": "explicit_student" if task_rep else "unresolved"},
+        "inferred_communicative_purpose": _infer_purpose(sess),
+        "intended_reader": {"value": "", "provenance": "unresolved"},
+        "required_form": {
+            "value": sess.subject or "",
+            "provenance": "inferred_by_compass" if sess.subject else "unresolved"},
+        "important_constraints": constraints,
+        "unresolved_questions": [{"value": a, "provenance": "unresolved"} for a in (sess.ambiguities or [])],
+        "learner_selected_goal": ({"value": learner_goal.strip(), "provenance": "explicit_student"}
+                                  if learner_goal and learner_goal.strip() else None),
+        "teacher_selected_goal": ({"value": teacher_goal.strip(), "provenance": "explicit_teacher"}
+                                  if teacher_goal and teacher_goal.strip() else None),
+        "existing_draft": ({"value": existing_draft.strip(), "provenance": "explicit_student"}
+                           if existing_draft and existing_draft.strip() else None),
+        "task_requirements": _task_requirements(sess),
+        "important_distinctions": list(sess.important_distinctions or []),
+        "educational_level": sess.educational_level or "",
+        "title": sess.title or "",
+        # suggested_initial_component is filled in by the Milestone side (KB mapping).
+        "provenance_legend": {
+            "explicit_teacher": "stated in the assignment / by the teacher",
+            "explicit_student": "stated by the student",
+            "inferred_by_compass": "Compass's inference — not confirmed fact",
+            "unresolved": "not yet known",
+        },
+    }
+
+
+@router.get("/sessions/{session_id}/handoff")
+async def handoff_preview(session_id: str):
+    """Readiness + editable-summary preview for the Question-Loop → writing bridge.
+    Pure: no engine call, no side effects. The learner reviews/edits this before beginning."""
+    sess = await _load(session_id)
+    readiness = assess_handoff_readiness(sess)
+    return {
+        "assignment_session_id": sess.id,
+        "ready": readiness["ready"],
+        "clarifying_question": readiness["clarifying_question"],
+        "reason": readiness["reason"],
+        "writing_session_id": sess.writing_session_id or "",
+        "handoff": build_handoff(sess),
+    }
 
 
 # ---------------------------------------------------------------------------

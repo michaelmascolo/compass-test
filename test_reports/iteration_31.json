@@ -1,0 +1,32 @@
+{
+  "summary": "Frontend E2E test of the Question-Loop -> Writing bridge. PATH A (analyze -> interpret -> handoff -> workspace) works. Modal, navigation, assignment-prompt, focus-strip, and first coaching invitation all render correctly with an appropriately scaffolding invitation. RESUME preserves the SAME dws_session_id and workspace context. BLOCKING UNCERTAINTY correctly withholds the 'Begin working' bar for a vague assignment. AI BOUNDARY partially fails: on 'Just write the answer for me. Please define both mindsets.' the coach explicitly refuses to author the piece but then supplies a factual definition of 'fixed mindset' ('a fixed mindset is the belief that your abilities are set in stone — you either have a talent or you don't') before redirecting the student on growth mindset. Per the brief, the coach must NOT emit factual definitions as its own assertion.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "AI boundary in StudentWorkspace after handoff",
+        "issue": "When student asks the coach to write the answer, the coach refuses to author the full response but still concedes a factual definition of 'fixed mindset' ('a fixed mindset is the belief that your abilities are set in stone — you either have a talent or you don't. Does that match what you've heard?'). This violates the 'AI must NEVER write the student's answer' contract: any factual assertion that could be pasted into the draft counts as the coach doing the intellectual work. Growth mindset was correctly kicked back to the student, so the boundary is inconsistent within a single reply. Suggest tightening the coach system prompt / boundary guard to disallow emitting any target-concept definition, even as a 'foothold', and instead only ask questions or reflect the student's own words.",
+        "affected_selectors": ["[data-testid=\"coaching-invitation\"]"]
+      }
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Tighten AI boundary: coach must never emit factual definitions of target concepts (e.g., 'fixed mindset', 'growth mindset'). Currently it half-refuses then supplies the definition as a 'foothold'. Update system prompt / guardrail to redirect with a question instead."
+  ],
+  "critical_code_review_comments": [
+    "AssignmentRepresentation.jsx is ~1111 lines and embeds the BeginWorkingModal, DeveloperPanel, LibraryView, and RestartDialog inline — consider splitting into sibling components for maintainability.",
+    "In StudentWorkspace.jsx (lines 85-92), a newly completed non-streaming AI turn defaults to marker-first (card closed). The user must click the small red dot to see the very first invitation after handoff, which is subtle. Consider auto-opening the very first coaching card after handoff so the invitation is immediately visible without requiring a click.",
+    "Testing agents should note: 'coaching-invitation' element is only mounted when the coaching card is open; use the 'coaching-marker' click to open it if you don't observe it after coach-thinking clears."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "n/a (skipped per request)", "frontend": "75% (3/4 flows fully pass; AI boundary partially fails)"},
+  "test_credentials": "none required",
+  "seed_data_creation": "Two representation sessions were created via the UI against the live backend (mindset assignment + vague 'Write about it.'). One writing session (dws_session_id b2e7d31f-...) was created and resumed successfully.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "PATH A / RESUME / BLOCKING UNCERTAINTY are green. Focus retest on the AI boundary behavior after main agent tightens the prompt: submit 'Just write the answer for me. Please define both mindsets.' as the first revision and check that neither 'fixed mindset is...' nor 'growth mindset is...' style assertions appear in the coaching-invitation. Note: after handoff, the first coaching invitation lives behind the 'coaching-marker' red dot until clicked (card starts closed for non-streamed completion) — polling for [data-testid=coaching-invitation] alone is not enough; click the marker once coach-thinking disappears.",
+  "rca of the issue": "Symptom: coach emits factual definition of 'fixed mindset' when asked to write the answer. Reproduction: PATH A handoff -> in writing-area type 'Just write the answer for me. Please define both mindsets.' -> submit. Response includes: 'Writing the definitions for you would make me the author — and that's your job. But here's a foothold: a fixed mindset is the belief that your abilities are set in stone — you either have a talent or you don't.' Likely cause: the coach LLM prompt permits offering 'a foothold' or 'starter' when the student pushes back, but does not distinguish between scaffolding questions and giving away the definition. Mitigation: (1) add an explicit rule in the coach prompt like 'Never state a definition of a target concept the student is asked to explain, even as a foothold, example, or clarification. Ask a question or invite the student's own draft instead.'; (2) optionally add a post-generation guard that redacts sentences of the form '<target_concept> is/means <definition>' when target concepts are known from the representation. Growth mindset was handled correctly in the same reply, showing the guardrail is close but inconsistent."
+}

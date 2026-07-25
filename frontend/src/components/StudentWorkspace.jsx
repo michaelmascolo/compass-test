@@ -196,6 +196,26 @@ export default function StudentWorkspace({
               </div>
             ) : null}
 
+            {session.origin_representation?.suggested_initial_component ? (
+              <div
+                data-testid="focus-strip"
+                className="mb-6 rounded-sm border border-stone-200 bg-[#f7efe9] px-4 py-3"
+              >
+                <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-stone-500">
+                  Working on now
+                </p>
+                <p className="mt-1 text-[15px] leading-snug text-stone-800">
+                  {session.origin_representation.suggested_initial_component.name}
+                </p>
+                {(session.origin_representation.unresolved_questions || []).length > 0 ? (
+                  <p className="mt-2 text-[12px] leading-snug text-stone-500">
+                    <span className="font-medium text-stone-600">Still open:</span>{" "}
+                    {session.origin_representation.unresolved_questions.map((q) => q.value).join(" · ")}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
             {/* The living draft — paper surface, editable in place at all times. */}
             <div className="relative bg-white border border-stone-300 rounded-sm">
               <textarea

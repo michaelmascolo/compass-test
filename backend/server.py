@@ -499,6 +499,7 @@ class Session(BaseModel):
     config_id: Optional[str] = ""
     assignment_code: Optional[str] = ""
     student_name: Optional[str] = ""
+    origin_representation: dict = Field(default_factory=dict)  # BRIDGE — handoff object from the Question Loop (provenance, focal component, carried questions)
     created_at: str = Field(default_factory=now_iso)
     updated_at: str = Field(default_factory=now_iso)
 
@@ -653,6 +654,21 @@ COMPASS_CONSTITUTION = {
         "complete assignments",
     ],
 }
+
+
+# ---------------------------------------------------------------------------
+# CANONICAL DEVELOPMENTAL TARGET vs LEARNER SUPPORT PROFILE (spec §2).
+# The engine-level TARGET is the capable high-school graduate. Grade/learner
+# profiles do NOT define separate theories of writing — they only modulate
+# access (vocabulary, task size, pace, support) around this single target.
+# ---------------------------------------------------------------------------
+DEVELOPMENTAL_TARGET_ID = "high-school-graduate"
+DEVELOPMENTAL_TARGET_STATEMENT = (
+    "A capable high-school graduate who can independently organize and communicate meaning for a "
+    "reader across a range of writing tasks. This target governs canonical writing functions, "
+    "indicators of mature control, functional relationships among components, competent independent "
+    "performance, fading of support, and transfer expectations."
+)
 
 
 
@@ -1754,6 +1770,194 @@ async def create_session_from_config(config_id: str, payload: Optional[CreateSes
     )
     await db.sessions.insert_one(session.model_dump())
     return session
+
+
+# ---------------------------------------------------------------------------
+# QUESTION-LOOP → WRITING BRIDGE (spec: build the handoff adapter).
+# The upstream representation service lives in assignment_representation.py; the
+# canonical Milestone engine (this file) owns session creation + the first turn.
+#
+# Two knowledge bases, complementary (spec §3):
+#   • canonical_writing_model.json (13 domains) -> the BROAD area of writing.
+#   • instructional_objects.json (35 elements)  -> the PRECISE component + its
+#     recognition diagnostics / developmental moves. They are consulted, never merged.
+# ---------------------------------------------------------------------------
+_OP_TO_ELEMENT = {
+    "define": "Definition", "explain": "Explanation / Analysis", "analyze": "Explanation / Analysis",
+    "compare": "Comparison", "differentiate": "Contrast", "contrast": "Contrast",
+    "evaluate": "Central Claim", "argue": "Central Claim", "relate": "Explanation / Analysis",
+    "exemplify": "Example",
+}
+# element -> BROAD canonical domain (spec §3: domain = broad area).
+_ELEMENT_TO_DOMAIN = {
+    "Definition": "Central Claim / Thesis", "Explanation / Analysis": "Interpretation / Reasoning",
+    "Comparison": "Organization", "Contrast": "Organization", "Central Claim": "Central Claim / Thesis",
+    "Thesis": "Central Claim / Thesis", "Example": "Evidence", "Evidence": "Evidence",
+    "Purpose": "Whole Essay Purpose", "Paragraph": "Paragraph Purpose", "Topic Sentence": "Paragraph Purpose",
+    "Introduction": "Opening / Introduction", "Conclusion": "Conclusion",
+}
+
+
+def _map_component_to_kb(label: str, operation: str, concepts: list) -> dict:
+    """Resolve a representation demand to (a) a precise instructional OBJECT and
+    (b) a broad canonical DOMAIN, using both knowledge bases. Fallbacks are
+    meaning-first (Purpose), never a hard-coded thesis."""
+    hits = get_relevant_instructional_objects(([label] if label else []) + (concepts or []) + ([operation] if operation else []))
+    element = hits[0]["element"] if hits else _OP_TO_ELEMENT.get((operation or "").strip().lower(), "Purpose")
+    obj = _IO_BY_NAME.get(element.lower(), {})
+    domain = _ELEMENT_TO_DOMAIN.get(element, "Whole Essay Purpose")
+    if domain not in _DOMAINS_BY_NAME:
+        domain = "Whole Essay Purpose" if "Whole Essay Purpose" in _DOMAINS_BY_NAME else (CANONICAL_DOMAIN_NAMES[0] if CANONICAL_DOMAIN_NAMES else "")
+    return {"element": element, "domain": domain,
+            "communicative_purpose": obj.get("communicative_purpose", ""),
+            "definition": obj.get("definition", "")}
+
+
+def _select_initial_component(handoff: dict) -> dict:
+    """Choose the SUGGESTED starting component (a soft hint; the Milestone engine
+    still selects the single highest-leverage target from the learner's actual
+    participation). Priority: teacher goal > learner goal > highest-leverage demand."""
+    reqs = handoff.get("task_requirements", []) or []
+
+    def _kb_for_demand(d):
+        return _map_component_to_kb(d.get("label", ""), d.get("operation", ""), d.get("concepts", []))
+
+    tg = handoff.get("teacher_selected_goal")
+    if tg and tg.get("value"):
+        return {"name": tg["value"], "source": "explicit_teacher",
+                "rationale": "Honoring the teacher-selected component.",
+                "kb": _map_component_to_kb(tg["value"], "", [])}
+    lg = handoff.get("learner_selected_goal")
+    if lg and lg.get("value"):
+        return {"name": lg["value"], "source": "explicit_student",
+                "rationale": "Honoring the learner-selected component.",
+                "kb": _map_component_to_kb(lg["value"], "", [])}
+    # highest-leverage: essential first, then important; original order within.
+    ordered = sorted(
+        reqs, key=lambda d: (0 if d.get("priority") == "essential" else 1 if d.get("priority") == "important" else 2))
+    if ordered:
+        d = ordered[0]
+        return {"name": d.get("label", ""), "source": "highest_leverage_inferred",
+                "rationale": "Highest-leverage component that can be worked on now (meaning/purpose first).",
+                "kb": _kb_for_demand(d)}
+    return {"name": "Understanding what the assignment asks", "source": "default",
+            "rationale": "No specific component yet; begin by clarifying the task and its purpose.",
+            "kb": {"element": "Purpose", "domain": "Whole Essay Purpose", "communicative_purpose": "", "definition": ""}}
+
+
+def _compile_representation_notes(handoff: dict, component: dict, profile_id: str) -> str:
+    """Engine-facing teacher_notes seeded from the handoff. Preserves provenance so
+    the engine never treats inference as fact; states the canonical target + support profile."""
+    P = []
+    P.append(f"CANONICAL DEVELOPMENTAL TARGET: {DEVELOPMENTAL_TARGET_STATEMENT}")
+    P.append(f"LEARNER SUPPORT PROFILE: '{profile_id}' — modulates vocabulary, task size, pace, and amount "
+             "of support AROUND that target; it does NOT change the target or create a separate theory of writing.")
+    P.append("ORIGIN: this session began from a Question-Loop assignment representation. Continuity notes below "
+             "carry PROVENANCE — respect it and never present an inference as established fact.")
+    tr = handoff.get("current_task_representation", {})
+    if tr.get("value"):
+        P.append(f"Student's own task representation ({tr.get('provenance')}): {tr['value']}")
+    pur = handoff.get("inferred_communicative_purpose", {})
+    if pur.get("value"):
+        P.append(f"Communicative purpose ({pur.get('provenance')}; {pur.get('uncertainty','')}): {pur['value']}")
+    cons = handoff.get("important_constraints", []) or []
+    if cons:
+        P.append("Constraints (teacher-stated): " + "; ".join(c["value"] for c in cons) + ".")
+    uq = handoff.get("unresolved_questions", []) or []
+    if uq:
+        P.append("Unresolved (non-blocking) questions carried forward — do NOT interrogate; surface only if they "
+                 "block the focal work: " + "; ".join(q["value"] for q in uq) + ".")
+    P.append(f"SUGGESTED starting component (soft — you still select the single highest-leverage target from the "
+             f"student's actual participation; do NOT force it): {component.get('name','')} "
+             f"[broad area: {component['kb'].get('domain','')}; element: {component['kb'].get('element','')}].")
+    P.append("Constitutional guardrails are absolute: preserve student authorship; never write, rewrite, generate, "
+             "auto-revise, auto-edit, auto-correct, or complete the student's work.")
+    return " ".join(P)
+
+
+class FromRepresentationRequest(BaseModel):
+    assignment_session_id: str
+    learner_selected_goal: Optional[str] = ""
+    teacher_selected_goal: Optional[str] = ""
+    existing_draft: Optional[str] = ""
+    task_representation: Optional[str] = ""   # learner-edited summary (spec §6: correct the representation)
+    support_profile: Optional[str] = ""       # learner support profile id (default: high-school-graduate)
+
+
+@api_router.post("/sessions/from-representation")
+async def create_session_from_representation(req: FromRepresentationRequest):
+    """BRIDGE: turn an adequate assignment representation into a live Milestone-engine
+    writing session focused on ONE component, and fire the first (engine-produced)
+    invitation. Resumes an existing writing session rather than duplicating."""
+    import assignment_representation as _asgrep
+    doc = await db.assignment_sessions.find_one({"id": req.assignment_session_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="Assignment representation not found")
+    rep = _asgrep.AssignmentSession(**doc)
+
+    # Resume if a writing session already exists for this representation (no dupe).
+    if rep.writing_session_id:
+        existing = await db.sessions.find_one({"id": rep.writing_session_id}, {"_id": 0})
+        if existing:
+            return {"ready": True, "resumed": True, "session_id": rep.writing_session_id,
+                    "origin_representation": existing.get("origin_representation", {})}
+
+    # Readiness gate (spec §5): do NOT open the workspace prematurely.
+    readiness = _asgrep.assess_handoff_readiness(rep)
+    if not readiness["ready"]:
+        return {"ready": False, "clarifying_question": readiness["clarifying_question"],
+                "reason": readiness["reason"]}
+
+    handoff = _asgrep.build_handoff(
+        rep, learner_goal=req.learner_selected_goal or "", teacher_goal=req.teacher_selected_goal or "",
+        existing_draft=req.existing_draft or "", task_representation_override=req.task_representation or "")
+    component = _select_initial_component(handoff)
+    handoff["suggested_initial_component"] = component
+
+    profile_id = (req.support_profile or DEVELOPMENTAL_TARGET_ID).strip()
+    assignment = handoff["assignment_prompt"]["value"]
+    pedagogical_purpose = (
+        f"Develop the student's writing for a reader on this task. Canonical target: {DEVELOPMENTAL_TARGET_ID}. "
+        f"Focal component this session: {component.get('name','')}.")
+    current_writing_task = (
+        f"Work on: {component.get('name','')}. Compass will focus on the single highest-leverage move based on "
+        "what you actually write; you do not need to finish the whole piece.")
+    notes = _compile_representation_notes(handoff, component, profile_id)
+    telos = Telos(
+        governing_pedagogical_purpose=pedagogical_purpose,
+        immediate_task_purpose=current_writing_task,
+        teacher_intentions=notes,
+        assignment_context=assignment,
+        audience_or_communicative_purpose=handoff.get("inferred_communicative_purpose", {}).get("value", ""),
+        unresolved_ambiguity="; ".join(q["value"] for q in handoff.get("unresolved_questions", [])),
+    )
+    session = Session(
+        assignment=assignment,
+        pedagogical_purpose=pedagogical_purpose,
+        current_writing_task=current_writing_task,
+        teacher_notes=notes,
+        assignment_prompt=assignment,
+        telos=telos,
+        origin_representation=handoff,
+    )
+    await db.sessions.insert_one(session.model_dump())
+    # link back so re-entry resumes rather than duplicates
+    await db.assignment_sessions.update_one(
+        {"id": rep.id}, {"$set": {"writing_session_id": session.id, "updated_at": now_iso()}})
+
+    # Fire the FIRST turn so the invitation emerges from the Milestone engine (spec §8):
+    # a draft if one exists, else the student's own task representation. No Question-Loop teaching.
+    draft = (req.existing_draft or "").strip()
+    if draft:
+        first = InteractRequest(content=draft, kind="writing")
+    else:
+        rep_text = (req.task_representation or rep.student_interpretation or "").strip()
+        content = rep_text or f"My understanding of the assignment: {assignment}"
+        first = InteractRequest(content=content, kind="explain")
+    await interact(session.id, first)  # persists student+placeholder turns, schedules background reasoning
+
+    return {"ready": True, "resumed": False, "session_id": session.id,
+            "suggested_component": component, "origin_representation": handoff}
 
 
 def _assignment_summary(cfg: dict, sessions: List[dict]) -> dict:
@@ -2908,14 +3112,58 @@ GRADE9_PROFILE = {
 }
 
 
+# CANONICAL developmental target profile (spec §2/§E). Not a grade; the ENDPOINT
+# of development that grade profiles vary support around.
+HS_GRADUATE_PROFILE = {
+    "gradeProfileId": "high-school-graduate",
+    "version": "1.0",
+    "ageGuidance": "developmental target (not an age): competent independent writer entering college / skilled work",
+    "defaultScaffolding": "adaptive",
+    "isDevelopmentalTarget": True,
+    "languageGuidance": {
+        "register": "precise, plain academic language; treat the writer as a capable near-adult",
+        "instructions": ["be concise", "one focus at a time", "connect every move to communicating meaning for a reader",
+                          "fade support as control appears"],
+    },
+    "expectedIndependence": {
+        "can_generally": ["independently organize and communicate meaning for a reader across a range of tasks",
+                          "establish and sustain a communicative purpose", "coordinate claim, evidence, and interpretation",
+                          "organize ideas for a reader", "revise substantively for meaning", "explain writing decisions",
+                          "transfer a learned principle to new writing"],
+        "not_yet_assumed": "flawless performance on every unfamiliar genre without any support",
+    },
+    "taskComplexity": {
+        "expectations": ["full communicative tasks with real reader awareness",
+                         "functional (not formulaic) organization", "purpose-driven use and explanation of evidence"],
+        "note": "the target expected of a competent high-school graduate; support is varied for earlier grades",
+    },
+    "genreExpectations": {"note": "forms serve purpose and audience; never a single required template"},
+    "feedbackPriorities": ["purpose", "reader comprehension", "functional organization",
+                           "explanation and use of evidence", "coherence", "precision", "sentence clarity"],
+    "grammarGuidance": {"approach": "integrate grammar with meaning", "never": "automatically correct the student's text"},
+    "modelGuidance": {"traits": ["connected to purpose", "brief", "annotated to show function"],
+                      "never": "give models that can be copied into the assignment"},
+    "revisionExpectations": {"default_cycles": 2, "minimum": 1, "note": "substantive revision, not correction alone"},
+    "assessmentIndicators": {"evidence": ["independent organization of meaning", "reader awareness",
+                                          "coordination of claim/evidence/interpretation", "explanation of decisions",
+                                          "transfer to new writing"],
+                             "do_not": ["infer capability from polish or grade level alone"]},
+}
+
+
 @app.on_event("startup")
 async def seed_grade_profiles():
-    """Idempotently ensure the Grade 9 calibration profile exists. Grade profiles
-    are separate, editable resources so grade expectations are never hard-coded."""
+    """Idempotently ensure the calibration profiles exist. Grade profiles are
+    separate, editable resources so grade expectations are never hard-coded.
+    The high-school-graduate profile is the CANONICAL developmental target;
+    grade-9 (and future grades) are SUPPORT profiles beneath that target."""
     try:
         await db.grade_profiles.update_one(
             {"gradeProfileId": "grade-9"}, {"$setOnInsert": GRADE9_PROFILE}, upsert=True)
-        logger.info("[startup] grade-9 calibration profile ensured")
+        await db.grade_profiles.update_one(
+            {"gradeProfileId": HS_GRADUATE_PROFILE["gradeProfileId"]},
+            {"$setOnInsert": HS_GRADUATE_PROFILE}, upsert=True)
+        logger.info("[startup] grade-9 + high-school-graduate calibration profiles ensured")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[startup] grade profile seed skipped: {e}")
 

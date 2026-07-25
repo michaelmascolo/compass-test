@@ -38,6 +38,8 @@ import {
   setDeveloperMeta,
   getSessionLibrary,
   assignmentRecordUrl,
+  getHandoff,
+  beginWorkingFromRepresentation,
 } from "@/lib/api";
 
 const STORE = "compass_rep_session";
@@ -197,6 +199,53 @@ export default function AssignmentRepresentation() {
   );
   const [savingNotes, setSavingNotes] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
+
+  // Question-Loop -> Writing bridge
+  const [handoff, setHandoff] = useState(null);   // {ready, clarifying_question, handoff, writing_session_id}
+  const [beginOpen, setBeginOpen] = useState(false);
+  const [beginBusy, setBeginBusy] = useState(false);
+  const [chosenGoal, setChosenGoal] = useState("");   // learner-selected component label (optional)
+  const [editedRep, setEditedRep] = useState("");     // learner-edited task representation
+
+  // Refresh handoff readiness whenever the representation changes (post-analysis).
+  useEffect(() => {
+    if (!session?.id || session.stage === "interpret") { setHandoff(null); return; }
+    let cancelled = false;
+    getHandoff(session.id)
+      .then((h) => { if (!cancelled) setHandoff(h); })
+      .catch(() => { if (!cancelled) setHandoff(null); });
+    return () => { cancelled = true; };
+  }, [session?.id, session?.stage, session?.interactions?.length]);
+
+  const openBegin = () => {
+    const rep = handoff?.handoff?.current_task_representation?.value || session?.student_interpretation || "";
+    setEditedRep(rep);
+    setChosenGoal("");
+    setBeginOpen(true);
+  };
+
+  const confirmBegin = async () => {
+    if (!session) return;
+    setBeginBusy(true);
+    try {
+      const res = await beginWorkingFromRepresentation({
+        assignment_session_id: session.id,
+        task_representation: editedRep,
+        learner_selected_goal: chosenGoal || "",
+      });
+      if (res.ready === false) {
+        toast.message("Let's clarify one thing first", { description: res.clarifying_question });
+        setBeginOpen(false);
+        return;
+      }
+      localStorage.setItem("dws_session_id", res.session_id);
+      window.location.href = "?app";
+    } catch (e) {
+      toast.error("Could not open the writing workspace. Please try again.");
+    } finally {
+      setBeginBusy(false);
+    }
+  };
 
   const loadSessionById = useCallback((id) => {
     localStorage.setItem(STORE, id);
@@ -497,6 +546,24 @@ export default function AssignmentRepresentation() {
         <div className="space-y-6">
           <AssignmentPanel text={session.assignment_text} onEdit={startEdit} />
           <QuestionMap session={session} flashIds={flashIds} />
+          {handoff?.ready && session.stage !== "adequate" && (
+            <div
+              data-testid="handoff-bar"
+              className="flex items-center justify-between gap-3 rounded-sm border border-[#8C3A2A]/30 bg-[#f7efe9] px-4 py-3"
+            >
+              <p className="text-[13px] leading-snug text-stone-700">
+                You have enough to start. You can begin working on one part now and keep clarifying as you go.
+              </p>
+              <button
+                onClick={openBegin}
+                data-testid="begin-working-bar-button"
+                className="group inline-flex shrink-0 items-center gap-1.5 rounded-sm bg-[#8C3A2A] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#6B2C20]"
+              >
+                Begin working on this
+                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* RIGHT — active developmental work */}
@@ -601,14 +668,23 @@ export default function AssignmentRepresentation() {
               <p className="mt-2 text-sm text-stone-600">
                 Your representation is solid enough to move forward. You can keep refining it later.
               </p>
-              <button
-                onClick={() => setKnowledge(true)}
-                data-testid="continue-to-knowledge-button"
-                className="group mt-6 inline-flex items-center gap-2 rounded-sm bg-[#8C3A2A] px-6 py-3 font-medium text-white transition-colors hover:bg-[#6B2C20]"
-              >
-                Continue to Knowledge
-                <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
-              </button>
+              <div className="mt-6 flex flex-wrap items-center gap-4">
+                <button
+                  onClick={openBegin}
+                  data-testid="begin-working-button"
+                  className="group inline-flex items-center gap-2 rounded-sm bg-[#8C3A2A] px-6 py-3 font-medium text-white transition-colors hover:bg-[#6B2C20]"
+                >
+                  Begin working on this
+                  <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+                </button>
+                <button
+                  onClick={() => setKnowledge(true)}
+                  data-testid="continue-to-knowledge-button"
+                  className="text-[11px] font-mono-panel uppercase tracking-[0.14em] text-stone-400 transition-colors hover:text-[#8C3A2A]"
+                >
+                  Continue to Knowledge (coming soon)
+                </button>
+              </div>
             </div>
           )}
 
@@ -643,7 +719,111 @@ export default function AssignmentRepresentation() {
       {devMode && (
         <DeveloperPanel session={session} onSaveNotes={saveNotes} savingNotes={savingNotes} onOpenLibrary={() => setLibraryOpen(true)} />
       )}
+      <BeginWorkingModal
+        open={beginOpen}
+        onClose={() => setBeginOpen(false)}
+        handoff={handoff?.handoff}
+        editedRep={editedRep}
+        setEditedRep={setEditedRep}
+        chosenGoal={chosenGoal}
+        setChosenGoal={setChosenGoal}
+        busy={beginBusy}
+        onConfirm={confirmBegin}
+      />
       <RestartDialog open={restartOpen} setOpen={setRestartOpen} confirm={confirmEdit} />
+    </div>
+  );
+}
+
+// Editable summary of Compass's current understanding, shown before crossing into
+// the writing workspace (spec §6). No engine names, no milestone numbers surfaced.
+function BeginWorkingModal({ open, onClose, handoff, editedRep, setEditedRep, chosenGoal, setChosenGoal, busy, onConfirm }) {
+  if (!open || !handoff) return null;
+  const reqs = handoff.task_requirements || [];
+  const unresolved = handoff.unresolved_questions || [];
+  const purpose = handoff.inferred_communicative_purpose || {};
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" data-testid="begin-working-modal">
+      <div className="max-h-[86vh] w-full max-w-lg overflow-y-auto rounded-sm border border-stone-200 bg-[#faf9f6] p-6 shadow-xl">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="font-mono-panel text-[10px] uppercase tracking-[0.2em] text-stone-400">Before you begin</p>
+            <h3 className="mt-1 font-serif-display text-xl text-stone-900">Here's how I understand this task</h3>
+          </div>
+          <button onClick={onClose} data-testid="begin-modal-close" className="text-stone-400 hover:text-stone-700">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <label className="mt-5 block font-mono-panel text-[10px] uppercase tracking-[0.16em] text-stone-500">
+          What you're being asked to do (edit if this isn't right)
+        </label>
+        <textarea
+          data-testid="begin-modal-representation"
+          value={editedRep}
+          onChange={(e) => setEditedRep(e.target.value)}
+          rows={3}
+          className="mt-2 w-full resize-none rounded-sm border border-stone-300 bg-white p-3 text-[14px] leading-relaxed text-stone-900 outline-none focus:border-[#8C3A2A]"
+        />
+
+        {purpose.value && (
+          <p className="mt-3 text-[13px] text-stone-600">
+            <span className="font-medium text-stone-800">Likely purpose:</span> {purpose.value}
+            <span className="ml-1 text-stone-400">(my read — tell me if it's off)</span>
+          </p>
+        )}
+
+        {reqs.length > 0 && (
+          <>
+            <label className="mt-5 block font-mono-panel text-[10px] uppercase tracking-[0.16em] text-stone-500">
+              Where would you like to start? (optional — I'll otherwise pick the most useful part)
+            </label>
+            <div className="mt-2 space-y-1.5">
+              <button
+                onClick={() => setChosenGoal("")}
+                data-testid="begin-goal-auto"
+                className={`w-full rounded-sm border px-3 py-2 text-left text-[13px] transition-colors ${chosenGoal === "" ? "border-[#8C3A2A] bg-[#f7efe9] text-stone-900" : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"}`}
+              >
+                Let Compass choose the best starting point
+              </button>
+              {reqs.map((r, i) => (
+                <button
+                  key={r.demand_id || i}
+                  onClick={() => setChosenGoal(r.label)}
+                  data-testid={`begin-goal-${i}`}
+                  className={`w-full rounded-sm border px-3 py-2 text-left text-[13px] transition-colors ${chosenGoal === r.label ? "border-[#8C3A2A] bg-[#f7efe9] text-stone-900" : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"}`}
+                >
+                  {r.label}
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+
+        {unresolved.length > 0 && (
+          <div className="mt-5 rounded-sm border border-stone-200 bg-white px-3 py-2.5">
+            <p className="font-mono-panel text-[9px] uppercase tracking-[0.16em] text-stone-400">Open questions (we can settle these while working)</p>
+            <ul className="mt-1 list-disc pl-4 text-[12px] leading-snug text-stone-600">
+              {unresolved.map((q, i) => <li key={i}>{q.value}</li>)}
+            </ul>
+          </div>
+        )}
+
+        <div className="mt-6 flex items-center justify-end gap-4">
+          <button onClick={onClose} data-testid="begin-modal-keep-clarifying" className="text-sm text-stone-500 hover:text-stone-800">
+            Keep clarifying
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={busy}
+            data-testid="begin-modal-confirm"
+            className="inline-flex items-center gap-2 rounded-sm bg-[#8C3A2A] px-5 py-2.5 font-medium text-white transition-colors hover:bg-[#6B2C20] disabled:opacity-50"
+          >
+            {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+            Start working
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

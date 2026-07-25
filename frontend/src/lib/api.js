@@ -197,5 +197,16 @@ export const getSessionLibrary = async () => {
   return data.sessions;
 };
 
+// --- Question-Loop -> Writing bridge ---
+export const getHandoff = async (assignmentSessionId) => {
+  const { data } = await axios.get(`${API}/assignment/sessions/${assignmentSessionId}/handoff`);
+  return data;
+};
+
+export const beginWorkingFromRepresentation = async (payload) => {
+  const { data } = await axios.post(`${API}/sessions/from-representation`, payload);
+  return data;
+};
+
 export const assignmentRecordUrl = (id, format) =>
   `${API}/assignment/sessions/${id}/record?format=${format}`;
