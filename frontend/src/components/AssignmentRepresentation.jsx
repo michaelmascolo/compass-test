@@ -64,22 +64,27 @@ const STATUS_META = {
 
 const meta = (s) => STATUS_META[s] || STATUS_META.unconfirmed;
 
+// Non-developmental demand categories are monitored, not scaffolded.
+const MONITORED = { constraint: "Constraint", formatting: "Formatting", resource: "Resource" };
+
 // ---------------------------------------------------------------------------
 function DemandRow({ d, active, flash }) {
   const m = meta(d.status);
+  const monitored = MONITORED[d.category];
   return (
     <motion.div
       layout
       data-testid={`demand-${d.id}`}
       data-status={d.status}
+      data-category={d.category}
       animate={flash ? { backgroundColor: ["#fff7ed", "#ffffff"] } : {}}
       transition={{ duration: 1.2 }}
       className={`relative rounded-sm bg-white pl-4 pr-3 py-3 ${
         active ? "ring-1 ring-[#8C3A2A]" : ""
-      }`}
+      } ${monitored ? "opacity-80" : ""}`}
       style={{
         borderLeft: `3px ${d.source === "inferred" ? "dashed" : "solid"} ${
-          active ? "#8C3A2A" : "#d6d3d1"
+          active ? "#8C3A2A" : monitored ? "#e7e5e4" : "#d6d3d1"
         }`,
       }}
     >
@@ -96,18 +101,27 @@ function DemandRow({ d, active, flash }) {
               {d.source === "inferred" ? "Inferred" : "Explicit"}
             </span>
           </div>
-          {d.operation && (
+          {!monitored && d.operation && (
             <p className="mt-0.5 text-[11px] font-mono-panel uppercase tracking-[0.12em] text-stone-400">
               {d.operation}
             </p>
           )}
         </div>
-        <span
-          className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-mono-panel uppercase tracking-[0.1em] ${m.bg} ${m.text}`}
-        >
-          <span className="h-1.5 w-1.5 rounded-full" style={{ background: m.dot }} />
-          {m.label}
-        </span>
+        {monitored ? (
+          <span
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-stone-200 px-2 py-1 text-[10px] font-mono-panel uppercase tracking-[0.1em] text-stone-400"
+            title="A requirement to keep in mind — not a thinking task"
+          >
+            {monitored}
+          </span>
+        ) : (
+          <span
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2 py-1 text-[10px] font-mono-panel uppercase tracking-[0.1em] ${m.bg} ${m.text}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full" style={{ background: m.dot }} />
+            {m.label}
+          </span>
+        )}
       </div>
       {active && (
         <div className="mt-1.5 inline-flex items-center gap-1 text-[10px] font-mono-panel uppercase tracking-[0.14em] text-[#8C3A2A]">
@@ -646,6 +660,7 @@ function DeveloperPanel({ session, onSaveNotes, savingNotes, onOpenLibrary }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session.id]);
   const s = session.current_scaffold || {};
+  const cd = session.control_decision || {};
   const target = session.demands.find((d) => d.id === session.active_target_id);
   const Row = ({ k, v }) =>
     v ? (
@@ -690,13 +705,17 @@ function DeveloperPanel({ session, onSaveNotes, savingNotes, onOpenLibrary }) {
           <Row k="Stage" v={session.stage} />
           <Row k="Dev. Operation" v={s.targetOperation} />
           <Row k="Target Demand" v={target ? target.label : "—"} />
+          <Row k="Demand Category" v={target ? target.category : (cd.demand_category || "")} />
+          <Row k="Demand Priority" v={target ? target.priority : (cd.demand_priority || "")} />
           <Row k="Scaffold Level" v={s.level != null ? String(s.level) : "—"} />
           <Row k="Instruction Type" v={s.instructionType} />
           <Row k="Concepts" v={(s.concepts || []).join(", ")} />
-          <Row k="Reason" v={session.active_target_reason} />
+          <Row k="Decision" v={cd.action} />
+          <Row k="Reason for Decision" v={cd.reason || session.active_target_reason} />
+          <Row k="Why Not Alternatives" v={cd.alternatives_reason} />
           <Row k="Expected Evidence" v={s.expectedEvidence} />
-          <Row k="Next if Successful" v={s.nextIfSuccessful} />
-          <Row k="Next if Unsuccessful" v={s.nextIfUnsuccessful} />
+          <Row k="Next if Successful" v={cd.next_if_successful || s.nextIfSuccessful} />
+          <Row k="Next if Unsuccessful" v={cd.next_if_unsuccessful || s.nextIfUnsuccessful} />
           <Row k="Requires Reconstr." v={s.requires_reconstruction ? "yes" : ""} />
 
           <div className="mt-3 border-t border-stone-700 pt-3">

@@ -41,15 +41,24 @@ class AssignmentDemand(BaseModel):
     description: str = ""
     source: str = "explicit"                 # explicit | inferred
     supporting_wording: str = ""             # exact quote from the assignment (explicit) or "" (inferred)
-    operation: str = ""                      # developmental operation: Differentiate, Compare, Define, Explain, Exemplify, Relate, Analyze...
+    operation: str = ""                      # STABLE developmental operation, assigned once at analysis
     concepts: List[str] = Field(default_factory=list)
+    category: str = "operational"            # conceptual | operational | constraint | formatting | resource
     status: str = "unconfirmed"              # understood | developing | needs_attention | unconfirmed
-    importance: str = "essential"            # essential | supporting
+    priority: str = "essential"              # essential | important | helpful | optional
     learner_evidence: str = ""
     confidence: float = 0.0                  # INTERNAL ONLY — never exposed in the UI
     derivable_from_assignment: bool = True   # is the needed understanding discoverable from the assignment text itself?
     scaffold_level: int = 0
     scaffold_attempts: int = 0
+    escalations_this_visit: int = 0          # resets when a demand becomes the active target (anti-fixation)
+    awaiting_reconstruction: bool = False    # a concept was taught & performed; we asked for own-words reconstruction once
+
+
+# Categories that actually drive developmental scaffolding.
+SCAFFOLDABLE = {"conceptual", "operational"}
+# Priority ordering for target selection.
+PRIORITY_RANK = {"essential": 0, "important": 1, "helpful": 2, "optional": 3}
 
 
 class Scaffold(BaseModel):
@@ -89,6 +98,7 @@ class AssignmentSession(BaseModel):
     student_interpretation: str = ""
     active_target_id: str = ""
     active_target_reason: str = ""                                    # why this demand is the current target (dev-mode)
+    control_decision: Optional[dict] = None                           # last Control Engine decision (dev-mode)
     current_scaffold: Optional[dict] = None
     stage: str = "interpret"                 # interpret | mapping | restatement | adequate
     representation_adequate: bool = False
@@ -169,21 +179,31 @@ async def analyze_assignment(assignment_text: str, sid: str):
         "For EACH demand return: label (short), description (one sentence), source ('explicit'|'inferred'), "
         "supporting_wording (exact quote from the assignment if explicit, else \"\"), operation (the single "
         "developmental operation the student must perform: e.g. Differentiate, Compare, Define, Explain, "
-        "Exemplify, Relate, Analyze, Evaluate), concepts (1-3 key concepts), importance ('essential'|'supporting'), "
+        "Exemplify, Relate, Analyze, Evaluate), concepts (1-3 key concepts), category (one of: 'conceptual' = a "
+        "conceptual distinction/understanding the task hinges on; 'operational' = a thinking operation to perform; "
+        "'constraint' = a length/quantity/scope limit like 'write two sentences' or 'use at least three sources'; "
+        "'formatting' = presentation like 'APA style','double spaced'; 'resource' = required source type like "
+        "'peer-reviewed sources'), priority (one of 'essential','important','helpful','optional'), "
         "derivable_from_assignment (true if a careful reading of the assignment gives enough to discover this; "
-        "false if it needs outside concept knowledge). Extract 3-6 demands. ALSO return important_distinctions "
+        "false if it needs outside concept knowledge). Extract 3-6 demands. IMPORTANT: constraints, formatting and "
+        "resource requirements are almost never 'essential' developmental demands — mark them 'helpful' or 'optional' "
+        "unless the assignment's whole point is the constraint. ALSO return important_distinctions "
         "(the key conceptual distinctions the task hinges on, e.g. 'learning process vs. learning outcome') and "
         "ambiguities (genuinely unclear points a student could reasonably read more than one way). ALSO classify: "
         "title (a concise 3-6 word title for the assignment), subject (e.g. 'Biology','History','Literature' — or "
         "\"\" if unclear), educational_level (best guess e.g. 'Grade 4','Grade 8','Grade 12','College','Graduate' — "
         "or \"\" if unclear). Return ONLY JSON: "
         '{"title":"","subject":"","educational_level":"","demands":[{"label":"","description":"","source":"",'
-        '"supporting_wording":"","operation":"","concepts":[],"importance":"","derivable_from_assignment":true}],'
-        '"important_distinctions":[],"ambiguities":[]}'
+        '"supporting_wording":"","operation":"","concepts":[],"category":"","priority":"",'
+        '"derivable_from_assignment":true}],"important_distinctions":[],"ambiguities":[]}'
     )
     data = await _llm(system, f"ASSIGNMENT:\n{assignment_text}", sid)
     out = []
+    _cats = {"conceptual", "operational", "constraint", "formatting", "resource"}
+    _prios = {"essential", "important", "helpful", "optional"}
     for d in data.get("demands", []):
+        cat = str(d.get("category", "")).lower().strip()
+        prio = str(d.get("priority", "")).lower().strip()
         out.append(AssignmentDemand(
             label=d.get("label", "").strip() or "Requirement",
             description=d.get("description", ""),
@@ -191,7 +211,8 @@ async def analyze_assignment(assignment_text: str, sid: str):
             supporting_wording=d.get("supporting_wording", "") or "",
             operation=d.get("operation", ""),
             concepts=d.get("concepts", []) or [],
-            importance="supporting" if str(d.get("importance", "")).lower().startswith("support") else "essential",
+            category=cat if cat in _cats else "operational",
+            priority=prio if prio in _prios else "essential",
             derivable_from_assignment=bool(d.get("derivable_from_assignment", True)),
         ))
     meta = {
@@ -254,6 +275,9 @@ async def generate_scaffold(sess: AssignmentSession, demand: AssignmentDemand, l
     )
     user = (f"ASSIGNMENT:\n{sess.assignment_text}\n\nTARGET DEMAND:\n"
             f"{json.dumps({'label': demand.label, 'description': demand.description, 'operation': demand.operation, 'concepts': demand.concepts, 'source': demand.source, 'supporting_wording': demand.supporting_wording, 'status': demand.status, 'learner_evidence': demand.learner_evidence, 'derivable_from_assignment': demand.derivable_from_assignment})}\n\n"
+            f"LEARNER EDUCATIONAL LEVEL: {sess.educational_level or 'unknown'} — calibrate vocabulary, sentence "
+            f"complexity, and examples to this level (simple and concrete for young learners; more precise for "
+            f"advanced learners).\n"
             f"SCAFFOLD LEVEL: {level}\n"
             f"PRIOR ATTEMPTS ON THIS DEMAND: {demand.scaffold_attempts}")
     data = await _llm(system, user, sess.id)
@@ -262,8 +286,8 @@ async def generate_scaffold(sess: AssignmentSession, demand: AssignmentDemand, l
         demand_id=demand.id,
         level=level,
         instructionType=itype,
-        targetOperation=data.get("targetOperation", demand.operation),
-        concepts=data.get("concepts", demand.concepts) or demand.concepts,
+        targetOperation=demand.operation,          # P4: operation is STABLE — anchored to the demand
+        concepts=demand.concepts,                  # P4: concepts stable too
         relevant_wording=data.get("relevant_wording", demand.supporting_wording) or demand.supporting_wording,
         studentTask=data.get("studentTask", ""),
         expectedEvidence=data.get("expectedEvidence", ""),
@@ -274,17 +298,25 @@ async def generate_scaffold(sess: AssignmentSession, demand: AssignmentDemand, l
 
 
 async def evaluate_operation(sess: AssignmentSession, demand: AssignmentDemand, scaffold: dict, student_text: str) -> dict:
+    other = [{"id": d.id, "label": d.label, "operation": d.operation}
+             for d in sess.demands if d.id != demand.id and d.category in SCAFFOLDABLE]
     system = (
         "Determine whether the student PERFORMED the target developmental operation. Diagnose only; do NOT reveal "
         "the answer or write it for them. " + _BOUNDARY + "\n\n"
-        "If the student wrote something like 'I don't know' or made no real attempt, performed=false and "
-        "reason='no_attempt'. If they attempted but it is wrong/confused, reason='misconception'. If partial, "
-        "reason='partial'. If they performed it, reason='success'. If the scaffold required a reconstruction (own "
-        "words) and they did not reconstruct, performed=false reason='no_reconstruction'. Return ONLY JSON: "
-        '{"performed":true,"status":"understood|developing|needs_attention","learner_evidence":"","reason":"","confidence":0.0}'
+        "Report TWO things separately: operation_performed (did they perform the operation / show the understanding, "
+        "regardless of wording) and reconstruction_present (did they restate it in their OWN WORDS). "
+        "reason: 'no_attempt' (e.g. 'I don't know' / no real attempt), 'misconception' (attempted but wrong/confused), "
+        "'partial', or 'success'. status is the resulting status for THIS demand "
+        "(understood|developing|needs_attention). "
+        "CREDIT EVERYTHING: if the response ALSO demonstrates any OTHER listed demand, report it in other_demands "
+        "with that demand's id, a status, and the evidence. Never discard demonstrated understanding just because it "
+        "was not the current target. Return ONLY JSON: "
+        '{"operation_performed":true,"reconstruction_present":true,"status":"understood|developing|needs_attention",'
+        '"learner_evidence":"","reason":"","confidence":0.0,"other_demands":[{"id":"","status":"","learner_evidence":""}]}'
     )
     user = (f"ASSIGNMENT:\n{sess.assignment_text}\n\nTARGET DEMAND:\n"
             f"{json.dumps({'label': demand.label, 'operation': demand.operation, 'description': demand.description})}\n\n"
+            f"OTHER DEMANDS (credit if demonstrated):\n{json.dumps(other)}\n\n"
             f"SCAFFOLD:\n{json.dumps({'studentTask': scaffold.get('studentTask'), 'expectedEvidence': scaffold.get('expectedEvidence'), 'requires_reconstruction': scaffold.get('requires_reconstruction')})}\n\n"
             f"STUDENT RESPONSE:\n{student_text}")
     return await _llm(system, user, sess.id)
@@ -292,7 +324,8 @@ async def evaluate_operation(sess: AssignmentSession, demand: AssignmentDemand, 
 
 async def evaluate_restatement(sess: AssignmentSession, restatement: str) -> dict:
     demands_brief = [{"id": d.id, "label": d.label, "operation": d.operation,
-                      "importance": d.importance, "source": d.source} for d in sess.demands]
+                      "priority": d.priority, "source": d.source} for d in sess.demands
+                     if d.category in SCAFFOLDABLE]
     system = (
         "The student has restated the WHOLE assignment in their own words. Evaluate whether their representation "
         "is ADEQUATE FOR NOW — meaning every ESSENTIAL demand is at least developing and none is missing or "
@@ -312,48 +345,46 @@ async def evaluate_restatement(sess: AssignmentSession, restatement: str) -> dic
 UNRESOLVED = {"needs_attention", "unconfirmed"}
 
 
-def _essential_unresolved(sess: AssignmentSession) -> List[AssignmentDemand]:
-    return [d for d in sess.demands if d.importance == "essential" and d.status in UNRESOLVED]
+def _scaffoldable(sess: AssignmentSession) -> List[AssignmentDemand]:
+    """Only conceptual & operational demands drive scaffolding (P3)."""
+    return [d for d in sess.demands if d.category in SCAFFOLDABLE]
 
 
-def _pick_target(sess: AssignmentSession) -> Optional[AssignmentDemand]:
-    """Highest-leverage unresolved essential demand: a misunderstanding (needs_attention)
-    outranks an unaddressed one (unconfirmed); then original order is preserved."""
-    unresolved = _essential_unresolved(sess)
-    if not unresolved:
-        # fall back to supporting demands only if no essential remains
-        unresolved = [d for d in sess.demands if d.status in UNRESOLVED]
-    if not unresolved:
+def _focus_priorities(sess: AssignmentSession):
+    """Priorities the engine will actively pursue: essential first, then important (P6).
+    Helpful/optional demands are monitored but never force the session to run long."""
+    scaff = _scaffoldable(sess)
+    essential = [d for d in scaff if d.priority == "essential" and d.status in UNRESOLVED]
+    important = [d for d in scaff if d.priority == "important" and d.status in UNRESOLVED]
+    return essential, important
+
+
+def _unresolved_focus(sess: AssignmentSession) -> List[AssignmentDemand]:
+    essential, important = _focus_priorities(sess)
+    return essential or important  # only drop to 'important' once all essential are resolved
+
+
+def _pick_target(sess: AssignmentSession, exclude_id: str = "") -> Optional[AssignmentDemand]:
+    """Highest-leverage unresolved focus demand. A misunderstanding (needs_attention)
+    outranks an unaddressed one (unconfirmed); higher priority first; then original order."""
+    pool = [d for d in _unresolved_focus(sess) if d.id != exclude_id]
+    if not pool:
+        pool = [d for d in _unresolved_focus(sess)]  # allow staying if it's the only one
+    if not pool:
         return None
-    unresolved.sort(key=lambda d: (0 if d.status == "needs_attention" else 1,
-                                    sess.demands.index(d)))
-    return unresolved[0]
+    pool.sort(key=lambda d: (PRIORITY_RANK.get(d.priority, 9),
+                             0 if d.status == "needs_attention" else 1,
+                             sess.demands.index(d)))
+    return pool[0]
 
 
 def _start_level(demand: AssignmentDemand) -> int:
-    """First scaffold level for a freshly-selected target. A misunderstanding starts a
-    touch higher than an unaddressed-but-derivable demand. Non-derivable demands start
-    at guided construction so we don't leave the learner stranded."""
+    """First scaffold level for a freshly-selected target. Gentle by default (P5):
+    derivable demands begin with an attention cue; only non-derivable or already-
+    misunderstood demands begin at guided construction."""
     if not demand.derivable_from_assignment:
         return 2
     return 2 if demand.status == "needs_attention" else 1
-
-
-def determine_next_move(sess: AssignmentSession) -> dict:
-    """Returns {'move': 'scaffold'|'restatement', 'target_id': str, 'level': int}."""
-    if not _essential_unresolved(sess):
-        return {"move": "restatement", "target_id": "", "level": 0}
-    target = _pick_target(sess)
-    if target is None:
-        return {"move": "restatement", "target_id": "", "level": 0}
-    return {"move": "scaffold", "target_id": target.id, "level": _start_level(target)}
-
-
-# ---------------------------------------------------------------------------
-# Persistence helpers
-# ---------------------------------------------------------------------------
-def _demand_by_id(sess: AssignmentSession, did: str) -> Optional[AssignmentDemand]:
-    return next((d for d in sess.demands if d.id == did), None)
 
 
 def _target_reason(d: AssignmentDemand) -> str:
@@ -368,6 +399,43 @@ def _target_reason(d: AssignmentDemand) -> str:
     if d.learner_evidence:
         base += f" ({d.learner_evidence})"
     return base
+
+
+def _alternatives_reason(sess: AssignmentSession, chosen_id: str) -> str:
+    """Dev-mode: why the other focus demands were not chosen this turn."""
+    others = [d for d in _unresolved_focus(sess) if d.id != chosen_id]
+    if not others:
+        return "No other unresolved focus demands remain."
+    bits = []
+    for d in others[:4]:
+        bits.append(f"{d.label} [{d.priority}/{d.status}]")
+    return "Deferred (lower leverage now): " + "; ".join(bits)
+
+
+def _set_target(sess: AssignmentSession, demand: AssignmentDemand, level: int, action: str):
+    demand.scaffold_level = level
+    if sess.active_target_id != demand.id:
+        demand.escalations_this_visit = 0          # fresh visit → reset anti-fixation counter
+    sess.active_target_id = demand.id
+    sess.active_target_reason = _target_reason(demand)
+    sess.control_decision = {
+        "action": action,
+        "reason": sess.active_target_reason,
+        "alternatives_reason": _alternatives_reason(sess, demand.id),
+        "next_if_successful": "Move to the next unresolved demand (or the integrated restatement).",
+        "next_if_unsuccessful": ("Give one stronger scaffold, then switch to another demand rather than drilling."
+                                 if demand.escalations_this_visit < 1 else
+                                 "Switch to a different demand and revisit this one later."),
+        "demand_category": demand.category,
+        "demand_priority": demand.priority,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Persistence helpers
+# ---------------------------------------------------------------------------
+def _demand_by_id(sess: AssignmentSession, did: str) -> Optional[AssignmentDemand]:
+    return next((d for d in sess.demands if d.id == did), None)
 
 
 async def _load(session_id: str) -> AssignmentSession:
@@ -385,21 +453,31 @@ async def _save(sess: AssignmentSession) -> AssignmentSession:
     return sess
 
 
-async def _advance_after_diagnosis(sess: AssignmentSession):
-    """After statuses are updated, choose the next move and (if scaffolding) generate it."""
-    move = determine_next_move(sess)
-    if move["move"] == "restatement":
+async def _open_target_or_restatement(sess: AssignmentSession, exclude_id: str = "", action: str = "next_demand"):
+    """Pick the next focus target and generate its scaffold, or move to restatement
+    when no focus demand remains unresolved."""
+    target = _pick_target(sess, exclude_id=exclude_id)
+    if target is None:
         sess.active_target_id = ""
         sess.current_scaffold = None
         sess.stage = "restatement"
+        sess.control_decision = {
+            "action": "stop_scaffolding",
+            "reason": "All essential/important demands are adequate for now.",
+            "alternatives_reason": "", "next_if_successful": "Adequacy check on the integrated restatement.",
+            "next_if_unsuccessful": "Return to the highest-leverage unresolved demand.",
+            "demand_category": "", "demand_priority": "",
+        }
         return
-    target = _demand_by_id(sess, move["target_id"])
-    target.scaffold_level = move["level"]
-    scaffold = await generate_scaffold(sess, target, move["level"])
-    sess.active_target_id = target.id
-    sess.active_target_reason = _target_reason(target)
+    _set_target(sess, target, _start_level(target), action)
+    scaffold = await generate_scaffold(sess, target, target.scaffold_level)
     sess.current_scaffold = scaffold.model_dump()
     sess.stage = "mapping"
+
+
+# Back-compat name used by the interpret endpoint.
+async def _advance_after_diagnosis(sess: AssignmentSession):
+    await _open_target_or_restatement(sess, action="switch_target")
 
 
 # ---------------------------------------------------------------------------
@@ -482,38 +560,102 @@ async def operation(session_id: str, req: TextReq):
     ev = await evaluate_operation(sess, target, sess.current_scaffold, text)
     scaffold_snapshot = dict(sess.current_scaffold or {})
     target.scaffold_attempts += 1
-    performed = bool(ev.get("performed"))
-    if performed:
-        target.status = _norm_status(ev.get("status"), "developing")
-        if target.status in UNRESOLVED:
-            target.status = "developing"
-    else:
-        # unsuccessful → escalate the opportunity to perform (cap at direct teaching)
-        target.status = _norm_status(ev.get("status"), "needs_attention")
-        if target.status not in UNRESOLVED:
-            target.status = "needs_attention"
-        target.scaffold_level = min(3, max(target.scaffold_level, sess.current_scaffold.get("level", 1)) + 1)
+
+    # P5 — CREDIT EVERYTHING: apply evidence the response gives for OTHER demands.
+    for od in ev.get("other_demands", []) or []:
+        dem = _demand_by_id(sess, od.get("id", ""))
+        if dem and dem.id != target.id and dem.category in SCAFFOLDABLE:
+            new_status = _norm_status(od.get("status"), dem.status)
+            # only upgrade (never downgrade a demand from a side-observation)
+            rank = {"unconfirmed": 0, "needs_attention": 1, "developing": 2, "understood": 3}
+            if rank.get(new_status, 0) > rank.get(dem.status, 0):
+                dem.status = new_status
+                if od.get("learner_evidence"):
+                    dem.learner_evidence = od["learner_evidence"]
+
+    op_done = bool(ev.get("operation_performed", ev.get("performed")))
+    recon_present = bool(ev.get("reconstruction_present", True))
+    needs_recon = bool(scaffold_snapshot.get("requires_reconstruction"))
     target.learner_evidence = ev.get("learner_evidence", target.learner_evidence)
     target.confidence = float(ev.get("confidence", target.confidence) or 0.0)
+
     sess.interactions.append(InteractionRecord(
         kind="operation", student_text=text, target_demand_id=target.id,
         scaffold=scaffold_snapshot, evaluation=ev, created_at=_now_iso()))
 
-    # Anti-trap: after repeated unsuccessful attempts at direct teaching, treat this
-    # demand as 'developing' (adequate FOR NOW, not permanently complete) and move on,
-    # rather than looping the same target forever.
-    stuck = (not performed) and target.scaffold_level >= 3 and target.scaffold_attempts >= 3
-    if stuck:
+    # ---- P2: reconstruction gating (verify learning, never a trap) ----
+    if op_done and needs_recon and not recon_present and not target.awaiting_reconstruction:
+        # The operation is performed; ask for an own-words reconstruction ONCE.
         target.status = "developing"
+        target.awaiting_reconstruction = True
+        sess.active_target_reason = "Operation performed; asking for a one-time own-words reconstruction."
+        recon = Scaffold(
+            demand_id=target.id, level=target.scaffold_level, instructionType="reconstruction_check",
+            targetOperation=target.operation, concepts=target.concepts,
+            relevant_wording=scaffold_snapshot.get("relevant_wording", ""),
+            studentTask="You've got the idea. Now say it back in your own words, in one sentence.",
+            expectedEvidence="An accurate restatement of the concept in the learner's own words.",
+            nextIfSuccessful="Move on.", nextIfUnsuccessful="Accept the demonstrated understanding and move on.",
+            requires_reconstruction=True,
+        )
+        sess.current_scaffold = recon.model_dump()
+        sess.control_decision = {
+            "action": "request_reconstruction", "reason": sess.active_target_reason,
+            "alternatives_reason": "", "next_if_successful": "Move to next demand.",
+            "next_if_unsuccessful": "Do NOT re-fail — credit the demonstrated understanding and move on.",
+            "demand_category": target.category, "demand_priority": target.priority,
+        }
+        sess.stage = "mapping"
+        await _save(sess)
+        return sess
 
-    if performed or stuck:
-        await _advance_after_diagnosis(sess)
-    else:
-        # stay on the same target, but re-generate at the escalated level
-        sess.active_target_reason = "Learner could not yet perform the operation; escalating support."
+    if op_done:
+        # Success (or reconstruction now present, or we already asked once) — never re-trap.
+        target.status = _norm_status(ev.get("status"), "developing")
+        if target.status in UNRESOLVED:
+            target.status = "developing"
+        target.awaiting_reconstruction = False
+        await _open_target_or_restatement(sess, exclude_id=target.id, action="next_demand")
+        await _save(sess)
+        return sess
+
+    # ---- Not performed → dynamic move (P1: no fixation) ----
+    target.status = _norm_status(ev.get("status"), "needs_attention")
+    if target.status not in UNRESOLVED:
+        target.status = "needs_attention"
+
+    if target.escalations_this_visit < 1:
+        # Give ONE stronger scaffold on this target, then we will switch next time.
+        target.escalations_this_visit += 1
+        target.scaffold_level = min(3, max(target.scaffold_level, scaffold_snapshot.get("level", 1)) + 1)
+        sess.active_target_reason = "One stronger scaffold before switching (avoiding fixation)."
         scaffold = await generate_scaffold(sess, target, target.scaffold_level)
         sess.current_scaffold = scaffold.model_dump()
+        sess.control_decision = {
+            "action": "increase_support", "reason": sess.active_target_reason,
+            "alternatives_reason": _alternatives_reason(sess, target.id),
+            "next_if_successful": "Move to the next unresolved demand.",
+            "next_if_unsuccessful": "Switch to a different demand and revisit this one later.",
+            "demand_category": target.category, "demand_priority": target.priority,
+        }
         sess.stage = "mapping"
+    else:
+        # Already escalated once this visit and still stuck → SWITCH targets to avoid drilling.
+        # Leave this demand for later (revisitable). If it's the only one left, we stay.
+        other = _pick_target(sess, exclude_id=target.id)
+        if other is None:
+            # only this demand remains: one final teach at L3, then treat as developing (adequate for now)
+            if target.scaffold_level >= 3:
+                target.status = "developing"
+                await _open_target_or_restatement(sess, action="stop_scaffolding")
+            else:
+                target.scaffold_level = 3
+                scaffold = await generate_scaffold(sess, target, 3)
+                sess.current_scaffold = scaffold.model_dump()
+                sess.active_target_reason = "Final direct teaching on the last remaining demand."
+                sess.stage = "mapping"
+        else:
+            await _open_target_or_restatement(sess, exclude_id=target.id, action="switch_target")
     await _save(sess)
     return sess
 
@@ -533,13 +675,17 @@ async def restatement(session_id: str, req: TextReq):
     sess.interactions.append(InteractionRecord(
         kind="restatement", student_text=text, evaluation=ev, created_at=_now_iso()))
 
-    if bool(ev.get("adequate")) and not _essential_unresolved(sess):
+    essential_left, _important = _focus_priorities(sess)
+    # Adequacy-for-now is driven by the demand model itself: every ESSENTIAL demand is
+    # at least 'developing'. (The LLM's separate 'adequate' flag can contradict this and
+    # trap a learner whose restatement is actually complete, so we don't gate on it.)
+    if not essential_left:
         sess.representation_adequate = True
         sess.active_target_id = ""
         sess.current_scaffold = None
         sess.stage = "adequate"
     else:
-        # not adequate yet — return to scaffolding the highest-leverage remaining demand
+        # a genuine gap resurfaced in the restatement — return to the highest-leverage demand
         await _advance_after_diagnosis(sess)
     await _save(sess)
     return sess
@@ -572,7 +718,7 @@ def build_record(sess: AssignmentSession) -> dict:
 
     def dbrief(d: AssignmentDemand):
         return {"label": d.label, "description": d.description, "operation": d.operation,
-                "concepts": d.concepts, "importance": d.importance,
+                "concepts": d.concepts, "category": d.category, "priority": d.priority,
                 "supporting_wording": d.supporting_wording, "status": d.status,
                 "learner_evidence": d.learner_evidence}
 
@@ -623,7 +769,7 @@ def build_record(sess: AssignmentSession) -> dict:
         "developmental_history": dev_history,
         "final_question_map": [
             {"label": d.label, "source": d.source, "operation": d.operation,
-             "importance": d.importance, "status": d.status,
+             "category": d.category, "priority": d.priority, "status": d.status,
              "scaffold_level": d.scaffold_level, "scaffold_attempts": d.scaffold_attempts}
             for d in sess.demands
         ],
@@ -666,7 +812,7 @@ def _record_markdown(r: dict) -> str:
                  f"· {'performed' if h['performed'] else 'not performed'} ({h['reason']}) → status {h['final_demand_status']}")
     L += ["", "## Final Question Map"]
     for d in r["final_question_map"]:
-        L.append(f"- [{d['source']}/{d['importance']}] **{d['label']}** ({d['operation']}) — {d['status']} "
+        L.append(f"- [{d['source']}/{d['priority']}·{d['category']}] **{d['label']}** ({d['operation']}) — {d['status']} "
                  f"(level {d['scaffold_level']}, {d['scaffold_attempts']} attempts)")
     m = r["metadata"]
     L += ["", "## Metadata",
