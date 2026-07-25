@@ -5,8 +5,8 @@
 
 ## Overview
 - **Purpose**: Compass is an AI-powered *developmental* writing studio. It develops the student as a *writer* through scaffolded conversation — it never edits, grades, co-authors, or supplies substantive content. Target learner: capable high-school-graduate level (Grade 9 treated as a scaffolded profile underneath it).
-- **Current development phase**: Instructional-object enrichment (Sprint 3) — **ACTIVE**. Writing Elements Chart adopted as the canonical source; 18 objects enriched from it (canonical fields verbatim, deeper fields conservatively derived from the chart + pilot pattern). Engine is frozen; work is additive knowledge-base enrichment.
-- **Current version**: Milestones M1–M14 complete + Instructional-Object Knowledge Layer + Public Preview + Assignment Representation (Question/Knowledge loops). Instructional-objects schema `v1`; enrichment tags `sprint3-v1` (4 pilots) + `sprint3-canonical-v1` (18 chart-enriched).
+- **Current development phase**: Instructional-object enrichment (Sprint 3) — **COMPLETE (35/35)**. Writing Elements Chart adopted as the canonical source; all 35 objects enriched (canonical fields verbatim, deeper fields conservatively derived from the chart + pilot pattern). Engine frozen. Next: Sprint 4.
+- **Current version**: Milestones M1–M14 complete + Instructional-Object Knowledge Layer (35/35 enriched) + Public Preview + Assignment Representation (Question/Knowledge loops). Instructional-objects schema `v1`; enrichment tags `sprint3-v1` (4 pilots) + `sprint3-canonical-v1` (31 chart-enriched).
 - **Last updated**: 2026-07-25 (auto-maintained after major commits).
 
 ## Architecture
@@ -52,19 +52,19 @@ Runtime source for all: `backend/instructional_objects.json` (schema v1). Data s
 |---|--------|-------------|------------|----------------------|
 | 1 | Purpose | Yes | **ENRICHED (chart)** | 4 |
 | 2 | Thesis | Yes | **ENRICHED (pilot)** | 6 |
-| 3 | Central Claim | Yes | BASE | 5 |
-| 4 | Supporting Claim | Yes | BASE | 6 |
+| 3 | Central Claim | Yes | **ENRICHED (chart)** | 5 |
+| 4 | Supporting Claim | Yes | **ENRICHED (chart)** | 6 |
 | 5 | Evidence | Yes | **ENRICHED (pilot)** | 6 |
 | 6 | Explanation / Analysis | Yes | **ENRICHED (pilot)** | 4 |
-| 7 | Example | Yes | BASE | 4 |
-| 8 | Counterargument | Yes | BASE | 4 |
-| 9 | Rebuttal / Response | Yes | BASE | 4 |
-| 10 | Qualification | Yes | BASE | 4 |
-| 11 | Comparison | Yes | BASE | 3 |
-| 12 | Contrast | Yes | BASE | 3 |
-| 13 | Cause-and-Effect Explanation | Yes | BASE | 2 |
-| 14 | Classification | Yes | BASE | 3 |
-| 15 | Transition | Yes | BASE | 4 |
+| 7 | Example | Yes | **ENRICHED (chart)** | 4 |
+| 8 | Counterargument | Yes | **ENRICHED (chart)** | 4 |
+| 9 | Rebuttal / Response | Yes | **ENRICHED (chart)** | 4 |
+| 10 | Qualification | Yes | **ENRICHED (chart)** | 4 |
+| 11 | Comparison | Yes | **ENRICHED (chart)** | 3 |
+| 12 | Contrast | Yes | **ENRICHED (chart)** | 3 |
+| 13 | Cause-and-Effect Explanation | Yes | **ENRICHED (chart)** | 2 |
+| 14 | Classification | Yes | **ENRICHED (chart)** | 3 |
+| 15 | Transition | Yes | **ENRICHED (chart)** | 4 |
 | 16 | Topic Sentence | Yes | **ENRICHED (chart)** | 5 |
 | 17 | Supporting Detail | Yes | **ENRICHED (chart)** | 5 |
 | 18 | Concluding Sentence | Yes | **ENRICHED (chart)** | 4 |
@@ -83,12 +83,12 @@ Runtime source for all: `backend/instructional_objects.json` (schema v1). Data s
 | 31 | Unity | Yes | **ENRICHED (chart)** | 4 |
 | 32 | Voice | Yes | **ENRICHED (chart)** | 4 |
 | 33 | Revision | Yes | **ENRICHED (chart)** | 5 |
-| 34 | Definition | Yes | BASE | 3 |
-| 35 | Concept | Yes | BASE | 3 |
+| 34 | Definition | Yes | **ENRICHED (chart)** | 3 |
+| 35 | Concept | Yes | **ENRICHED (chart)** | 3 |
 
 - **Runtime location for every object**: retrieved per turn by `get_relevant_instructional_objects()` and injected into the reasoner prompt by `_build_prompt()` in `server.py`.
 - **Shared developmental resources** (15, applied across all objects): brief direct explanation, introduction of canonical terminology, contrastive example, parallel example unrelated to the student's topic, comparison of two versions, ordinary-language restatement, naive-reader perspective, focused question, request for explanation, request for revision, partial scaffold, decomposition into a smaller act, reminder of the assignment, connection between local writing and whole-essay purpose, brief consolidation.
-- **Enriched count**: 22 / 35 (4 pilot `sprint3-v1` + 18 chart `sprint3-canonical-v1`). **Base count**: 13 / 35 (Central Claim, Supporting Claim, Example, Counterargument, Rebuttal / Response, Qualification, Comparison, Contrast, Cause-and-Effect Explanation, Classification, Transition, Definition, Concept).
+- **Enriched count**: **35 / 35** (4 pilot `sprint3-v1` + 31 chart `sprint3-canonical-v1`). **Base count**: 0 / 35. Sprint 3 instructional-object enrichment is COMPLETE.
 
 ## Developmental Engine
 - **Question loop** (`assignment_representation.py`): builds the student's representation of assignment demands (interpret → operation → restatement) before any writing; one demand at a time; never answers.
@@ -145,10 +145,11 @@ Runtime source for all: `backend/instructional_objects.json` (schema v1). Data s
 - **Loop e2e**: `backend/tests/knowledge_loop_e2e.py`, `bridge_e2e.py`, acceptance drives.
 
 ## Outstanding Work
-- **Sprint 3 (active)**: 22/35 objects enriched. Remaining 13 base objects to enrich from the Writing Elements Chart: Central Claim, Supporting Claim, Example, Counterargument, Rebuttal / Response, Qualification, Comparison, Contrast, Cause-and-Effect Explanation, Classification, Transition, Definition, Concept.
+- **Sprint 3: COMPLETE** — all 35/35 instructional objects enriched from the Writing Elements Chart. Recommended: run the 66-case harness once to confirm no engine-behavior regression, and review the `pattern_interpreted` deeper fields.
+- **Sprint 4** (next): scope TBD.
 - **Construction Loop & Composing Loop** (Sprint 3/4).
 - **Teacher Dashboard & Revision Analytics** (Phase III/IV, paused).
-- Base→enriched gap: 13/35 instructional objects and 10/13 canonical domains remain at base schema.
+- Enrichment gap now limited to the canonical-writing-model DOMAINS: 10/13 domains remain at base schema (objects are 35/35).
 
 ## Known Limitations
 - **Foothold definition leak** (`KNOWN_LIMITATION_engine_boundary_foothold.md`): under adversarial pushing the coach can occasionally concede a one-line definition of a target concept. Logged, NOT fixed — the leak originates in the frozen 66-case-benchmarked engine prompt; requires a dedicated engine-boundary sprint.
@@ -157,14 +158,15 @@ Runtime source for all: `backend/instructional_objects.json` (schema v1). Data s
 - **Minor carry-over**: `POST /sessions` returns 200 (not 201); some `integration_calibration.supporting_frameworks` values not humanized in teacher view.
 
 ## Current Sprint
-Sprint 3 canonical enrichment (active). The Writing Elements Chart is the canonical source. 18 objects enriched: the 5 canonical fields (definition, performance_structure, recognition_diagnostics, next_developmental_moves, indicators_of_control) set VERBATIM from the chart; deeper Compass fields (reader/writer function, functional_relationships, common_difficulties, productive_misconceptions, indicators_of_development, recognition_diagnostics_detailed, developmental_invitations, followup_decisions, revision_strategies, stopping_conditions, transfer, engine_usage) derived CONSERVATIVELY from the chart + the 4-pilot pattern, with per-field `field_provenance`. Engine, prompts, architecture, and the instructional network UNCHANGED. Builder: `backend/tests/enrich_sprint3_canonical.py`; validation report: `test_reports/SPRINT3_CANONICAL_ENRICHMENT_REPORT.md`.
+Sprint 3 canonical enrichment (COMPLETE — 35/35). The Writing Elements Chart is the canonical source. All 35 objects carry the 5 canonical fields VERBATIM from the chart plus the deeper Compass fields derived CONSERVATIVELY from the chart + the 4-pilot pattern, with per-field `field_provenance`. Engine, prompts, architecture, and the instructional network UNCHANGED. Builders: `backend/tests/enrich_sprint3_canonical.py` + `enrich_sprint3_canonical_batch2.py`. Validation report: `test_reports/SPRINT3_CANONICAL_ENRICHMENT_REPORT.md`. Schema reference: `INSTRUCTIONAL_OBJECT_SPECIFICATION.md`.
 
 ## Next Recommended Steps
-1. Enrich the remaining 13 base objects from the Writing Elements Chart (same canonical method): Central Claim, Supporting Claim, Example, Counterargument, Rebuttal / Response, Qualification, Comparison, Contrast, Cause-and-Effect Explanation, Classification, Transition, Definition, Concept.
-2. Review the `pattern_interpreted` fields flagged in `SPRINT3_CANONICAL_ENRICHMENT_REPORT.md` (deeper fields conservatively derived, not verbatim from the chart) and confirm or adjust.
-3. Re-run the 66-case harness to confirm the enrichment produces no regression in engine behavior (engine frozen; retrieval now surfaces richer objects).
-4. Confirm object↔domain naming alignment (e.g. Introduction object ↔ Opening/Introduction domain; Conclusion object ↔ Conclusion domain; Thesis vs Central Claim) to avoid divergence.
-5. Keep this file (`CURRENT_STATE.md`) updated after each significant commit.
+1. Run the 66-case harness once at 35/35 to confirm the enrichment produces no regression in engine behavior (engine frozen; retrieval now surfaces richer objects across all 35).
+2. Review the `pattern_interpreted` deeper fields flagged in `SPRINT3_CANONICAL_ENRICHMENT_REPORT.md` (conservatively derived, not verbatim) and confirm or adjust.
+3. Begin **Sprint 4** (scope TBD).
+4. Enrich the 10 base canonical-writing-model DOMAINS to match the 3 enriched ones (objects are now complete at 35/35).
+5. Confirm object↔domain naming alignment (Thesis vs Central Claim; Introduction ↔ Opening/Introduction; Conclusion ↔ Conclusion) to avoid divergence.
+6. Keep `CURRENT_STATE.md` and `INSTRUCTIONAL_OBJECT_SPECIFICATION.md` updated after each significant commit.
 
 ## Repository Map
 - `/backend` — FastAPI app. `server.py` (frozen M1–M14 engine, session/engine orchestration, teacher configs, test harness, meaning maps), `assignment_representation.py` (Question/Knowledge loops + Bridge), `governance_v2.py` (parked, flag-gated), `canonical_writing_model.json` (13 domains), `instructional_objects.json` (35 objects), `test_cases/` (66 eval cases), `tests/` (milestone eval + enrichment + e2e scripts), `.env` (MONGO_URL, DB_NAME, EMERGENT_LLM_KEY).

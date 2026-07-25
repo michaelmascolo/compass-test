@@ -483,3 +483,12 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - Validation: JSON valid; all target fields present & non-empty; canonical fields spot-checked verbatim; backend reloads and serves; engine index builds over all 35. Builder `backend/tests/enrich_sprint3_canonical.py`; report `test_reports/SPRINT3_CANONICAL_ENRICHMENT_REPORT.md`. `CURRENT_STATE.md` counts updated.
 - NEXT: enrich the remaining 13 base objects from the chart (same method); review the `pattern_interpreted` deeper fields; re-run the 66-case harness to confirm no engine-behavior regression.
 
+
+## Sprint 3 — Canonical Enrichment COMPLETE: final 13 objects (2026-07-25, DONE — engine FROZEN)
+- Enriched the final **13 instructional objects** from the Writing Elements Chart: Definition, Concept, Central Claim, Supporting Claim, Example, Counterargument, Rebuttal / Response, Qualification, Comparison, Contrast, Cause-and-Effect Explanation, Classification, Transition. **Instructional-object enrichment is now 35 / 35 (0 base).**
+- Same methodology as batch 1: 5 canonical fields VERBATIM from the chart; deeper Compass fields derived CONSERVATIVELY from the chart + 4-pilot pattern; per-field `field_provenance`; no new theory. Builder: `backend/tests/enrich_sprint3_canonical_batch2.py`.
+- Constraints honored: engine, prompts, retrieval network (`related_elements`), architecture, and the 4 pilots **UNCHANGED** (verified 0 network changes; pilots still `sprint3-v1`).
+- Validation: all 13 pass (JSON valid, fields present & non-empty, version + canonical_source set); backend serves; engine index builds over all 35. Report updated: `test_reports/SPRINT3_CANONICAL_ENRICHMENT_REPORT.md`.
+- Created **`INSTRUCTIONAL_OBJECT_SPECIFICATION.md`** (repo root) — the permanent developer schema reference (field-by-field purpose, engine usage, provenance classes, and rules for authoring new objects).
+- NEXT: run the 66-case harness at 35/35 (regression check); review `pattern_interpreted` deeper fields; begin Sprint 4; enrich the 10 base canonical-writing-model domains.
+
