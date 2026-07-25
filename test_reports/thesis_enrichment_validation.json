@@ -1,0 +1,28 @@
+{
+  "before": {
+    "mode": "before",
+    "assignment": "Write an essay explaining the most important cause of the fall of the Roman Empire.",
+    "first_invitation": "You've made a start \u2014 you've named the topic and noted that the empire lasted a long time before it fell. Here's a writing concept worth knowing: a thesis isn't the topic itself, it's the one idea you want the reader to accept after reading your whole essay. Right now your opening tells the reader *what* you're writing about, but not *what you think* \u2014 there's no position a reader could agree or disagree with. So: what do you think was the single most important cause of Rome's fall? Try stating it in one sentence \u2014 your answer, not just the topic.",
+    "second_invitation": "You've made a real move here \u2014 you've gone from announcing a topic to actually stating a position: Rome got too big to manage. That's a thesis doing real work. Now push it one step further: *why* did being too big cause the fall? What happened \u2014 what broke down \u2014 because of that size? Try adding one clause or sentence that names the mechanism, and your thesis will give readers something concrete to follow.",
+    "primary_target": "Adding a causal mechanism to the thesis",
+    "prioritization_rationale": "Thesis exists \u2014 consolidate, then push to mechanism; mechanism is the prerequisite for body paragraphs and the next developmental move in cause-and-effect writing.",
+    "instructional_mode": "consolidation",
+    "active_instructional_element": "Cause-and-Effect Explanation",
+    "primary_developmental_tension": "Cause is named but mechanism is absent \u2014 reader cannot yet see HOW size produced the fall.",
+    "next_student_act": "Add a clause or sentence naming what broke down as a result of Rome's size.",
+    "degree_of_student_control": "emerging"
+  },
+  "after": {
+    "mode": "after",
+    "assignment": "Write an essay explaining the most important cause of the fall of the Roman Empire.",
+    "first_invitation": "You've made a start on a big topic. Right now your opening tells the reader that the Roman Empire fell \u2014 but the assignment asks you to explain the *most important cause*. A thesis for this essay isn't just the topic; it's a specific answer to that question. So: what do *you* think was the single most important reason the empire fell? Try writing one sentence that gives your answer \u2014 not 'this essay is about' the topic, but your actual claim about why it fell.",
+    "second_invitation": "You've made a real move here \u2014 you've gone from naming a topic to making a claim: 'Rome got too big to manage' is something a reader could actually push back on. That's what a thesis does. Now, a reader holding this claim would naturally ask: *too big to manage in what way, and how did that bring the empire down?* Without that, they can accept or reject your claim but don't yet know what you'll show them. Can you add \u2014 in your own words, in that same sentence or a sentence right after \u2014 the connection between 'too big' and 'falling': what actually broke down when Rome got too big?",
+    "primary_target": "Causal mechanism \u2014 connect 'too big' to 'fell' with an explanatory link",
+    "prioritization_rationale": "Thesis is now working; the next prerequisite for an explanation essay is the mechanism that makes the causal claim intelligible to a reader. Scope can be refined once mechanism is stated.",
+    "instructional_mode": "developmental_question",
+    "active_instructional_element": "Cause-and-Effect Explanation",
+    "primary_developmental_tension": "Cause named, outcome named, but no mechanism linking them \u2014 the reader cannot yet understand HOW overextension produced the fall.",
+    "next_student_act": "Add a phrase or sentence identifying what specifically broke down when Rome got too big, and how that led to the fall.",
+    "degree_of_student_control": "emerging"
+  }
+}
