@@ -492,3 +492,9 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - Created **`INSTRUCTIONAL_OBJECT_SPECIFICATION.md`** (repo root) — the permanent developer schema reference (field-by-field purpose, engine usage, provenance classes, and rules for authoring new objects).
 - NEXT: run the 66-case harness at 35/35 (regression check); review `pattern_interpreted` deeper fields; begin Sprint 4; enrich the 10 base canonical-writing-model domains.
 
+
+## Sprint 3 Verification — 66-case regression run (2026-07-25, DONE — no code changed)
+- Ran the full 66-case harness on the frozen `exhaustive` path with the 35/35 enriched KB. Run `0bfe5b82`: **57 pass / 7 partial / 0 fail / 2 error (86.4%)** vs baseline `fd0dec0c` **58 / 8 / 0 / 0 (87.9%)** — same frozen engine path, KB is the only difference.
+- **No engine/prompt regressions; 0 hard failures.** 6 baseline partials improved to pass (all now retrieve newly-enriched objects — enrichment helped). 2 "errors" (TC31, TC62) are evaluator JSON-parse crashes (valid invitations underneath), not engine/object defects. 5 pass→partial: TC32/TC37 = Thesis retrieval-salience (enrichment-plausible, data-only fix if confirmed); TC20/TC39/TC64 = borderline evaluator judgments (uncertain). 86.4% is within historical run-to-run variance (74–88%).
+- Report: `test_reports/SPRINT3_REGRESSION_REPORT.md` (full classification + prioritized proposals). **No recommendations acted upon — awaiting review before Sprint 4.**
+
