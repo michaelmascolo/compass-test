@@ -5,7 +5,7 @@
 
 ## Overview
 - **Purpose**: Compass is an AI-powered *developmental* writing studio. It develops the student as a *writer* through scaffolded conversation — it never edits, grades, co-authors, or supplies substantive content. Target learner: capable high-school-graduate level (Grade 9 treated as a scaffolded profile underneath it).
-- **Current development phase**: **Sprint 3 CLOSED & RELEASED** as **Compass Knowledge Base v1.0** (tag `compass-kb-v1.0`). Instructional-object enrichment 35/35, verified non-regressive. Awaiting stability-report review before Sprint 4 planning. Engine frozen.
+- **Current development phase**: Instructional-object enrichment (Sprint 3) — **COMPLETE (35/35)**. Writing Elements Chart adopted as the canonical source; all 35 objects enriched (canonical fields verbatim, deeper fields conservatively derived from the chart + pilot pattern). Engine frozen. Next: Sprint 4.
 - **Current version**: Milestones M1–M14 complete + Instructional-Object Knowledge Layer (35/35 enriched) + Public Preview + Assignment Representation (Question/Knowledge loops). Instructional-objects schema `v1`; enrichment tags `sprint3-v1` (4 pilots) + `sprint3-canonical-v1` (31 chart-enriched).
 - **Last updated**: 2026-07-25 (auto-maintained after major commits).
 
@@ -158,7 +158,7 @@ Runtime source for all: `backend/instructional_objects.json` (schema v1). Data s
 - **Minor carry-over**: `POST /sessions` returns 200 (not 201); some `integration_calibration.supporting_frameworks` values not humanized in teacher view.
 
 ## Current Sprint
-**Sprint 3 CLOSED — released as Compass Knowledge Base v1.0 (tag `compass-kb-v1.0`).** All 35 objects enriched from the Writing Elements Chart (canonical fields verbatim; deeper fields conservatively derived; per-field `field_provenance`). Engine, prompts, evaluator, architecture, and retrieval network UNCHANGED. Verified via the 66-case harness (57/7/0/2 vs baseline 58/8/0/0 — 0 fails, 6 improvements, 2 evaluator-only errors) and a 7-case ×3 stability run (6/7 flagged cases are stochastic; only TC37 stably partial; decision: no tuning). Archived snapshot: `releases/knowledge-base-v1.0/`. Reports: `test_reports/SPRINT3_{CANONICAL_ENRICHMENT,REGRESSION,STABILITY}_REPORT.md`, `SPRINT3_SUMMARY.md`. Next: Sprint 4 planning after stability review.
+Sprint 3 canonical enrichment (COMPLETE — 35/35). The Writing Elements Chart is the canonical source. All 35 objects carry the 5 canonical fields VERBATIM from the chart plus the deeper Compass fields derived CONSERVATIVELY from the chart + the 4-pilot pattern, with per-field `field_provenance`. Engine, prompts, architecture, and the instructional network UNCHANGED. Builders: `backend/tests/enrich_sprint3_canonical.py` + `enrich_sprint3_canonical_batch2.py`. Validation report: `test_reports/SPRINT3_CANONICAL_ENRICHMENT_REPORT.md`. Schema reference: `INSTRUCTIONAL_OBJECT_SPECIFICATION.md`.
 
 ## Next Recommended Steps
 1. Run the 66-case harness once at 35/35 to confirm the enrichment produces no regression in engine behavior (engine frozen; retrieval now surfaces richer objects across all 35).

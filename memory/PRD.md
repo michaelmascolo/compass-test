@@ -498,3 +498,9 @@ Build Milestone 1 ONLY of an AI writing app that develops students as writers th
 - **No engine/prompt regressions; 0 hard failures.** 6 baseline partials improved to pass (all now retrieve newly-enriched objects — enrichment helped). 2 "errors" (TC31, TC62) are evaluator JSON-parse crashes (valid invitations underneath), not engine/object defects. 5 pass→partial: TC32/TC37 = Thesis retrieval-salience (enrichment-plausible, data-only fix if confirmed); TC20/TC39/TC64 = borderline evaluator judgments (uncertain). 86.4% is within historical run-to-run variance (74–88%).
 - Report: `test_reports/SPRINT3_REGRESSION_REPORT.md` (full classification + prioritized proposals). **No recommendations acted upon — awaiting review before Sprint 4.**
 
+
+## Sprint 3 CLOSURE + Stability Report (2026-07-25, DONE — no code/data changed)
+- **Sprint 3 accepted as complete.** Released as **Compass Knowledge Base v1.0** (local annotated tag `compass-kb-v1.0`; push via Save to GitHub). Archived snapshot in `releases/knowledge-base-v1.0/` (CURRENT_STATE, INSTRUCTIONAL_OBJECT_SPECIFICATION, SPRINT3 enrichment/regression/stability reports, SPRINT3_SUMMARY, RELEASE_NOTES). Added `SPRINT3_SUMMARY.md`.
+- **Stability run** (7 flagged cases × 3, frozen `exhaustive`, KB unchanged): 6/7 cases produced ≥2 distinct verdicts across identical runs (TC31/TC32/TC62 hit all three of pass/partial/error) → apparent regressions are stochastic. The 2 main-run "errors" are transient evaluator JSON crashes (same cases passed on rerun). **TC37 is the only stable partial** (target-selection: Thesis chosen over documented Organization on compare/contrast) — insufficient alone to justify tuning. Zero hard failures in any run. Report: `test_reports/SPRINT3_STABILITY_REPORT.md`.
+- **Decision:** no tuning of any instructional object. Sprint 4 planning begins only after stability-report review.
+
